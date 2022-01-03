@@ -281,41 +281,12 @@ impl<'a, T> Copy for Node<'a, T> {}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Internal<T> {
-    data: T,
-    kind: Kind,
-    prev: usize,
-    next: usize,
-    first: usize,
-    last: usize,
-}
-
-impl<T> Internal<T> {
-    pub(crate) fn new(data: T, kind: Kind, prev: usize) -> Self {
-        Self {
-            data,
-            kind,
-            prev,
-            next: usize::MAX,
-            first: usize::MAX,
-            last: usize::MAX,
-        }
-    }
-
-    pub(crate) fn next_mut(&mut self) -> &mut usize {
-        &mut self.next
-    }
-
-    pub(crate) fn first(&self) -> usize {
-        self.first
-    }
-
-    pub(crate) fn first_mut(&mut self) -> &mut usize {
-        &mut self.first
-    }
-
-    pub(crate) fn last_mut(&mut self) -> &mut usize {
-        &mut self.last
-    }
+    pub(crate) data: T,
+    pub(crate) kind: Kind,
+    pub(crate) prev: usize,
+    pub(crate) next: usize,
+    pub(crate) first: usize,
+    pub(crate) last: usize,
 }
 
 /// A syntax tree.

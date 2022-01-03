@@ -14,7 +14,6 @@ A memory efficient syntax tree for language developers.
 """
 
 [dependencies]
-slab = "0.4.5"
 thiserror = "1.0.30"
 
 [dev-dependencies]
