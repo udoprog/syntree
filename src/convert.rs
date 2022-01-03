@@ -1,93 +1,79 @@
-use std::mem;
+use std::collections::VecDeque;
+use std::fmt;
+use std::mem::replace;
 
 use crate::builder;
 use crate::tree;
 
-#[derive(Clone, Copy)]
-struct Params {
-    down: bool,
-    parent: usize,
-    prev: usize,
-}
-
 /// Construct a tree from a builder.
-pub(crate) fn builder_to_tree<T>(builder: &builder::TreeBuilder<T>) -> tree::Tree<T>
+pub(crate) fn builder_to_tree<T>(b: &builder::TreeBuilder<T>) -> tree::Tree<T>
 where
-    T: Copy,
+    T: fmt::Debug + Copy,
 {
-    let mut stack = Vec::new();
-
-    let params = Params {
-        down: true,
-        parent: usize::MAX,
-        prev: usize::MAX,
-    };
-
-    stack.push((0, params));
-
-    let mut tree = Vec::new();
+    let mut tree = Vec::<tree::Internal<T>>::new();
     let mut last = usize::MAX;
 
-    while let Some((id, params)) = stack.last().copied() {
-        let cur = match builder.get(id) {
-            Some(cur) => cur,
-            None => break,
-        };
+    let mut queue = VecDeque::new();
+    let mut children = Vec::new();
 
-        // Navigate to sibling.
-        if !params.down {
-            if let Some(n) = cur.next {
-                stack.pop();
-                stack.push((
-                    n,
-                    Params {
-                        down: true,
-                        prev: id,
-                        ..params
-                    },
-                ));
-            } else {
-                stack.pop();
-            }
+    let mut cur = b.data.get(0);
 
-            continue;
-        }
+    while let Some(c) = cur.take() {
+        queue.push_back((0usize, c, usize::MAX));
+        cur = b.data.get(c.next);
+    }
 
+    // Stack of previous variables.
+    let mut prev = Vec::new();
+    prev.push(usize::MAX);
+
+    while let Some((depth, el, parent)) = queue.pop_front() {
         let id = tree.len();
 
-        tree.push(tree::Internal::new(cur.data, cur.kind, params.prev));
-
-        if let Some(n) = tree.get_mut(params.prev) {
-            *n.next_mut() = id;
-        }
-
-        if let Some(n) = tree.get_mut(params.parent) {
-            if n.first() == usize::MAX {
-                *n.first_mut() = id;
-            }
-
-            *n.last_mut() = id;
-        } else {
+        if parent == usize::MAX {
+            // The last top-level item in the tree.
             last = id;
         }
 
-        if let Some(n) = cur.child {
-            stack.push((
-                n,
-                Params {
-                    down: true,
-                    parent: id,
-                    prev: usize::MAX,
-                },
-            ));
-            continue;
+        // First node is always id + 1 with the specific layout. So all we need
+        // to do is to check that the node actually has a child.
+        let first = if el.first != usize::MAX {
+            id + 1
+        } else {
+            usize::MAX
+        };
+
+        if let Some(parent) = tree.get_mut(parent) {
+            parent.last = id;
         }
 
-        // No longer crawling down, so disable it for the current stack.
-        for (_, params) in stack.iter_mut().rev() {
-            if !mem::take(&mut params.down) {
-                break;
-            }
+        prev.resize(depth + 1, usize::MAX);
+
+        let prev = &mut prev[depth];
+        let prev = replace(prev, id);
+
+        tree.push(tree::Internal {
+            data: el.data,
+            kind: el.kind,
+            prev,
+            next: usize::MAX,
+            first,
+            last: usize::MAX,
+        });
+
+        if let Some(node) = tree.get_mut(prev) {
+            node.next = id;
+        }
+
+        let mut cur = b.data.get(el.first);
+
+        while let Some(c) = cur.take() {
+            children.push(c);
+            cur = b.data.get(c.next);
+        }
+
+        for el in children.drain(..).rev() {
+            queue.push_front((depth + 1, el, id));
         }
     }
 

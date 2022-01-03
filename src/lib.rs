@@ -56,8 +56,10 @@ pub use self::span::Span;
 mod tree;
 pub use self::tree::{Kind, Tree};
 
+pub mod print;
+
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::start_node] or [TreeBuilder::token].
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
-pub struct Id(u32);
+pub struct Id(usize);
