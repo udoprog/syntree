@@ -1,0 +1,21 @@
+[package]
+name = "syntree"
+version = "0.1.0"
+edition = "2021"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/udoprog/syntree"
+homepage = "https://github.com/udoprog/syntree"
+documentation = "https://docs.rs/syntree"
+keywords = ["language"]
+categories = []
+description = """
+A memory efficient syntax tree for language developers.
+"""
+
+[dependencies]
+slab = "0.4.5"
+thiserror = "1.0.30"
+
+[dev-dependencies]
+anyhow = "1.0.52"
