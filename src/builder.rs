@@ -34,11 +34,9 @@ pub(crate) struct Element<T> {
     pub(crate) next: usize,
     /// The first child element.
     pub(crate) first: usize,
-    /// The parent node.
-    pub(crate) parent: usize,
 }
 
-/// A syntax tree.
+/// A syntax tree builder.
 #[derive(Debug)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
@@ -272,14 +270,13 @@ impl<T> TreeBuilder<T> {
         // operation.
         let child = self.data.len();
 
-        let mut removed = match self.data.get_mut(c.0) {
+        let removed = match self.data.get_mut(c.0) {
             Some(entry) => {
                 let new = Element {
                     data,
                     kind: Kind::Node,
                     next: usize::MAX,
                     first: child,
-                    parent: entry.parent,
                 };
 
                 mem::replace(entry, new)
@@ -289,15 +286,6 @@ impl<T> TreeBuilder<T> {
             }
         };
 
-        let mut cur = removed.next;
-
-        while cur != usize::MAX {
-            let el = &mut self.data[cur];
-            el.parent = c.0;
-            cur = el.next;
-        }
-
-        removed.parent = c.0;
         self.data.push(removed);
 
         // The current sibling is the newly replaced node in the tree.
@@ -384,7 +372,6 @@ impl<T> TreeBuilder<T> {
             kind,
             next: usize::MAX,
             first: usize::MAX,
-            parent,
         });
 
         if let Some(prev) = self.data.get_mut(prev) {
