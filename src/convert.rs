@@ -24,8 +24,7 @@ where
     }
 
     // Stack of previous variables.
-    let mut prev = Vec::new();
-    prev.push(usize::MAX);
+    let mut stack = Vec::new();
 
     while let Some((depth, el, parent)) = queue.pop_front() {
         let id = tree.len();
@@ -47,10 +46,8 @@ where
             parent.last = id;
         }
 
-        prev.resize(depth + 1, usize::MAX);
-
-        let prev = &mut prev[depth];
-        let prev = replace(prev, id);
+        stack.resize(depth + 1, usize::MAX);
+        let prev = replace(&mut stack[depth], id);
 
         tree.push(tree::Internal {
             data: el.data,
