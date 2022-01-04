@@ -1,23 +1,28 @@
+use std::fmt;
+
 /// Helper struct which behaves exactly like `NonZeroUsize` except that it
 /// rejects max values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub(crate) struct NonMaxUsize(core::num::NonZeroUsize);
 
 impl NonMaxUsize {
-    /// Creates a new non-max if the given value is not the maximum
-    /// value.
     #[inline]
     pub const fn new(value: usize) -> Option<Self> {
-        match core::num::NonZeroUsize::new(value ^ usize::max_value()) {
+        match core::num::NonZeroUsize::new(value ^ usize::MAX) {
             None => None,
             Some(value) => Some(Self(value)),
         }
     }
 
-    /// Returns the value as a primitive type.
     #[inline]
     pub const fn get(&self) -> usize {
-        self.0.get() ^ usize::max_value()
+        self.0.get() ^ usize::MAX
+    }
+}
+
+impl fmt::Debug for NonMaxUsize {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("NonMaxUsize").field(&self.get()).finish()
     }
 }

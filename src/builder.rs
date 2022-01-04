@@ -516,13 +516,13 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn build(&self) -> Result<Tree<T>, BuildError>
     where
-        T: Clone,
+        T: std::fmt::Debug + Clone,
     {
         if !self.stack.is_empty() {
             return Err(BuildError);
         }
 
-        Ok(crate::convert::builder_to_tree(self))
+        Ok(crate::convert::builder_to_tree2(self))
     }
 
     /// Get the links corresponding to the given id.
