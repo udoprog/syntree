@@ -39,10 +39,10 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// assert_eq!(it.span(), Some(Span::new(5, 7)));
     /// # Ok(()) }
     /// ```
-    pub fn span(self) -> Option<Span> {
+    pub fn span(&self) -> Option<Span> {
         let mut output = None::<Span>;
 
-        for node in self {
+        for node in *self {
             let u = match node.kind() {
                 Kind::Node => node.children_with_tokens().span(),
                 Kind::Token(a) => Some(a),
