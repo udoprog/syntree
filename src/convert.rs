@@ -10,7 +10,7 @@ pub(crate) fn builder_to_tree<T>(b: &builder::TreeBuilder<T>) -> tree::Tree<T>
 where
     T: fmt::Debug + Copy,
 {
-    let mut tree = Vec::<tree::Internal<T>>::new();
+    let mut tree = Vec::<tree::Links<T>>::new();
     let mut last = usize::MAX;
 
     let mut queue = VecDeque::new();
@@ -49,7 +49,7 @@ where
         stack.resize(depth + 1, usize::MAX);
         let prev = replace(&mut stack[depth], id);
 
-        tree.push(tree::Internal {
+        tree.push(tree::Links {
             data: el.data,
             kind: el.kind,
             prev,

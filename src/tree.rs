@@ -14,8 +14,8 @@ pub enum Kind {
 
 /// A node in the tree.
 pub struct Node<'a, T> {
-    node: &'a Internal<T>,
-    tree: &'a [Internal<T>],
+    node: &'a Links<T>,
+    tree: &'a [Links<T>],
 }
 
 impl<'a, T> Node<'a, T> {
@@ -280,7 +280,7 @@ impl<'a, T> Clone for Node<'a, T> {
 impl<'a, T> Copy for Node<'a, T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Internal<T> {
+pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
     pub(crate) prev: usize,
@@ -292,13 +292,13 @@ pub(crate) struct Internal<T> {
 /// A syntax tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree<T> {
-    tree: Vec<Internal<T>>,
+    tree: Vec<Links<T>>,
     last: usize,
 }
 
 impl<T> Tree<T> {
     /// Construct a new tree.
-    pub(crate) fn new(tree: Vec<Internal<T>>, last: usize) -> Self {
+    pub(crate) fn new(tree: Vec<Links<T>>, last: usize) -> Self {
         Self { tree, last }
     }
 
@@ -407,7 +407,7 @@ impl<T> Tree<T> {
 
 /// Access a sub tree.
 pub struct Children<'a, T> {
-    tree: &'a [Internal<T>],
+    tree: &'a [Links<T>],
     start: usize,
     end: usize,
 }
