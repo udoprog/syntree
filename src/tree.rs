@@ -33,13 +33,13 @@ pub(crate) struct Links<T> {
 /// A syntax tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree<T> {
-    tree: Vec<Links<T>>,
+    tree: Box<[Links<T>]>,
     last: Option<NonMaxUsize>,
 }
 
 impl<T> Tree<T> {
     /// Construct a new tree.
-    pub(crate) fn new(tree: Vec<Links<T>>, last: Option<NonMaxUsize>) -> Self {
+    pub(crate) fn new(tree: Box<[Links<T>]>, last: Option<NonMaxUsize>) -> Self {
         Self { tree, last }
     }
 
@@ -125,7 +125,7 @@ impl<T> Tree<T> {
     /// ```
     pub fn children(&self) -> Children<'_, T> {
         Children {
-            tree: self.tree.as_slice(),
+            tree: self.tree.as_ref(),
             start: NonMaxUsize::new(0),
             end: self.last,
         }
@@ -176,7 +176,7 @@ impl<T> Tree<T> {
     /// ```
     pub fn walk(&self) -> Walk<'_, T> {
         Walk {
-            tree: self.tree.as_slice(),
+            tree: self.tree.as_ref(),
             range: self.range(self.last),
         }
     }

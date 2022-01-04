@@ -109,5 +109,5 @@ where
         }
     }
 
-    tree::Tree::new(tree, last)
+    tree::Tree::new(tree.into(), last)
 }
