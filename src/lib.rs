@@ -39,7 +39,7 @@
 //!
 //! > Try it for yourself with:
 //! >
-//! > ```
+//! > ```sh
 //! > cargo run --example calculator -- "128 + 64"
 //! > ```
 //!
