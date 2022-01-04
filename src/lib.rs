@@ -48,6 +48,8 @@
 #[macro_use]
 mod macros;
 
+mod non_max;
+
 mod builder;
 pub use self::builder::{BuildError, EndNodeError, TreeBuilder};
 

@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::non_max::NonMaxUsize;
 use crate::Span;
 
 /// The kind of a node in the [Tree].
@@ -85,12 +86,12 @@ impl<'a, T> Node<'a, T> {
     /// ```
     pub fn is_empty(&self) -> bool {
         if cfg!(debug_assertions) {
-            if self.node.first == usize::MAX {
-                debug_assert_eq!(self.node.last, usize::MAX);
+            if self.node.first.is_none() {
+                debug_assert_eq!(self.node.last, None);
             }
         }
 
-        self.node.first == usize::MAX
+        self.node.first.is_none()
     }
 
     /// Access the children to this node.
@@ -249,8 +250,8 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.node.prev)
     }
 
-    fn node_at(&self, index: usize) -> Option<Node<'a, T>> {
-        let cur = self.tree.get(index)?;
+    fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
+        let cur = self.tree.get(index?.get())?;
 
         Some(Self {
             node: cur,
@@ -283,22 +284,22 @@ impl<'a, T> Copy for Node<'a, T> {}
 pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
-    pub(crate) prev: usize,
-    pub(crate) next: usize,
-    pub(crate) first: usize,
-    pub(crate) last: usize,
+    pub(crate) prev: Option<NonMaxUsize>,
+    pub(crate) next: Option<NonMaxUsize>,
+    pub(crate) first: Option<NonMaxUsize>,
+    pub(crate) last: Option<NonMaxUsize>,
 }
 
 /// A syntax tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree<T> {
     tree: Vec<Links<T>>,
-    last: usize,
+    last: Option<NonMaxUsize>,
 }
 
 impl<T> Tree<T> {
     /// Construct a new tree.
-    pub(crate) fn new(tree: Vec<Links<T>>, last: usize) -> Self {
+    pub(crate) fn new(tree: Vec<Links<T>>, last: Option<NonMaxUsize>) -> Self {
         Self { tree, last }
     }
 
@@ -348,7 +349,7 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.last == usize::MAX
+        self.last.is_none()
     }
 
     /// Get all root nodes in the tree.
@@ -380,14 +381,14 @@ impl<T> Tree<T> {
     pub fn children(&self) -> Children<'_, T> {
         Children {
             tree: self.tree.as_slice(),
-            start: 0,
+            start: NonMaxUsize::new(0),
             end: self.last,
         }
     }
 
     /// Get the first child node in the tree.
     pub fn first(&self) -> Option<Node<'_, T>> {
-        self.node_at(0)
+        self.node_at(NonMaxUsize::new(0))
     }
 
     /// Get the last child node in the tree.
@@ -395,8 +396,8 @@ impl<T> Tree<T> {
         self.node_at(self.last)
     }
 
-    fn node_at(&self, index: usize) -> Option<Node<'_, T>> {
-        let cur = self.tree.get(index)?;
+    fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {
+        let cur = self.tree.get(index?.get())?;
 
         Some(Node {
             node: cur,
@@ -408,8 +409,8 @@ impl<T> Tree<T> {
 /// Access a sub tree.
 pub struct Children<'a, T> {
     tree: &'a [Links<T>],
-    start: usize,
-    end: usize,
+    start: Option<NonMaxUsize>,
+    end: Option<NonMaxUsize>,
 }
 
 impl<'a, T> Children<'a, T> {
@@ -461,7 +462,7 @@ impl<'a, T> Iterator for Children<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.start)?;
+        let node = self.tree.get(self.start?.get())?;
         self.start = node.next;
 
         Some(Node {
@@ -473,7 +474,7 @@ impl<'a, T> Iterator for Children<'a, T> {
 
 impl<'a, T> DoubleEndedIterator for Children<'a, T> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.end)?;
+        let node = self.tree.get(self.end?.get())?;
         self.end = node.prev;
 
         Some(Node {
