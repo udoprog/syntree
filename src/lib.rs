@@ -149,10 +149,13 @@ pub use self::builder::{BuildError, EndNodeError, Id, TreeBuilder};
 
 mod convert;
 
+pub mod print;
+
+mod node;
+pub use self::node::Node;
+
 mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, ChildrenWithTokens, Kind, Tree, Walk, WalkRev};
-
-pub mod print;
+pub use self::tree::{Children, Kind, Tree, Walk, WalkRev, WithoutTokens};

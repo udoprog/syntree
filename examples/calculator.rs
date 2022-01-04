@@ -360,7 +360,7 @@ mod eval {
     pub(crate) fn eval(tree: &Tree<Syntax>, source: &str) -> Result<i64, EvalError> {
         use EvalErrorKind::*;
 
-        let mut it = tree.children();
+        let mut it = tree.children().without_tokens();
         let tree_span = tree.span();
 
         let initial = expect!(tree_span, it.next(), NUMBER, NUMBER);

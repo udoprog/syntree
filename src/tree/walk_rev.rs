@@ -23,10 +23,7 @@ impl<'a, T> Iterator for WalkRev<'a, T> {
                     self.stack.push((true, last));
                 }
 
-                return Some(Node {
-                    node: links,
-                    tree: self.tree,
-                });
+                return Some(Node::new(links, self.tree));
             }
 
             let prev = links.prev;

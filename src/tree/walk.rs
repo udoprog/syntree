@@ -23,10 +23,7 @@ impl<'a, T> Iterator for Walk<'a, T> {
                     self.stack.push((true, first));
                 }
 
-                return Some(Node {
-                    node: links,
-                    tree: self.tree,
-                });
+                return Some(Node::new(links, self.tree));
             }
 
             let next = links.next;

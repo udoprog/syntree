@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         }
     };
 
-    for node in tree.children_with_tokens().walk() {
+    for node in tree.children().walk() {
         dbg!(node.data());
     }
 
@@ -58,7 +58,7 @@ fn main() -> Result<()> {
 
     let tree = b.build()?;
 
-    for node in tree.children_with_tokens().walk() {
+    for node in tree.children().walk() {
         dbg!(node.data());
     }
 
