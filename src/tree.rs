@@ -149,6 +149,62 @@ impl<'a, T> Node<'a, T> {
         }
     }
 
+    /// Walk the rest of the tree forwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().expect("expected root node");
+    ///
+    /// let nodes = root.walk().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["c1", "c2", "c3", "c4", "c5", "c6"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk(&self) -> Walk<'a, T> {
+        self.children_with_tokens().walk()
+    }
+
+    /// Walk the rest of the tree backwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().expect("expected root node");
+    ///
+    /// let nodes = root.walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk_rev(&self) -> WalkRev<'a, T> {
+        self.children_with_tokens().walk_rev()
+    }
+
     /// Access the children to this node.
     ///
     /// ```
@@ -478,6 +534,58 @@ impl<T> Tree<T> {
             start: NonMaxUsize::new(0),
             end: self.last,
         }
+    }
+
+    /// Walk the rest of the tree forwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let nodes = tree.walk().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk(&self) -> Walk<'_, T> {
+        self.children_with_tokens().walk()
+    }
+
+    /// Walk the rest of the tree backwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let nodes = tree.walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk_rev(&self) -> WalkRev<'_, T> {
+        self.children_with_tokens().walk_rev()
     }
 
     /// Get the first child node in the tree.

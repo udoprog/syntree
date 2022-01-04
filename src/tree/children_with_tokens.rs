@@ -158,7 +158,7 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(&self) -> Walk<'_, T> {
+    pub fn walk(&self) -> Walk<'a, T> {
         Walk {
             tree: self.tree,
             stack: self.start.into_iter().map(|id| (true, id)).collect(),
@@ -187,7 +187,7 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_rev(&self) -> WalkRev<'_, T> {
+    pub fn walk_rev(&self) -> WalkRev<'a, T> {
         WalkRev {
             tree: self.tree,
             stack: self.end.into_iter().map(|id| (true, id)).collect(),
