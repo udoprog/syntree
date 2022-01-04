@@ -24,7 +24,6 @@ pub enum Kind {
 pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
-    pub(crate) parent: Option<NonMaxUsize>,
     pub(crate) prev: Option<NonMaxUsize>,
     pub(crate) next: Option<NonMaxUsize>,
     pub(crate) first: Option<NonMaxUsize>,
