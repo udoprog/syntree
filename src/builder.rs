@@ -2,13 +2,21 @@ use std::{fmt, mem};
 
 use thiserror::Error;
 
+use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
-use crate::{Id, Span, Tree};
+use crate::{Span, Tree};
 
 /// A checkpoint which indicates a position in the tree where an element can be
 /// optionally inserted.
 #[derive(Debug, Clone, Copy)]
-pub struct Checkpoint(usize);
+#[repr(transparent)]
+pub struct Checkpoint(NonMaxUsize);
+
+/// The identifier of a node as returned by functions such as
+/// [TreeBuilder::start_node] or [TreeBuilder::token].
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct Id(NonMaxUsize);
 
 /// Error raised by [TreeBuilder::end_node] if there currently is no node being
 /// built.
@@ -69,26 +77,26 @@ pub struct EndNodeError;
 pub struct BuildError;
 
 #[derive(Debug)]
-pub(crate) struct Element<T> {
+pub(crate) struct Links<T> {
     /// The data associated with the node.
     pub(crate) data: T,
     /// The kind of the element.
     pub(crate) kind: Kind,
     /// Next sibling id.
-    pub(crate) next: usize,
+    pub(crate) next: Option<NonMaxUsize>,
     /// The first child element.
-    pub(crate) first: usize,
+    pub(crate) first: Option<NonMaxUsize>,
 }
 
 /// A syntax tree builder.
 #[derive(Debug)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
-    pub(crate) data: Vec<Element<T>>,
+    data: Vec<Links<T>>,
     /// Nodes currently being built.
-    stack: Vec<usize>,
+    stack: Vec<NonMaxUsize>,
     /// The last sibling inserted.
-    sibling: usize,
+    sibling: Option<NonMaxUsize>,
 }
 
 /// Build a new syntax tree.
@@ -124,7 +132,7 @@ impl<T> TreeBuilder<T> {
         TreeBuilder {
             data: Vec::new(),
             stack: Vec::new(),
-            sibling: usize::MAX,
+            sibling: None,
         }
     }
 
@@ -195,7 +203,7 @@ impl<T> TreeBuilder<T> {
             None => return Err(EndNodeError),
         };
 
-        self.sibling = head;
+        self.sibling = Some(head);
         Ok(())
     }
 
@@ -232,11 +240,16 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn token(&mut self, data: T, span: Span) -> Id {
         let id = self.insert(data, Kind::Token(span));
-        self.sibling = id;
+        self.sibling = Some(id);
         Id(id)
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
+    ///
+    /// # Panics
+    ///
+    /// This panics if the number of nodes are too many to fit in a vector on
+    /// your architecture. This corresponds to [usize::max_value()].
     ///
     /// # Examples
     ///
@@ -278,7 +291,8 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn checkpoint(&self) -> Checkpoint {
-        Checkpoint(self.data.len())
+        let id = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
+        Checkpoint(id)
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -328,28 +342,29 @@ impl<T> TreeBuilder<T> {
     {
         // With the layout of this data structure this is a fairly simple
         // operation.
-        let child = self.data.len();
+        let child = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
 
-        let removed = match self.data.get_mut(c.0) {
-            Some(entry) => {
-                let new = Element {
-                    data,
-                    kind: Kind::Node,
-                    next: usize::MAX,
-                    first: child,
-                };
-
-                mem::replace(entry, new)
-            }
+        let links = match self.data.get_mut(c.0.get()) {
+            Some(links) => links,
             None => {
                 return Id(self.insert(data, Kind::Node));
             }
         };
 
+        let removed = mem::replace(
+            links,
+            Links {
+                data,
+                kind: Kind::Node,
+                next: None,
+                first: Some(child),
+            },
+        );
+
         self.data.push(removed);
 
         // The current sibling is the newly replaced node in the tree.
-        self.sibling = c.0;
+        self.sibling = Some(c.0);
         Id(c.0)
     }
 
@@ -423,27 +438,32 @@ impl<T> TreeBuilder<T> {
         Ok(crate::convert::builder_to_tree(self))
     }
 
+    /// Get the links corresponding to the given id.
+    pub(crate) fn get(&self, id: usize) -> Option<&Links<T>> {
+        self.data.get(id)
+    }
+
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind) -> usize {
-        let new = self.data.len();
+    fn insert(&mut self, data: T, kind: Kind) -> NonMaxUsize {
+        let new = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
 
-        let prev = std::mem::replace(&mut self.sibling, usize::MAX);
-        let parent = self.stack.last().copied().unwrap_or(usize::MAX);
+        let prev = std::mem::replace(&mut self.sibling, None);
+        let parent = self.stack.last().copied();
 
-        self.data.push(Element {
+        self.data.push(Links {
             data,
             kind,
-            next: usize::MAX,
-            first: usize::MAX,
+            next: None,
+            first: None,
         });
 
-        if let Some(prev) = self.data.get_mut(prev) {
-            prev.next = new;
+        if let Some(prev) = prev.and_then(|id| self.data.get_mut(id.get())) {
+            prev.next = Some(new);
         }
 
-        if let Some(n) = self.data.get_mut(parent) {
-            if n.first == usize::MAX {
-                n.first = new;
+        if let Some(n) = parent.and_then(|id| self.data.get_mut(id.get())) {
+            if n.first.is_none() {
+                n.first = Some(new);
             }
         }
 

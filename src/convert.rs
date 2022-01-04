@@ -17,11 +17,11 @@ where
     let mut queue = VecDeque::new();
     let mut children = Vec::new();
 
-    let mut cur = b.data.get(0);
+    let mut cur = b.get(0);
 
     while let Some(c) = cur.take() {
         queue.push_back((0usize, c, None::<NonMaxUsize>));
-        cur = b.data.get(c.next);
+        cur = c.next.and_then(|id| b.get(id.get()));
     }
 
     // Stack of previous variables.
@@ -37,7 +37,7 @@ where
 
         // First node is always id + 1 with the specific layout. So all we need
         // to do is to check that the node actually has a child.
-        let first = if el.first != usize::MAX {
+        let first = if el.first.is_some() {
             let id = id
                 .get()
                 .checked_add(1)
@@ -69,11 +69,11 @@ where
             node.next = Some(id);
         }
 
-        let mut cur = b.data.get(el.first);
+        let mut cur = el.first.and_then(|id| b.get(id.get()));
 
         while let Some(c) = cur.take() {
             children.push(c);
-            cur = b.data.get(c.next);
+            cur = c.next.and_then(|id| b.get(id.get()));
         }
 
         for el in children.drain(..).rev() {

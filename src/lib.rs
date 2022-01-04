@@ -51,7 +51,8 @@ mod macros;
 mod non_max;
 
 mod builder;
-pub use self::builder::{BuildError, EndNodeError, TreeBuilder};
+
+pub use self::builder::{BuildError, Checkpoint, EndNodeError, Id, TreeBuilder};
 
 mod convert;
 
@@ -62,9 +63,3 @@ mod tree;
 pub use self::tree::{Kind, Tree};
 
 pub mod print;
-
-/// The identifier of a node as returned by functions such as
-/// [TreeBuilder::start_node] or [TreeBuilder::token].
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct Id(usize);
