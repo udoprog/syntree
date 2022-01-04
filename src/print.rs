@@ -57,7 +57,7 @@ where
     T: Debug,
 {
     let mut stack = VecDeque::new();
-    stack.extend(tree.children().map(|n| (true, 0, n)));
+    stack.extend(tree.children_with_tokens().map(|n| (true, 0, n)));
 
     while let Some((indent, n, node)) = stack.pop_front() {
         let data = node.data();

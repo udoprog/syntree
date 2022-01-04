@@ -21,31 +21,53 @@ Add `syntree` to your crate:
 syntree = "0.2.0"
 ```
 
-<br>
-
 If you want a complete sample for how `syntree` can be used for parsing, see
 the [calculator example].
 
+<br>
+
 ### Syntax trees
 
-At the root, `syntree` provides a way to model an [abstract syntax tree]
-(AST). The nodes of the trees are typically modelled by variants in an enum,
-but could in theory [consist of anything you like].
+This crate provides a way to efficiently model [abstract syntax trees]. The
+nodes of the tree are typically represented by variants in an enum, but
+[could be whatever you want].
 
-We distinguish between nodes which are elements that can have zero or more
-children, and tokens which are terminating elements. Each token has a span
-associated with it. This span is intended to indicate *where* in a source
-this token was identified so that it can be referenced later.
+Each tree consists of *nodes* and *tokens*. Nodes are intermediary elements
+in the tree which encapsulate zero or more other nodes or tokens, while
+tokens are leaf elements representing exact source locations.
 
-This is the primary difference between `syntree` and [`rowan`]. *We don't
+An example tree for the simple expression `128 + 64` could be represented
+like this:
+
+> Try it for yourself with:
+>
+> ```
+> cargo run --example calculator -- "128 + 64"
+> ```
+
+```
+>> NUMBER
+  NUMBER@0..3 "128"
+<< NUMBER
+WHITESPACE@3..4 " "
+>> OPERATOR
+  PLUS@4..5 "+"
+<< OPERATOR
+WHITESPACE@5..6 " "
+>> NUMBER
+  NUMBER@6..8 "64"
+<< NUMBER
+```
+
+The primary difference between `syntree` and [`rowan`] is that *we don't
 store the original source* in the syntax tree. Instead, the user of the
-library is responsible for providing it.
+library is responsible for providing it as necessary. Like when calling
+[print_with_source].
 
-The following is a simple example of how we can build a syntax tree with
-fake spans that do not reference anything in particular. And when we report
-*tokens*, we only include the *length* of the span reported. This ensures
-that in order to make `syntree`s behave correctly, the whole source must be
-reported.
+The API for constructing a syntax tree is provided through [TreeBuilder]
+which provides streaming builder methods. Internally the builder is
+represented as a contiguous slab of memory. Once a tree is built the
+structure of the tree can be queried through the [Tree] type.
 
 ```rust
 use syntree::{Span, TreeBuilder};
@@ -55,6 +77,8 @@ enum Syntax {
     OPERATION,
     NUMBER,
     PLUS,
+    MINUS,
+    WHITESPACE,
 }
 
 use Syntax::*;
@@ -63,13 +87,19 @@ let mut b = TreeBuilder::new();
 
 b.start_node(OPERATION);
 
+b.start_node(OPERATION);
+
 b.start_node(NUMBER);
 b.token(NUMBER, 4);
 b.end_node()?;
 
+b.token(WHITESPACE, 1);
+
 b.start_node(PLUS);
 b.token(PLUS, 1);
 b.end_node()?;
+
+b.token(WHITESPACE, 1);
 
 b.start_node(NUMBER);
 b.token(NUMBER, 5);
@@ -77,15 +107,33 @@ b.end_node()?;
 
 b.end_node()?;
 
+b.token(WHITESPACE, 1);
+
+b.start_node(MINUS);
+b.token(MINUS, 1);
+b.end_node()?;
+
+b.token(WHITESPACE, 1);
+
+b.start_node(NUMBER);
+b.token(NUMBER, 3);
+b.end_node()?;
+
+b.end_node()?;
+
 let tree = b.build()?;
 
-assert_eq!(tree.span(), Span::new(0, 10));
+assert_eq!(tree.span().range(), 0..18);
+assert_eq!(tree.children().count(), 1);
 ```
 
-[abstract syntax tree]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [`rowan`]: https://docs.rs/rowan/latest/rowan/
 [Span]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
-[consist of anything you like]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
+[could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
+[print_with_source]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
+[TreeBuilder]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
+[Tree]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 
 License: MIT/Apache-2.0
