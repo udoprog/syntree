@@ -98,6 +98,7 @@ where
         tree.push(tree::Links {
             data,
             kind,
+            parent,
             prev,
             next: None,
             first,

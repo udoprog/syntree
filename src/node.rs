@@ -3,7 +3,7 @@ use std::fmt;
 use crate::non_max::NonMaxUsize;
 use crate::{
     tree::{Kind, Links},
-    Children, Span, Walk, WalkRev,
+    Children, Span, Walk, WalkBackwards,
 };
 
 /// A node in the tree.
@@ -182,12 +182,12 @@ impl<'a, T> Node<'a, T> {
     ///
     /// let root = tree.first().expect("expected root node");
     ///
-    /// let nodes = root.walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = root.walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_rev(&self) -> WalkRev<'a, T> {
-        self.children().walk_rev()
+    pub fn walk_backwards(&self) -> WalkBackwards<'a, T> {
+        self.children().walk_backwards()
     }
 
     /// Get the first child node.

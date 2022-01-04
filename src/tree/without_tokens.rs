@@ -1,5 +1,5 @@
 use crate::tree::{Kind, Node};
-use crate::{Children, Span, Walk, WalkRev};
+use crate::{Children, Span, WalkBackwards};
 
 /// Iterator over the children of a [Node] or [Tree]. This excludes [Kind::Token]
 /// nodes.
@@ -44,34 +44,6 @@ impl<'a, T> WithoutTokens<Children<'a, T>> {
         self.iter.span()
     }
 
-    /// Walk the rest of the tree forwards in a depth-first fashion.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             ("c2", 5),
-    ///             "c3",
-    ///             "c4",
-    ///         },
-    ///         ("c5", 5),
-    ///         "c6"
-    ///     }
-    /// };
-    ///
-    /// let it = tree.children().without_tokens();
-    ///
-    /// let nodes = it.walk().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["root", "c1", "c3", "c4", "c6"]);
-    /// # Ok(()) }
-    /// ```
-    pub fn walk(self) -> WithoutTokens<Walk<'a, T>> {
-        WithoutTokens::new(self.iter.walk())
-    }
-
     /// Walk the rest of the tree backwards in a depth-first fashion.
     ///
     /// # Examples
@@ -92,12 +64,12 @@ impl<'a, T> WithoutTokens<Children<'a, T>> {
     ///
     /// let it = tree.children().without_tokens();
     ///
-    /// let nodes = it.walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = it.walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["root", "c6", "c1", "c4", "c3"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_rev(self) -> WithoutTokens<WalkRev<'a, T>> {
-        WithoutTokens::new(self.iter.walk_rev())
+    pub fn walk_backwards(self) -> WithoutTokens<WalkBackwards<'a, T>> {
+        WithoutTokens::new(self.iter.walk_backwards())
     }
 }
 

@@ -8,13 +8,14 @@ fn main() -> Result<()> {
 
     b.start_node(1);
     b.token(2, 1);
+    b.token(3, 1);
     b.end_node()?;
 
     b.token(4, 3);
 
-    b.start_node(1);
-    b.token(2, 3);
-    b.token(2, 3);
+    b.start_node(5);
+    b.token(6, 3);
+    b.token(7, 3);
     b.end_node()?;
 
     b.insert_node_at(c, 0);

@@ -5,13 +5,13 @@ use crate::tree::{Links, Node};
 
 /// An iterator that walks over the entire tree in reverse.
 ///
-/// See [Tree::walk_rev][crate::Tree::walk_rev].
-pub struct WalkRev<'a, T> {
+/// See [Tree::walk_backwards][crate::Tree::walk_backwards].
+pub struct WalkBackwards<'a, T> {
     pub(crate) tree: &'a [Links<T>],
     pub(crate) stack: Vec<(bool, NonMaxUsize)>,
 }
 
-impl<'a, T> Iterator for WalkRev<'a, T> {
+impl<'a, T> Iterator for WalkBackwards<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -35,31 +35,10 @@ fn main() -> Result<()> {
         }
     };
 
-    for node in tree.children().walk() {
-        dbg!(node.data());
-    }
-
-    let mut b = TreeBuilder::new();
-
-    let c = b.checkpoint();
-
-    b.start_node(Syntax::Number);
-    b.token(Syntax::Lit, 2);
-    b.end_node()?;
-
-    b.token(Syntax::Whitespace, 3);
-
-    b.start_node(Syntax::Number);
-    b.token(Syntax::Lit, 2);
-    b.token(Syntax::Lit, 2);
-    b.end_node()?;
-
-    b.insert_node_at(c, Syntax::Root);
-
-    let tree = b.build()?;
-
-    for node in tree.children().walk() {
-        dbg!(node.data());
+    if let Some(n) = tree.last() {
+        for n in n.walk() {
+            dbg!(n.data());
+        }
     }
 
     syntree::print::print(&mut std::io::stdout(), &tree)?;

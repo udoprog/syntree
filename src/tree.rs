@@ -10,8 +10,8 @@ pub use self::children::Children;
 mod walk;
 pub use self::walk::Walk;
 
-mod walk_rev;
-pub use self::walk_rev::WalkRev;
+mod walk_backwards;
+pub use self::walk_backwards::WalkBackwards;
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +27,7 @@ pub enum Kind {
 pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
+    pub(crate) parent: Option<NonMaxUsize>,
     pub(crate) prev: Option<NonMaxUsize>,
     pub(crate) next: Option<NonMaxUsize>,
     pub(crate) first: Option<NonMaxUsize>,
@@ -157,7 +158,11 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn walk(&self) -> Walk<'_, T> {
-        self.children().walk()
+        Walk {
+            tree: self.tree.as_slice(),
+            start: NonMaxUsize::new(0),
+            end: self.last,
+        }
     }
 
     /// Walk the rest of the tree backwards in a depth-first fashion.
@@ -178,12 +183,12 @@ impl<T> Tree<T> {
     ///     }
     /// };
     ///
-    /// let nodes = tree.walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = tree.walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_rev(&self) -> WalkRev<'_, T> {
-        self.children().walk_rev()
+    pub fn walk_backwards(&self) -> WalkBackwards<'_, T> {
+        self.children().walk_backwards()
     }
 
     /// Get the first child node in the tree.
