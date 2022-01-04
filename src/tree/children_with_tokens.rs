@@ -1,5 +1,5 @@
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Links, Node};
+use crate::tree::{Links, Node, Walk, WalkRev};
 use crate::{Kind, Span};
 
 /// Iterator over the children of a node or tree. This includes [Kind::Token]
@@ -40,20 +40,24 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn span(&self) -> Option<Span> {
-        let mut output = None::<Span>;
+        let mut forward = self.walk();
+        let mut backward = self.walk_rev();
 
-        for node in *self {
-            let u = match node.kind() {
-                Kind::Node => node.children_with_tokens().span(),
-                Kind::Token(a) => Some(a),
-            };
+        let start = loop {
+            let node = forward.next()?;
 
-            if let Some(u) = u {
-                output = Some(output.map(|s| s.join(u)).unwrap_or(u));
+            if let Kind::Token(span) = node.kind() {
+                break span;
+            }
+        };
+
+        while let Some(node) = backward.next() {
+            if let Kind::Token(end) = node.kind() {
+                return Some(Span::new(start.start, end.end));
             }
         }
 
-        output
+        Some(start)
     }
 
     /// Get the next node from the iterator. This advances past all non-node
@@ -129,6 +133,64 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
                 node,
                 tree: self.tree,
             });
+        }
+    }
+
+    /// Walk the rest of the tree forwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let nodes = tree.children_with_tokens().walk().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk(&self) -> Walk<'_, T> {
+        Walk {
+            tree: self.tree,
+            stack: self.start.into_iter().map(|id| (true, id)).collect(),
+        }
+    }
+
+    /// Walk the rest of the tree backwards in a depth-first fashion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> anyhow::Result<()> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///             "c4",
+    ///         },
+    ///         "c5",
+    ///         "c6"
+    ///     }
+    /// };
+    ///
+    /// let nodes = tree.children_with_tokens().walk_rev().map(|n| *n.data()).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// # Ok(()) }
+    /// ```
+    pub fn walk_rev(&self) -> WalkRev<'_, T> {
+        WalkRev {
+            tree: self.tree,
+            stack: self.end.into_iter().map(|id| (true, id)).collect(),
         }
     }
 }

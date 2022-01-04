@@ -522,7 +522,7 @@ impl<T> TreeBuilder<T> {
             return Err(BuildError);
         }
 
-        Ok(crate::convert::builder_to_tree2(self))
+        Ok(crate::convert::builder_to_tree(self))
     }
 
     /// Get the links corresponding to the given id.

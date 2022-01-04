@@ -35,6 +35,10 @@ fn main() -> Result<()> {
         }
     };
 
+    for node in tree.children_with_tokens().walk() {
+        dbg!(node.data());
+    }
+
     let mut b = TreeBuilder::new();
 
     let c = b.checkpoint();
@@ -54,7 +58,7 @@ fn main() -> Result<()> {
 
     let tree = b.build()?;
 
-    for node in tree.walk() {
+    for node in tree.children_with_tokens().walk() {
         dbg!(node.data());
     }
 

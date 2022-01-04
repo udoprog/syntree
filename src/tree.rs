@@ -12,6 +12,9 @@ pub use self::children_with_tokens::ChildrenWithTokens;
 mod walk;
 pub use self::walk::Walk;
 
+mod walk_rev;
+pub use self::walk_rev::WalkRev;
+
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -440,17 +443,6 @@ impl<T> Tree<T> {
             tree: self.tree.as_slice(),
             start: NonMaxUsize::new(0),
             end: self.last,
-        }
-    }
-
-    /// Walk over the tree.
-    pub fn walk(&self) -> Walk<'_, T> {
-        Walk {
-            tree: self.tree.as_slice(),
-            stack: NonMaxUsize::new(0)
-                .into_iter()
-                .map(|id| (true, id))
-                .collect(),
         }
     }
 
