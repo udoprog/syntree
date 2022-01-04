@@ -1,5 +1,5 @@
 use anyhow::Result;
-use syntree::{print, Span, TreeBuilder};
+use syntree::{print, TreeBuilder};
 
 fn main() -> Result<()> {
     let mut b = TreeBuilder::<u32>::new();
@@ -7,14 +7,14 @@ fn main() -> Result<()> {
     let c = b.checkpoint();
 
     b.start_node(1);
-    b.token(2, Span::new(1, 2));
+    b.token(2, 1);
     b.end_node()?;
 
-    b.token(4, Span::new(2, 5));
+    b.token(4, 3);
 
     b.start_node(1);
-    b.token(2, Span::new(5, 7));
-    b.token(2, Span::new(7, 9));
+    b.token(2, 3);
+    b.token(2, 3);
     b.end_node()?;
 
     b.insert_node_at(c, 0);

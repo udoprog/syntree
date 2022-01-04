@@ -50,11 +50,11 @@ impl<'a, T> Node<'a, T> {
     /// tree.start_node("root");
     ///
     /// tree.start_node("number");
-    /// tree.token("number", Span::new(0, 5));
+    /// tree.token("number", 5);
     /// tree.end_node()?;
     ///
     /// tree.start_node("ident");
-    /// tree.token("ident", Span::new(5, 7));
+    /// tree.token("ident", 2);
     /// tree.end_node()?;
     ///
     /// tree.end_node()?;
@@ -87,7 +87,7 @@ impl<'a, T> Node<'a, T> {
     /// tree.end_node()?;
     ///
     /// tree.start_node("last");
-    /// tree.token("token", Span::new(0, 5));
+    /// tree.token("token", 5);
     /// tree.end_node()?;
     ///
     /// let tree = tree.build()?;
@@ -366,11 +366,11 @@ impl<T> Tree<T> {
     /// tree.start_node("root");
     ///
     /// tree.start_node("number");
-    /// tree.token("number", Span::new(0, 5));
+    /// tree.token("number", 5);
     /// tree.end_node()?;
     ///
     /// tree.start_node("ident");
-    /// tree.token("ident", Span::new(5, 7));
+    /// tree.token("ident", 2);
     /// tree.end_node()?;
     ///
     /// tree.end_node()?;

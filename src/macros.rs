@@ -19,14 +19,14 @@
 /// b.start_node(Syntax::Root);
 ///
 /// b.start_node(Syntax::Number);
-/// b.token(Syntax::Lit, Span::new(1, 2));
+/// b.token(Syntax::Lit, 1);
 /// b.end_node()?;
 ///
-/// b.token(Syntax::Whitespace, Span::new(2, 5));
+/// b.token(Syntax::Whitespace, 3);
 ///
 /// b.start_node(Syntax::Number);
-/// b.token(Syntax::Lit, Span::new(5, 7));
-/// b.token(Syntax::Lit, Span::new(7, 9));
+/// b.token(Syntax::Lit, 2);
+/// b.token(Syntax::Lit, 2);
 /// b.end_node()?;
 ///
 /// b.end_node()?;
@@ -36,12 +36,12 @@
 /// let expected = syntree::tree! {
 ///     >> Syntax::Root,
 ///         >> Syntax::Number,
-///             + (1, 2) Syntax::Lit,
+///             (Syntax::Lit, 1),
 ///         <<
-///         + (2, 5) Syntax::Whitespace,
+///         (Syntax::Whitespace, 3),
 ///         >> Syntax::Number,
-///             + (5, 7) Syntax::Lit,
-///             + (7, 9) Syntax::Lit,
+///             (Syntax::Lit, 2),
+///             (Syntax::Lit, 2),
 ///         <<
 ///     <<
 /// };
@@ -67,8 +67,8 @@ macro_rules! tree {
         $crate::tree!(@o $b, $($tt)*);
     }};
 
-    (@o $b:ident, + ($start:expr, $end:expr) $expr:expr, $($tt:tt)*) => {{
-        $b.token($expr, $crate::Span::new($start, $end));
+    (@o $b:ident, ($expr:expr, $len:expr), $($tt:tt)*) => {{
+        $b.token($expr, $len);
         $crate::tree!(@o $b, $($tt)*);
     }};
 

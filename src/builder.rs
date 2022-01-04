@@ -55,23 +55,20 @@ impl fmt::Display for EndNodeError {
 ///
 /// #[derive(Debug, Clone, Copy)]
 /// enum Syntax {
-///     Root,
-///     Child,
 ///     Number,
+///     Lit,
 /// }
 ///
 /// # fn main() -> anyhow::Result<()> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.start_node(Syntax::Root);
-///
-/// tree.start_node(Syntax::Child);
-/// tree.token(Syntax::Number, Span::new(5, 8));
+/// tree.start_node(Syntax::Number);
+/// tree.token(Syntax::Lit, 3);
 /// tree.end_node()?;
 ///
-/// tree.start_node(Syntax::Child);
+/// tree.start_node(Syntax::Number);
 ///
-/// // Syntax::Root and Syntax::Child is left open.
+/// // Syntax::Number is left open.
 /// assert!(matches!(tree.build(), Err(BuildError { .. })));
 /// # Ok(()) }
 /// ```
@@ -147,6 +144,8 @@ pub struct TreeBuilder<T> {
     stack: Vec<NonMaxUsize>,
     /// The last sibling inserted.
     sibling: Option<NonMaxUsize>,
+    /// The current cursor to the source code being referenced.
+    cursor: usize,
 }
 
 /// Build a new syntax tree.
@@ -183,6 +182,7 @@ impl<T> TreeBuilder<T> {
             data: Vec::new(),
             stack: Vec::new(),
             sibling: None,
+            cursor: 0,
         }
     }
 
@@ -284,20 +284,16 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
-    ///
     /// tree.start_node(Syntax::Child);
-    /// tree.token(Syntax::Number, Span::new(5, 8));
+    /// tree.token(Syntax::Number, 3);
     /// tree.end_node()?;
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
-    ///
-    /// tree.end_node()?;
     /// # Ok(()) }
     /// ```
-    pub fn token(&mut self, data: T, span: Span) -> Id {
-        let id = self.insert(data, Kind::Token(span));
+    pub fn token(&mut self, data: T, len: usize) -> Id {
+        let start = self.cursor;
+        self.cursor = self.cursor.checked_add(len).expect("length overflow");
+        let id = self.insert(data, Kind::Token(Span::new(start, self.cursor)));
         self.sibling = Some(id);
         Id(id)
     }
@@ -329,14 +325,14 @@ impl<T> TreeBuilder<T> {
     /// let c = b.checkpoint();
     ///
     /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, Span::new(1, 2));
+    /// b.token(Syntax::Lit, 1);
     /// b.end_node()?;
     ///
-    /// b.token(Syntax::Whitespace, Span::new(2, 5));
+    /// b.token(Syntax::Whitespace, 3);
     ///
     /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, Span::new(5, 7));
-    /// b.token(Syntax::Lit, Span::new(7, 9));
+    /// b.token(Syntax::Lit, 2);
+    /// b.token(Syntax::Lit, 2);
     /// b.end_node()?;
     ///
     /// b.insert_node_at(c, Syntax::Root);
@@ -407,14 +403,14 @@ impl<T> TreeBuilder<T> {
     /// let c = b.checkpoint();
     ///
     /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, Span::new(1, 2));
+    /// b.token(Syntax::Lit, 1);
     /// b.end_node()?;
     ///
-    /// b.token(Syntax::Whitespace, Span::new(2, 5));
+    /// b.token(Syntax::Whitespace, 3);
     ///
     /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, Span::new(5, 7));
-    /// b.token(Syntax::Lit, Span::new(7, 9));
+    /// b.token(Syntax::Lit, 2);
+    /// b.token(Syntax::Lit, 2);
     /// b.end_node()?;
     ///
     /// b.insert_node_at(c, Syntax::Root);
@@ -470,7 +466,6 @@ impl<T> TreeBuilder<T> {
     ///
     /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     /// enum Syntax {
-    ///     Root,
     ///     Child,
     ///     Number,
     /// }
@@ -478,24 +473,19 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
     /// tree.start_node(Syntax::Child);
-    /// tree.token(Syntax::Number, Span::new(5, 8));
+    /// tree.token(Syntax::Number, 3);
     /// tree.end_node()?;
     /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
     /// tree.end_node()?;
     ///
     /// let tree = tree.build()?;
     ///
     /// let expected = syntree::tree! {
-    ///     >> Syntax::Root,
-    ///         >> Syntax::Child,
-    ///             + (5, 8) Syntax::Number,
-    ///         <<
-    ///         >> Syntax::Child,
-    ///         <<
+    ///     >> Syntax::Child,
+    ///         (Syntax::Number, 3),
     ///     <<
+    ///     == Syntax::Child,
     /// };
     ///
     /// assert_eq!(tree, expected);
@@ -509,23 +499,20 @@ impl<T> TreeBuilder<T> {
     ///
     /// #[derive(Debug, Clone, Copy)]
     /// enum Syntax {
-    ///     Root,
-    ///     Child,
     ///     Number,
+    ///     Lit,
     /// }
     ///
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
-    ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.token(Syntax::Number, Span::new(5, 8));
+    /// tree.start_node(Syntax::Number);
+    /// tree.token(Syntax::Lit, 3);
     /// tree.end_node()?;
     ///
-    /// tree.start_node(Syntax::Child);
+    /// tree.start_node(Syntax::Number);
     ///
-    /// // Syntax::Root and Syntax::Child is left open.
+    /// // Syntax::Number is left open.
     /// assert!(matches!(tree.build(), Err(BuildError { .. })));
     /// # Ok(()) }
     /// ```

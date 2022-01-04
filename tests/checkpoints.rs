@@ -1,4 +1,4 @@
-use syntree::{Span, TreeBuilder};
+use syntree::TreeBuilder;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
@@ -15,14 +15,14 @@ fn balanced_checkpoint() -> anyhow::Result<()> {
     let c = b.checkpoint();
 
     b.start_node(Syntax::Number);
-    b.token(Syntax::Lit, Span::new(1, 2));
+    b.token(Syntax::Lit, 2);
     b.end_node()?;
 
-    b.token(Syntax::Whitespace, Span::new(2, 5));
+    b.token(Syntax::Whitespace, 3);
 
     b.start_node(Syntax::Number);
-    b.token(Syntax::Lit, Span::new(5, 7));
-    b.token(Syntax::Lit, Span::new(7, 9));
+    b.token(Syntax::Lit, 2);
+    b.token(Syntax::Lit, 2);
     b.end_node()?;
 
     b.insert_node_at(c, Syntax::Root);
@@ -32,12 +32,12 @@ fn balanced_checkpoint() -> anyhow::Result<()> {
     let expected = syntree::tree! {
         >> Syntax::Root,
             >> Syntax::Number,
-                + (1, 2) Syntax::Lit,
+                (Syntax::Lit, 2),
             <<
-            + (2, 5) Syntax::Whitespace,
+            (Syntax::Whitespace, 3),
             >> Syntax::Number,
-                + (5, 7) Syntax::Lit,
-                + (7, 9) Syntax::Lit,
+                (Syntax::Lit, 2),
+                (Syntax::Lit, 2),
             <<
         <<
     };

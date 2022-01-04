@@ -6,46 +6,74 @@
 //! A memory efficient syntax tree.
 //!
 //! This crate provides a tree structure which always is contiguously stored and
-//! manipulated in memory. It provides similar APIs as [rowan] and is intended
-//! to be a partial replacement for it.
+//! manipulated in memory. It provides similar APIs as [`rowan`] and is intended
+//! to be an efficient replacement for it (read more below).
 //!
-//! One major difference is that we do not store the original strings in the
-//! tree itself, but rather lean entirely on the accurate reporting of [Span]s.
-//! So it's up to the caller to maintain a reference to the original source in
-//! whatever way they see fit.
+//! <br>
 //!
-//! # Examples
+//! # Usage
+//!
+//! Add `syntree` to your crate:
+//!
+//! ```toml
+//! syntree = "0.2.0"
+//! ```
+//!
+//! <br>
+//!
+//! If you want a complete sample for how `syntree` can be used for parsing, see
+//! the [calculator example].
+//!
+//! ## Syntax trees
+//!
+//! At the root, `syntree` provides a way to model an [abstract syntax tree]
+//! (AST). The nodes of the trees are typically modelled by variants in an enum,
+//! but could in theory [consist of anything you like].
+//!
+//! We distinguish between nodes which are elements that can have zero or more
+//! children, and tokens which are terminating elements. Each token has a span
+//! associated with it. This span is intended to indicate *where* in a source
+//! this token was identified so that it can be referenced later.
+//!
+//! This is the primary difference between `syntree` and [`rowan`]. *We don't
+//! store the original source* in the syntax tree. Instead, the user of the
+//! library is responsible for providing it.
+//!
+//! The following is a simple example of how we can build a syntax tree with
+//! fake spans that do not reference anything in particular. And when we report
+//! *tokens*, we only include the *length* of the span reported. This ensures
+//! that in order to make `syntree`s behave correctly, the whole source must be
+//! reported.
 //!
 //! ```
 //! use syntree::{Span, TreeBuilder};
 //!
 //! #[derive(Debug, Clone, Copy)]
 //! enum Syntax {
-//!     Root,
-//!     Operation,
-//!     Number,
-//!     Plus,
+//!     OPERATION,
+//!     NUMBER,
+//!     PLUS,
 //! }
+//!
+//! use Syntax::*;
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! let mut b = TreeBuilder::new();
 //!
-//! b.start_node(Syntax::Root);
-//! b.start_node(Syntax::Operation);
+//! b.start_node(OPERATION);
 //!
-//! b.start_node(Syntax::Number);
-//! b.token(Syntax::Number, Span::new(0, 4));
+//! b.start_node(NUMBER);
+//! b.token(NUMBER, 4);
 //! b.end_node()?;
 //!
-//! b.start_node(Syntax::Plus);
-//! b.token(Syntax::Plus, Span::new(4, 5));
+//! b.start_node(PLUS);
+//! b.token(PLUS, 1);
 //! b.end_node()?;
 //!
-//! b.start_node(Syntax::Number);
-//! b.token(Syntax::Number, Span::new(5, 10));
+//! b.start_node(NUMBER);
+//! b.token(NUMBER, 5);
 //! b.end_node()?;
 //!
-//! b.end_node()?;
 //! b.end_node()?;
 //!
 //! let tree = b.build()?;
@@ -54,8 +82,11 @@
 //! # Ok(()) }
 //! ```
 //!
-//! [rowan]: https://docs.rs/rowan/latest/rowan/
+//! [abstract syntax tree]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+//! [`rowan`]: https://docs.rs/rowan/latest/rowan/
 //! [Span]: https://docs.rs/syntree/latest/syntree/struct.Span.html
+//! [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
+//! [consist of anything you like]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
 
 #![deny(missing_docs)]
 

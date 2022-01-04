@@ -24,11 +24,11 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.start_node("number");
-    /// tree.token("number", Span::new(0, 5));
+    /// tree.token("number", 5);
     /// tree.end_node()?;
     ///
     /// tree.start_node("ident");
-    /// tree.token("ident", Span::new(5, 7));
+    /// tree.token("ident", 2);
     /// tree.end_node()?;
     ///
     /// let tree = tree.build()?;
@@ -64,13 +64,13 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// ```
     /// # fn main() -> anyhow::Result<()> {
     /// let tree = syntree::tree! {
-    ///     + (0, 1) "t1",
+    ///     ("t1", 1),
     ///     == "child1",
-    ///     + (1, 2) "t2",
+    ///     ("t2", 1),
     ///     == "child2",
-    ///     + (2, 3) "t3",
+    ///     ("t3", 1),
     ///     == "child3",
-    ///     + (2, 3) "t4",
+    ///     ("t4", 1),
     /// };
     ///
     /// let mut it = tree.children_with_tokens();
@@ -102,13 +102,13 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// ```
     /// # fn main() -> anyhow::Result<()> {
     /// let tree = syntree::tree! {
-    ///     + (0, 1) "t1",
+    ///     ("t1", 1),
     ///     == "child1",
-    ///     + (1, 2) "t2",
+    ///     ("t2", 1),
     ///     == "child2",
-    ///     + (2, 3) "t3",
+    ///     ("t3", 1),
     ///     == "child3",
-    ///     + (2, 3) "t4",
+    ///     ("t4", 1),
     /// };
     ///
     /// let mut it = tree.children_with_tokens();

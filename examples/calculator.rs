@@ -19,7 +19,7 @@ fn main() -> Result<()> {
 
     match eval::eval(&tree, &source) {
         Ok(output) => {
-            writeln!(o, "output = {}", output)?;
+            writeln!(o, "Output = {}", output)?;
         }
         Err(e) => {
             let file = SimpleFile::new("<cli>", &source);
@@ -55,11 +55,11 @@ mod parsing {
     use crate::Syntax;
     use anyhow::Result;
     use std::collections::VecDeque;
-    use syntree::{Span, TreeBuilder};
+    use syntree::TreeBuilder;
 
     #[derive(Debug, Clone, Copy)]
     pub(crate) struct Token {
-        pub(crate) span: Span,
+        pub(crate) len: usize,
         pub(crate) syntax: Syntax,
     }
 
@@ -133,7 +133,7 @@ mod parsing {
                 };
 
                 return Some(Token {
-                    span: Span::new(start, self.pos),
+                    len: self.pos.checked_sub(start).expect("length underflow"),
                     syntax,
                 });
             }
@@ -183,7 +183,7 @@ mod parsing {
 
             for _ in 0..expected.len() {
                 let tok = self.nth(0);
-                self.tree.token(tok.syntax, tok.span);
+                self.tree.token(tok.syntax, tok.len);
                 self.step();
             }
 
@@ -196,7 +196,7 @@ mod parsing {
             self.tree.start_node(what);
             let tok = self.nth(0);
             self.step();
-            self.tree.token(tok.syntax, tok.span);
+            self.tree.token(tok.syntax, tok.len);
             self.tree.end_node()?;
             Ok(())
         }
@@ -211,7 +211,7 @@ mod parsing {
                     break;
                 }
 
-                self.tree.token(tok.syntax, tok.span);
+                self.tree.token(tok.syntax, tok.len);
                 self.step();
             }
         }
@@ -233,7 +233,7 @@ mod parsing {
                 }
 
                 return Token {
-                    span: Span::point(self.lexer.source.len()),
+                    len: 0,
                     syntax: Syntax::EOF,
                 };
             }
@@ -248,7 +248,7 @@ mod parsing {
 
                 // Consume whitespace transparently.
                 if matches!(tok.syntax, Syntax::WHITESPACE) {
-                    self.tree.token(tok.syntax, tok.span);
+                    self.tree.token(tok.syntax, tok.len);
                     continue;
                 }
 

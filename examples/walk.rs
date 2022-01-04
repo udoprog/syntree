@@ -1,5 +1,5 @@
 use anyhow::Result;
-use syntree::{print, Span, TreeBuilder};
+use syntree::{print, TreeBuilder};
 
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
@@ -19,15 +19,15 @@ fn main() -> Result<()> {
     b.start_node(Syntax::Operation);
 
     b.start_node(Syntax::Number);
-    b.token(Syntax::Number, Span::new(0, 4));
+    b.token(Syntax::Number, 4);
     b.end_node()?;
 
     b.start_node(Syntax::Plus);
-    b.token(Syntax::Plus, Span::new(4, 5));
+    b.token(Syntax::Plus, 1);
     b.end_node()?;
 
     b.start_node(Syntax::Number);
-    b.token(Syntax::Number, Span::new(5, 10));
+    b.token(Syntax::Number, 5);
     b.end_node()?;
 
     b.end_node()?;

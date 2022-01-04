@@ -16,4 +16,4 @@ A memory efficient syntax tree for language developers.
 [dev-dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
-codespan-reporting = "*"
+codespan-reporting = "0.11.1"
