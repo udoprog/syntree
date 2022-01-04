@@ -10,30 +10,36 @@ enum Syntax {
 }
 
 fn main() -> Result<()> {
-    let mut b = TreeBuilder::new();
+    let tree = syntree::tree! {
+        Syntax::Root => {
+            Syntax::Operation => {
+                Syntax::Operation => {
+                    (Syntax::Number, 4),
+                    (Syntax::Plus, 1),
+                    (Syntax::Number, 5)
+                },
+                (Syntax::Plus, 1),
+                (Syntax::Number, 5)
+            }
+        }
+    };
 
-    b.start_node(Syntax::Root);
-    b.end_node()?;
+    let mut it = tree.walk();
+    let mut has = true;
 
-    b.start_node(Syntax::Root);
-    b.start_node(Syntax::Operation);
+    while has {
+        if let Some(n) = it.next() {
+            dbg!(n.data());
+        } else {
+            has = false;
+        }
 
-    b.start_node(Syntax::Number);
-    b.token(Syntax::Number, 4);
-    b.end_node()?;
-
-    b.start_node(Syntax::Plus);
-    b.token(Syntax::Plus, 1);
-    b.end_node()?;
-
-    b.start_node(Syntax::Number);
-    b.token(Syntax::Number, 5);
-    b.end_node()?;
-
-    b.end_node()?;
-    b.end_node()?;
-
-    let tree = b.build()?;
+        if let Some(n) = it.next_back() {
+            dbg!(n.data());
+        } else {
+            has = false;
+        }
+    }
 
     print::print(&mut std::io::stdout(), &tree)?;
     Ok(())
