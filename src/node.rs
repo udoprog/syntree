@@ -178,7 +178,7 @@ impl<'a, T> Node<'a, T> {
     /// let root = tree.first().expect("expected root node");
     ///
     /// let nodes = root.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// assert_eq!(nodes, vec!["c6", "c5", "c4", "c3", "c2", "c1"]);
     /// # Ok(()) }
     /// ```
     pub fn walk(&self) -> Walk<'a, T> {

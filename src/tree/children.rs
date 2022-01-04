@@ -126,14 +126,15 @@ impl<'a, T> Children<'a, T> {
     /// };
     ///
     /// let nodes = tree.children().walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// assert_eq!(nodes, vec!["c6", "c5", "c4", "c3", "c2", "c1", "root"]);
     /// # Ok(()) }
     /// ```
     pub fn walk(self) -> Walk<'a, T> {
+        dbg!(self.start, self.end);
+
         Walk {
             tree: self.tree,
-            start: self.start,
-            end: self.end,
+            range: self.range(self.start, self.end),
         }
     }
 
@@ -201,6 +202,20 @@ impl<'a, T> Children<'a, T> {
                 return Some(Node::new(node, self.tree));
             }
         }
+    }
+
+    fn range(
+        &self,
+        start: Option<NonMaxUsize>,
+        mut end: Option<NonMaxUsize>,
+    ) -> Option<(usize, usize)> {
+        let start = start?;
+
+        while let Some(last) = self.tree.get(end?.get())?.last {
+            end = Some(last);
+        }
+
+        Some((start.get(), end?.get()))
     }
 }
 

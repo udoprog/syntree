@@ -65,7 +65,7 @@ impl<'a, T> WithoutTokens<Children<'a, T>> {
     /// let it = tree.children().without_tokens();
     ///
     /// let nodes = it.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["root", "c6", "c1", "c4", "c3"]);
+    /// assert_eq!(nodes, vec!["c6", "c4", "c3", "c1", "root",]);
     /// # Ok(()) }
     /// ```
     pub fn walk(self) -> WithoutTokens<Walk<'a, T>> {

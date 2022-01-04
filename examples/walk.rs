@@ -1,5 +1,5 @@
 use anyhow::Result;
-use syntree::{print, TreeBuilder};
+use syntree::print;
 
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
@@ -24,21 +24,8 @@ fn main() -> Result<()> {
         }
     };
 
-    let mut it = tree.walk();
-    let mut has = true;
-
-    while has {
-        if let Some(n) = it.next() {
-            dbg!(n.data());
-        } else {
-            has = false;
-        }
-
-        if let Some(n) = it.next_back() {
-            dbg!(n.data());
-        } else {
-            has = false;
-        }
+    for n in tree.walk() {
+        dbg!(n.data());
     }
 
     print::print(&mut std::io::stdout(), &tree)?;

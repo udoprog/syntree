@@ -172,14 +172,13 @@ impl<T> Tree<T> {
     /// };
     ///
     /// let nodes = tree.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
+    /// assert_eq!(nodes, vec!["c6", "c5", "c4", "c3", "c2", "c1", "root"]);
     /// # Ok(()) }
     /// ```
     pub fn walk(&self) -> Walk<'_, T> {
         Walk {
             tree: self.tree.as_slice(),
-            start: NonMaxUsize::new(0),
-            end: self.last,
+            range: self.range(self.last),
         }
     }
 
@@ -230,5 +229,13 @@ impl<T> Tree<T> {
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {
         let cur = self.tree.get(index?.get())?;
         Some(Node::new(cur, &self.tree))
+    }
+
+    fn range(&self, mut end: Option<NonMaxUsize>) -> Option<(usize, usize)> {
+        while let Some(last) = self.tree.get(end?.get())?.last {
+            end = Some(last);
+        }
+
+        Some((0, end?.get()))
     }
 }
