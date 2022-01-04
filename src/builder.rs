@@ -345,7 +345,8 @@ impl<T> TreeBuilder<T> {
     ///
     /// let root = tree.first().unwrap();
     /// assert_eq!(*root.data(), Syntax::Root);
-    /// assert_eq!(root.children().count(), 3);
+    /// assert_eq!(root.children().count(), 2);
+    /// assert_eq!(root.children_with_tokens().count(), 3);
     /// # Ok(()) }
     /// ```
     pub fn checkpoint(&self) -> Id {
@@ -422,7 +423,8 @@ impl<T> TreeBuilder<T> {
     ///
     /// let root = tree.first().unwrap();
     /// assert_eq!(*root.data(), Syntax::Root);
-    /// assert_eq!(root.children().count(), 3);
+    /// assert_eq!(root.children().count(), 2);
+    /// assert_eq!(root.children_with_tokens().count(), 3);
     /// # Ok(()) }
     /// ```
     pub fn insert_node_at(&mut self, id: Id, data: T) -> Id {

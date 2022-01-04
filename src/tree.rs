@@ -3,6 +3,12 @@ use std::fmt;
 use crate::non_max::NonMaxUsize;
 use crate::Span;
 
+mod children;
+pub use self::children::Children;
+
+mod children_with_tokens;
+pub use self::children_with_tokens::ChildrenWithTokens;
+
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -15,8 +21,8 @@ pub enum Kind {
 
 /// A node in the tree.
 pub struct Node<'a, T> {
-    node: &'a Links<T>,
-    tree: &'a [Links<T>],
+    pub(crate) node: &'a Links<T>,
+    pub(crate) tree: &'a [Links<T>],
 }
 
 impl<'a, T> Node<'a, T> {
@@ -30,7 +36,10 @@ impl<'a, T> Node<'a, T> {
         self.node.kind
     }
 
-    /// Calculate the span of the node.
+    /// Calculate the span of the node. If there is no span information
+    /// available, the range returned will be from 0 to [usize::MAX].
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
@@ -52,11 +61,17 @@ impl<'a, T> Node<'a, T> {
     ///
     /// let tree = tree.build()?;
     ///
-    /// assert_eq!(tree.span(), Some(Span::new(0, 7)));
+    /// let root = tree.first().unwrap();
+    ///
+    /// assert_eq!(root.span(), Span::new(0, 7));
     /// # Ok(()) }
     /// ```
-    pub fn span(&self) -> Option<Span> {
-        self.children().span()
+    pub fn span(&self) -> Span {
+        if let Some(span) = self.children_with_tokens().span() {
+            span
+        } else {
+            Span::new(0, usize::MAX)
+        }
     }
 
     /// Check if the current node is empty. In that it doesn't have any
@@ -92,6 +107,40 @@ impl<'a, T> Node<'a, T> {
         }
 
         self.node.first.is_none()
+    }
+
+    /// Access the children to this node.
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// tree.start_node("root1");
+    /// tree.start_node("child1");
+    /// tree.end_node()?;
+    ///
+    /// tree.start_node("child2");
+    /// tree.end_node()?;
+    /// tree.end_node()?;
+    ///
+    /// let tree = tree.build()?;
+    /// let root = tree.first().expect("expected root node");
+    ///
+    /// let mut it = root.children();
+    ///
+    /// assert_eq!(it.next().map(|n| *n.data()), Some("child1"));
+    /// assert_eq!(it.next().map(|n| *n.data()), Some("child2"));
+    /// assert!(it.next().is_none());
+    /// # Ok(()) }
+    /// ```
+    pub fn children_with_tokens(&self) -> ChildrenWithTokens<'a, T> {
+        ChildrenWithTokens {
+            tree: self.tree,
+            start: self.node.first,
+            end: self.node.last,
+        }
     }
 
     /// Access the children to this node.
@@ -303,7 +352,8 @@ impl<T> Tree<T> {
         Self { tree, last }
     }
 
-    /// Calculate the span of the node.
+    /// Calculate the span of the tree. If there is no span information
+    /// available, the range returned will be from 0 to [usize::MAX].
     ///
     /// # Examples
     ///
@@ -327,11 +377,15 @@ impl<T> Tree<T> {
     ///
     /// let tree = tree.build()?;
     ///
-    /// assert_eq!(tree.span(), Some(Span::new(0, 7)));
+    /// assert_eq!(tree.span(), Span::new(0, 7));
     /// # Ok(()) }
     /// ```
-    pub fn span(&self) -> Option<Span> {
-        self.children().span()
+    pub fn span(&self) -> Span {
+        if let Some(span) = self.children_with_tokens().span() {
+            span
+        } else {
+            Span::new(0, usize::MAX)
+        }
     }
 
     /// Check if the current tree is empty. In that it doesn't have any
@@ -350,6 +404,40 @@ impl<T> Tree<T> {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.last.is_none()
+    }
+
+    /// Get all root nodes in the tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{Span, TreeBuilder};
+    ///
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// tree.start_node("root1");
+    /// tree.start_node("child1");
+    /// tree.end_node()?;
+    /// tree.end_node()?;
+    ///
+    /// tree.start_node("root2");
+    /// tree.end_node()?;
+    ///
+    /// let tree = tree.build()?;
+    /// let mut it = tree.children();
+    ///
+    /// assert_eq!(it.next().map(|n| *n.data()), Some("root1"));
+    /// assert_eq!(it.next().map(|n| *n.data()), Some("root2"));
+    /// assert!(it.next().is_none());
+    /// # Ok(()) }
+    /// ```
+    pub fn children_with_tokens(&self) -> ChildrenWithTokens<'_, T> {
+        ChildrenWithTokens {
+            tree: self.tree.as_slice(),
+            start: NonMaxUsize::new(0),
+            end: self.last,
+        }
     }
 
     /// Get all root nodes in the tree.
@@ -405,89 +493,3 @@ impl<T> Tree<T> {
         })
     }
 }
-
-/// Access a sub tree.
-pub struct Children<'a, T> {
-    tree: &'a [Links<T>],
-    start: Option<NonMaxUsize>,
-    end: Option<NonMaxUsize>,
-}
-
-impl<'a, T> Children<'a, T> {
-    /// Calculate the span of the remaining nodes in the iterator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{Span, TreeBuilder};
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.start_node("number");
-    /// tree.token("number", Span::new(0, 5));
-    /// tree.end_node()?;
-    ///
-    /// tree.start_node("ident");
-    /// tree.token("ident", Span::new(5, 7));
-    /// tree.end_node()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let mut it = tree.children();
-    ///
-    /// it.next();
-    ///
-    /// assert_eq!(it.span(), Some(Span::new(5, 7)));
-    /// # Ok(()) }
-    /// ```
-    pub fn span(self) -> Option<Span> {
-        let mut output = None::<Span>;
-
-        for node in self {
-            let u = match node.kind() {
-                Kind::Node => node.children().span(),
-                Kind::Token(a) => Some(a),
-            };
-
-            if let Some(u) = u {
-                output = Some(output.map(|s| s.join(u)).unwrap_or(u));
-            }
-        }
-
-        output
-    }
-}
-
-impl<'a, T> Iterator for Children<'a, T> {
-    type Item = Node<'a, T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.start?.get())?;
-        self.start = node.next;
-
-        Some(Node {
-            node,
-            tree: self.tree,
-        })
-    }
-}
-
-impl<'a, T> DoubleEndedIterator for Children<'a, T> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.end?.get())?;
-        self.end = node.prev;
-
-        Some(Node {
-            node,
-            tree: self.tree,
-        })
-    }
-}
-
-impl<'a, T> Clone for Children<'a, T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<'a, T> Copy for Children<'a, T> {}

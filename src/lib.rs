@@ -5,6 +5,17 @@
 //!
 //! A memory efficient syntax tree.
 //!
+//! This crate provides a tree structure which always is contiguously stored and
+//! manipulated in memory. It provides similar APIs as [rowan] and is intended
+//! to be a partial replacement for it.
+//!
+//! One major difference is that we do not store the original strings in the
+//! tree itself, but rather lean entirely on the accurate reporting of [Span]s.
+//! So it's up to the caller to maintain a reference to the original source in
+//! whatever way they see fit.
+//!
+//! # Examples
+//!
 //! ```
 //! use syntree::{Span, TreeBuilder};
 //!
@@ -39,9 +50,12 @@
 //!
 //! let tree = b.build()?;
 //!
-//! assert_eq!(tree.span(), Some(Span::new(0, 10)));
+//! assert_eq!(tree.span(), Span::new(0, 10));
 //! # Ok(()) }
 //! ```
+//!
+//! [rowan]: https://docs.rs/rowan/latest/rowan/
+//! [Span]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 
 #![deny(missing_docs)]
 

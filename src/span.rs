@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops};
 
 /// A span in the source code.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -38,6 +38,19 @@ impl Span {
         Self { start, end }
     }
 
+    /// Construct a span corresponding to the given point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert_eq!(Span::point(4), Span::new(4, 4));
+    /// ```
+    pub const fn point(at: usize) -> Self {
+        Self { start: at, end: at }
+    }
+
     /// Join the current span with another.
     ///
     /// # Examples
@@ -59,6 +72,21 @@ impl Span {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
+    }
+
+    /// Coerce into a [ops::Range] which is useful for slicing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let a = Span::new(4, 8);
+    ///
+    /// assert_eq!(a.range(), 4..8);
+    /// ```
+    pub fn range(self) -> ops::Range<usize> {
+        self.start..self.end
     }
 }
 
