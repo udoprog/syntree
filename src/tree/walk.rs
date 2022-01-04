@@ -12,20 +12,18 @@ pub struct Walk<'a, T> {
 }
 
 impl<'a, T> Walk<'a, T> {
-    fn forward(&mut self, links: &Links<T>, end: NonMaxUsize) -> Option<NonMaxUsize> {
+    fn forward(&mut self, mut links: &'a Links<T>, end: NonMaxUsize) -> Option<NonMaxUsize> {
         if let Some(next) = links.first.or(links.next) {
             return Some(next);
         }
 
-        let mut step = links;
-
         loop {
-            step = match step.parent {
+            links = match links.parent {
                 Some(parent) if parent != end => self.tree.get(parent.get())?,
                 _ => break,
             };
 
-            if let Some(next) = step.next {
+            if let Some(next) = links.next {
                 return Some(next);
             }
         }
@@ -33,20 +31,18 @@ impl<'a, T> Walk<'a, T> {
         None
     }
 
-    fn backward(&mut self, links: &Links<T>, start: NonMaxUsize) -> Option<NonMaxUsize> {
+    fn backward(&mut self, mut links: &'a Links<T>, start: NonMaxUsize) -> Option<NonMaxUsize> {
         if let Some(next) = links.last.or(links.prev) {
             return Some(next);
         }
 
-        let mut step = links;
-
         loop {
-            step = match step.parent {
+            links = match links.parent {
                 Some(parent) if parent != start => self.tree.get(parent.get())?,
                 _ => break,
             };
 
-            if let Some(prev) = step.prev {
+            if let Some(prev) = links.prev {
                 return Some(prev);
             }
         }

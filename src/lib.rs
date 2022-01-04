@@ -158,4 +158,4 @@ mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, Kind, Tree, Walk, WalkBackwards, WithoutTokens};
+pub use self::tree::{Children, Kind, Tree, Walk, WithoutTokens};

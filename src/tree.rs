@@ -10,9 +10,6 @@ pub use self::children::Children;
 mod walk;
 pub use self::walk::Walk;
 
-mod walk_backwards;
-pub use self::walk_backwards::WalkBackwards;
-
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -157,17 +154,8 @@ impl<T> Tree<T> {
     /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(&self) -> Walk<'_, T> {
-        Walk {
-            tree: self.tree.as_slice(),
-            start: NonMaxUsize::new(0),
-            end: self.last,
-        }
-    }
-
-    /// Walk the rest of the tree backwards in a depth-first fashion.
     ///
-    /// # Examples
+    /// Walking backwards.
     ///
     /// ```
     /// # fn main() -> anyhow::Result<()> {
@@ -183,12 +171,16 @@ impl<T> Tree<T> {
     ///     }
     /// };
     ///
-    /// let nodes = tree.walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = tree.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_backwards(&self) -> WalkBackwards<'_, T> {
-        self.children().walk_backwards()
+    pub fn walk(&self) -> Walk<'_, T> {
+        Walk {
+            tree: self.tree.as_slice(),
+            start: NonMaxUsize::new(0),
+            end: self.last,
+        }
     }
 
     /// Get the first child node in the tree.

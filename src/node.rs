@@ -3,7 +3,7 @@ use std::fmt;
 use crate::non_max::NonMaxUsize;
 use crate::{
     tree::{Kind, Links},
-    Children, Span, Walk, WalkBackwards,
+    Children, Span, Walk,
 };
 
 /// A node in the tree.
@@ -158,13 +158,8 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(nodes, vec!["c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(&self) -> Walk<'a, T> {
-        self.children().walk()
-    }
-
-    /// Walk the rest of the tree backwards in a depth-first fashion.
     ///
-    /// # Examples
+    /// Iterate backwards:
     ///
     /// ```
     /// # fn main() -> anyhow::Result<()> {
@@ -182,12 +177,12 @@ impl<'a, T> Node<'a, T> {
     ///
     /// let root = tree.first().expect("expected root node");
     ///
-    /// let nodes = root.walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = root.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_backwards(&self) -> WalkBackwards<'a, T> {
-        self.children().walk_backwards()
+    pub fn walk(&self) -> Walk<'a, T> {
+        self.children().walk()
     }
 
     /// Get the first child node.

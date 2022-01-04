@@ -1,5 +1,5 @@
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Links, Node, Walk, WalkBackwards, WithoutTokens};
+use crate::tree::{Links, Node, Walk, WithoutTokens};
 use crate::{Kind, Span};
 
 /// Iterator over the children of a node or tree.
@@ -108,17 +108,8 @@ impl<'a, T> Children<'a, T> {
     /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(self) -> Walk<'a, T> {
-        Walk {
-            tree: self.tree,
-            start: self.start,
-            end: self.end,
-        }
-    }
-
-    /// Walk the rest of the tree backwards in a depth-first fashion.
     ///
-    /// # Examples
+    /// Walk backwards.
     ///
     /// ```
     /// # fn main() -> anyhow::Result<()> {
@@ -134,14 +125,15 @@ impl<'a, T> Children<'a, T> {
     ///     }
     /// };
     ///
-    /// let nodes = tree.children().walk_backwards().map(|n| *n.data()).collect::<Vec<_>>();
+    /// let nodes = tree.children().walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
     /// assert_eq!(nodes, vec!["root", "c6", "c5", "c1", "c4", "c3", "c2"]);
     /// # Ok(()) }
     /// ```
-    pub fn walk_backwards(self) -> WalkBackwards<'a, T> {
-        WalkBackwards {
+    pub fn walk(self) -> Walk<'a, T> {
+        Walk {
             tree: self.tree,
-            stack: self.end.into_iter().map(|id| (true, id)).collect(),
+            start: self.start,
+            end: self.end,
         }
     }
 
