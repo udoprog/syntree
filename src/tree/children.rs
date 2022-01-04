@@ -69,18 +69,15 @@ impl<'a, T> Children<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn span(self) -> Option<Span> {
-        let mut forward = self.walk();
-        let mut backward = self.walk().rev();
+        let mut it = self.walk();
 
         let start = loop {
-            let node = forward.next()?;
-
-            if let Kind::Token(span) = node.kind() {
+            if let Kind::Token(span) = it.next()?.kind() {
                 break span;
             }
         };
 
-        while let Some(node) = backward.next() {
+        while let Some(node) = it.next_back() {
             if let Kind::Token(end) = node.kind() {
                 return Some(Span::new(start.start, end.end));
             }
