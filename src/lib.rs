@@ -45,8 +45,11 @@
 
 #![deny(missing_docs)]
 
+#[macro_use]
+mod macros;
+
 mod builder;
-pub use self::builder::TreeBuilder;
+pub use self::builder::{BuildError, EndNodeError, TreeBuilder};
 
 mod convert;
 

@@ -3,7 +3,7 @@ use std::fmt;
 use crate::Span;
 
 /// The kind of a node in the [Tree].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Kind {
     /// A node.
@@ -279,7 +279,7 @@ impl<'a, T> Clone for Node<'a, T> {
 
 impl<'a, T> Copy for Node<'a, T> {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Internal<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
@@ -290,7 +290,7 @@ pub(crate) struct Internal<T> {
 }
 
 /// A syntax tree.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree<T> {
     tree: Vec<Internal<T>>,
     last: usize,
@@ -303,6 +303,8 @@ impl<T> Tree<T> {
     }
 
     /// Calculate the span of the node.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
@@ -334,6 +336,8 @@ impl<T> Tree<T> {
     /// Check if the current tree is empty. In that it doesn't have any
     /// childrens at the root of the tree.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
@@ -348,6 +352,8 @@ impl<T> Tree<T> {
     }
 
     /// Get all root nodes in the tree.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
@@ -408,6 +414,8 @@ pub struct Children<'a, T> {
 
 impl<'a, T> Children<'a, T> {
     /// Calculate the span of the remaining nodes in the iterator.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::{Span, TreeBuilder};

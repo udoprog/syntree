@@ -12,6 +12,22 @@ pub struct Checkpoint(usize);
 
 /// Error raised by [TreeBuilder::end_node] if there currently is no node being
 /// built.
+///
+/// # Examples
+///
+/// ```
+/// use syntree::{EndNodeError, Span, TreeBuilder};
+///
+/// # fn main() -> anyhow::Result<()> {
+/// let mut tree = TreeBuilder::new();
+///
+/// tree.start_node("root");
+/// tree.end_node()?;
+///
+/// // Syntax::Root and Syntax::Child is left open.
+/// assert!(matches!(tree.end_node(), Err(EndNodeError { .. })));
+/// # Ok(()) }
+/// ```
 #[derive(Debug, Error)]
 #[non_exhaustive]
 #[error("no node being built")]
@@ -19,10 +35,38 @@ pub struct EndNodeError;
 
 /// Error raised by [TreeBuilder::build] if the tree isn't correctly
 /// balanced.
+///
+/// # Examples
+///
+/// ```
+/// use syntree::{BuildError, Span, TreeBuilder};
+///
+/// #[derive(Debug, Clone, Copy)]
+/// enum Syntax {
+///     Root,
+///     Child,
+///     Number,
+/// }
+///
+/// # fn main() -> anyhow::Result<()> {
+/// let mut tree = TreeBuilder::new();
+///
+/// tree.start_node(Syntax::Root);
+///
+/// tree.start_node(Syntax::Child);
+/// tree.token(Syntax::Number, Span::new(5, 8));
+/// tree.end_node()?;
+///
+/// tree.start_node(Syntax::Child);
+///
+/// // Syntax::Root and Syntax::Child is left open.
+/// assert!(matches!(tree.build(), Err(BuildError { .. })));
+/// # Ok(()) }
+/// ```
 #[derive(Debug, Error)]
 #[non_exhaustive]
 #[error("tree is currently being built")]
-pub struct IntoTreeError;
+pub struct BuildError;
 
 #[derive(Debug)]
 pub(crate) struct Element<T> {
@@ -51,6 +95,8 @@ pub struct TreeBuilder<T> {
 impl<T> TreeBuilder<T> {
     /// Construct a new tree.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
@@ -74,11 +120,17 @@ impl<T> TreeBuilder<T> {
     /// tree.end_node()?;
     /// # Ok(()) }
     /// ```
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        TreeBuilder {
+            data: Vec::new(),
+            stack: Vec::new(),
+            sibling: usize::MAX,
+        }
     }
 
     /// Start a node with the given `data`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::TreeBuilder;
@@ -111,6 +163,8 @@ impl<T> TreeBuilder<T> {
 
     /// End a node being built. This call must be balanced with
     /// [TreeBuilder::start_node].
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::TreeBuilder;
@@ -149,6 +203,8 @@ impl<T> TreeBuilder<T> {
     ///
     /// A token is always a terminating node that has no children.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
     ///
@@ -181,6 +237,8 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use anyhow::Result;
@@ -224,6 +282,8 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Insert a node that wraps from the given checkpointed location.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use anyhow::Result;
@@ -295,6 +355,8 @@ impl<T> TreeBuilder<T> {
 
     /// Construct a tree.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
     ///
@@ -326,7 +388,7 @@ impl<T> TreeBuilder<T> {
     /// If a tree is unbalanced during construction, building will fail with an error:
     ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// use syntree::{BuildError, Span, TreeBuilder};
     ///
     /// #[derive(Debug, Clone, Copy)]
     /// enum Syntax {
@@ -346,15 +408,16 @@ impl<T> TreeBuilder<T> {
     ///
     /// tree.start_node(Syntax::Child);
     ///
-    /// assert!(tree.build().is_err());
+    /// // Syntax::Root and Syntax::Child is left open.
+    /// assert!(matches!(tree.build(), Err(BuildError { .. })));
     /// # Ok(()) }
     /// ```
-    pub fn build(&self) -> Result<Tree<T>, IntoTreeError>
+    pub fn build(&self) -> Result<Tree<T>, BuildError>
     where
         T: fmt::Debug + Copy,
     {
         if !self.stack.is_empty() {
-            return Err(IntoTreeError);
+            return Err(BuildError);
         }
 
         Ok(crate::convert::builder_to_tree(self))
@@ -390,10 +453,6 @@ impl<T> TreeBuilder<T> {
 
 impl<T> Default for TreeBuilder<T> {
     fn default() -> Self {
-        Self {
-            data: Default::default(),
-            stack: Vec::new(),
-            sibling: usize::MAX,
-        }
+        Self::new()
     }
 }

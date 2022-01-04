@@ -5,13 +5,25 @@ use std::fmt;
 #[non_exhaustive]
 pub struct Span {
     /// The start of the span.
-    pub start: u32,
+    pub start: usize,
     /// The end of the span.
-    pub end: u32,
+    pub end: usize,
 }
 
 impl Span {
     /// Construct a new span.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `start` does not precede or equal to `end.
+    ///
+    /// ```should_panic
+    /// use syntree::Span;
+    ///
+    /// Span::new(9, 8);
+    /// ```
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::Span;
@@ -21,14 +33,14 @@ impl Span {
     /// assert_eq!(span.start, 4);
     /// assert_eq!(span.end, 8);
     /// ```
-    pub fn new(start: usize, end: usize) -> Self {
-        Self {
-            start: start.try_into().expect("start index out of bounds"),
-            end: end.try_into().expect("end index out of bounds"),
-        }
+    pub const fn new(start: usize, end: usize) -> Self {
+        assert!(start <= end, "start of the span must come before end");
+        Self { start, end }
     }
 
     /// Join the current span with another.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use syntree::Span;
