@@ -32,12 +32,12 @@ fn balanced_checkpoint() -> anyhow::Result<()> {
     let expected = syntree::tree! {
         >> Syntax::Root,
             >> Syntax::Number,
-                + Syntax::Lit, (1, 2)
+                + (1, 2) Syntax::Lit,
             <<
-            + Syntax::Whitespace, (2, 5)
+            + (2, 5) Syntax::Whitespace,
             >> Syntax::Number,
-                + Syntax::Lit, (5, 7)
-                + Syntax::Lit, (7, 9)
+                + (5, 7) Syntax::Lit,
+                + (7, 9) Syntax::Lit,
             <<
         <<
     };

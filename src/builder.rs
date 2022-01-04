@@ -1,4 +1,4 @@
-use std::{fmt, mem};
+use std::mem;
 
 use thiserror::Error;
 
@@ -6,14 +6,11 @@ use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
 use crate::{Span, Tree};
 
-/// A checkpoint which indicates a position in the tree where an element can be
-/// optionally inserted.
-#[derive(Debug, Clone, Copy)]
-#[repr(transparent)]
-pub struct Checkpoint(NonMaxUsize);
-
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::start_node] or [TreeBuilder::token].
+///
+/// This can be used as a checkpoint in [TreeBuilder::insert_node_at], and a
+/// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct Id(NonMaxUsize);
@@ -88,7 +85,46 @@ pub(crate) struct Links<T> {
     pub(crate) first: Option<NonMaxUsize>,
 }
 
-/// A syntax tree builder.
+/// A builder for a [Tree].
+///
+/// This maintains a stack of nodes being built which has to be balanced with
+/// calls to [TreeBuilder::start_node] and [TreeBuilder::end_node].
+///
+/// # Examples
+///
+/// ```
+/// use syntree::TreeBuilder;
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// enum Syntax {
+///     Root,
+///     Child,
+/// }
+///
+/// # fn main() -> anyhow::Result<()> {
+/// let mut tree = TreeBuilder::new();
+///
+/// tree.start_node(Syntax::Root);
+/// tree.start_node(Syntax::Child);
+/// tree.end_node()?;
+/// tree.start_node(Syntax::Child);
+/// tree.end_node()?;
+/// tree.end_node()?;
+///
+/// let tree = tree.build()?;
+///
+/// let expected = syntree::tree! {
+///     >> Syntax::Root,
+///         >> Syntax::Child,
+///         <<
+///         >> Syntax::Child,
+///         <<
+///     <<
+/// };
+///
+/// assert_eq!(tree, expected);
+/// # Ok(()) }
+/// ```
 #[derive(Debug)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
@@ -138,6 +174,10 @@ impl<T> TreeBuilder<T> {
 
     /// Start a node with the given `data`.
     ///
+    /// This pushes a new link with the given type onto the stack which links
+    /// itself onto the last sibling node that ben introduced either through
+    /// [TreeBuilder::end_node] or [TreeBuilder::insert_node_at].
+    ///
     /// # Examples
     ///
     /// ```
@@ -169,8 +209,12 @@ impl<T> TreeBuilder<T> {
         Id(id)
     }
 
-    /// End a node being built. This call must be balanced with
-    /// [TreeBuilder::start_node].
+    /// End a node being built. This call must be balanced with a prior call to
+    /// [TreeBuilder::start_node] and if its not will result in an
+    /// [EndNodeError].
+    ///
+    /// This will pop a value of the stack, and set that value as the next
+    /// sibling which will be used with [TreeBuilder::start_node].
     ///
     /// # Examples
     ///
@@ -290,17 +334,48 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(root.children().count(), 3);
     /// # Ok(()) }
     /// ```
-    pub fn checkpoint(&self) -> Checkpoint {
+    pub fn checkpoint(&self) -> Id {
         let id = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
-        Checkpoint(id)
+        Id(id)
     }
 
     /// Insert a node that wraps from the given checkpointed location.
     ///
+    /// This causes the node specified at `id` to become the previous sibling
+    /// node. If `id` refers to a node that hasn't been allocated yet (through
+    /// [TreeBuilder::checkpoint]), this call corresponds exactly to
+    /// [TreeBuilder::start_node] that is immediately closed with
+    /// [TreeBuilder::end_node].
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> anyhow::Result<()> {
+    /// let mut a = TreeBuilder::<u32>::new();
+    /// a.start_node(0);
+    /// let c = a.checkpoint();
+    /// a.insert_node_at(c, 1);
+    /// a.end_node()?;
+    /// let a = a.build()?;
+    ///
+    /// let mut b = TreeBuilder::<u32>::new();
+    /// b.start_node(0);
+    /// let c = b.checkpoint();
+    /// b.insert_node_at(c, 1);
+    /// b.end_node()?;
+    /// let b = b.build()?;
+    ///
+    /// assert_eq!(a, b);
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// Note that this does not modify or try to balance the stack, so the last
+    /// item pushed using [TreeBuilder::start_node] will still be the one popped
+    /// through [TreeBuilder::end_node].
+    ///
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
     /// use syntree::{print, Span, TreeBuilder};
     ///
     /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -336,18 +411,17 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(root.children().count(), 3);
     /// # Ok(()) }
     /// ```
-    pub fn insert_node_at(&mut self, c: Checkpoint, data: T) -> Id
-    where
-        T: fmt::Debug,
-    {
+    pub fn insert_node_at(&mut self, id: Id, data: T) -> Id {
         // With the layout of this data structure this is a fairly simple
         // operation.
         let child = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
 
-        let links = match self.data.get_mut(c.0.get()) {
+        let links = match self.data.get_mut(id.0.get()) {
             Some(links) => links,
             None => {
-                return Id(self.insert(data, Kind::Node));
+                let id = self.insert(data, Kind::Node);
+                self.sibling = Some(id);
+                return Id(id);
             }
         };
 
@@ -364,18 +438,21 @@ impl<T> TreeBuilder<T> {
         self.data.push(removed);
 
         // The current sibling is the newly replaced node in the tree.
-        self.sibling = Some(c.0);
-        Id(c.0)
+        self.sibling = Some(id.0);
+        Id(id.0)
     }
 
-    /// Construct a tree.
+    /// Build a [Tree] from the current state of the builder.
+    ///
+    /// This requires the stack in the builder to be empty. Otherwise a
+    /// [BuildError] will be raised.
     ///
     /// # Examples
     ///
     /// ```
     /// use syntree::{Span, TreeBuilder};
     ///
-    /// #[derive(Debug, Clone, Copy)]
+    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     /// enum Syntax {
     ///     Root,
     ///     Child,
@@ -386,17 +463,26 @@ impl<T> TreeBuilder<T> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.start_node(Syntax::Root);
-    ///
     /// tree.start_node(Syntax::Child);
     /// tree.token(Syntax::Number, Span::new(5, 8));
     /// tree.end_node()?;
-    ///
     /// tree.start_node(Syntax::Child);
     /// tree.end_node()?;
-    ///
     /// tree.end_node()?;
     ///
     /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     >> Syntax::Root,
+    ///         >> Syntax::Child,
+    ///             + (5, 8) Syntax::Number,
+    ///         <<
+    ///         >> Syntax::Child,
+    ///         <<
+    ///     <<
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
     ///
@@ -429,7 +515,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn build(&self) -> Result<Tree<T>, BuildError>
     where
-        T: fmt::Debug + Copy,
+        T: Clone,
     {
         if !self.stack.is_empty() {
             return Err(BuildError);

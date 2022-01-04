@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::fmt;
 use std::mem::replace;
 
 use crate::builder;
@@ -9,7 +8,7 @@ use crate::tree;
 /// Construct a tree from a builder.
 pub(crate) fn builder_to_tree<T>(b: &builder::TreeBuilder<T>) -> tree::Tree<T>
 where
-    T: fmt::Debug + Copy,
+    T: Clone,
 {
     let mut tree = Vec::<tree::Links<T>>::new();
     let mut last = None;
@@ -57,7 +56,7 @@ where
         let prev = replace(&mut stack[depth], Some(id));
 
         tree.push(tree::Links {
-            data: el.data,
+            data: el.data.clone(),
             kind: el.kind,
             prev,
             next: None,

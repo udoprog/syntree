@@ -36,12 +36,12 @@
 /// let expected = syntree::tree! {
 ///     >> Syntax::Root,
 ///         >> Syntax::Number,
-///             + Syntax::Lit, (1, 2)
+///             + (1, 2) Syntax::Lit,
 ///         <<
-///         + Syntax::Whitespace, (2, 5)
+///         + (2, 5) Syntax::Whitespace,
 ///         >> Syntax::Number,
-///             + Syntax::Lit, (5, 7)
-///             + Syntax::Lit, (7, 9)
+///             + (5, 7) Syntax::Lit,
+///             + (7, 9) Syntax::Lit,
 ///         <<
 ///     <<
 /// };
@@ -67,15 +67,15 @@ macro_rules! tree {
         $crate::tree!(@o $b, $($tt)*);
     }};
 
-    (@o $b:ident, + $expr:expr, ($start:expr, $end:expr) $($tt:tt)*) => {{
-        $b.token($expr, ::syntree::Span::new($start, $end));
+    (@o $b:ident, + ($start:expr, $end:expr) $expr:expr, $($tt:tt)*) => {{
+        $b.token($expr, $crate::Span::new($start, $end));
         $crate::tree!(@o $b, $($tt)*);
     }};
 
-    (@o $b:ident,) => {};
+    (@o $b:ident, $(,)?) => {};
 
     ($($tt:tt)*) => {{
-        let mut b = ::syntree::TreeBuilder::new();
+        let mut b = $crate::TreeBuilder::new();
         $crate::tree!(@o b, $($tt)*);
         b.build()?
     }};

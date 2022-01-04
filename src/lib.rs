@@ -52,7 +52,7 @@ mod non_max;
 
 mod builder;
 
-pub use self::builder::{BuildError, Checkpoint, EndNodeError, Id, TreeBuilder};
+pub use self::builder::{BuildError, EndNodeError, Id, TreeBuilder};
 
 mod convert;
 
