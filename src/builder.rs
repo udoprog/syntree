@@ -1,6 +1,6 @@
+use std::error::Error;
+use std::fmt;
 use std::mem;
-
-use thiserror::Error;
 
 use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
@@ -33,10 +33,17 @@ pub struct Id(NonMaxUsize);
 /// assert!(matches!(tree.end_node(), Err(EndNodeError { .. })));
 /// # Ok(()) }
 /// ```
-#[derive(Debug, Error)]
+#[derive(Debug)]
 #[non_exhaustive]
-#[error("no node being built")]
 pub struct EndNodeError;
+
+impl Error for EndNodeError {}
+
+impl fmt::Display for EndNodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "no node being built")
+    }
+}
 
 /// Error raised by [TreeBuilder::build] if the tree isn't correctly
 /// balanced.
@@ -68,10 +75,17 @@ pub struct EndNodeError;
 /// assert!(matches!(tree.build(), Err(BuildError { .. })));
 /// # Ok(()) }
 /// ```
-#[derive(Debug, Error)]
+#[derive(Debug)]
 #[non_exhaustive]
-#[error("tree is currently being built")]
 pub struct BuildError;
+
+impl Error for BuildError {}
+
+impl fmt::Display for BuildError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "tree is currently being built")
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct Links<T> {

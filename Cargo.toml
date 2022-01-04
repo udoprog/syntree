@@ -13,8 +13,5 @@ description = """
 A memory efficient syntax tree for language developers.
 """
 
-[dependencies]
-thiserror = "1.0.30"
-
 [dev-dependencies]
 anyhow = "1.0.52"
