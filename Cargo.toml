@@ -1,14 +1,14 @@
 [package]
 name = "syntree"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/udoprog/syntree"
 homepage = "https://github.com/udoprog/syntree"
 documentation = "https://docs.rs/syntree"
-keywords = ["language"]
-categories = []
+keywords = ["language", "syntax-tree"]
+categories = ["parsing"]
 description = """
 A memory efficient syntax tree for language developers.
 """
