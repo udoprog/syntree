@@ -7,39 +7,39 @@ use crate::tree::Kind;
 use crate::{Span, Tree};
 
 /// The identifier of a node as returned by functions such as
-/// [TreeBuilder::start_node] or [TreeBuilder::token].
+/// [TreeBuilder::open] or [TreeBuilder::token].
 ///
-/// This can be used as a checkpoint in [TreeBuilder::insert_node_at], and a
+/// This can be used as a checkpoint in [TreeBuilder::close_at], and a
 /// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct Id(NonMaxUsize);
 
-/// Error raised by [TreeBuilder::end_node] if there currently is no node being
+/// Error raised by [TreeBuilder::close] if there currently is no node being
 /// built.
 ///
 /// # Examples
 ///
 /// ```
-/// use syntree::{EndNodeError, Span, TreeBuilder};
+/// use syntree::{CloseError, Span, TreeBuilder};
 ///
 /// # fn main() -> anyhow::Result<()> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.start_node("root");
-/// tree.end_node()?;
+/// tree.open("root");
+/// tree.close()?;
 ///
 /// // Syntax::Root and Syntax::Child is left open.
-/// assert!(matches!(tree.end_node(), Err(EndNodeError { .. })));
+/// assert!(matches!(tree.close(), Err(CloseError { .. })));
 /// # Ok(()) }
 /// ```
 #[derive(Debug)]
 #[non_exhaustive]
-pub struct EndNodeError;
+pub struct CloseError;
 
-impl Error for EndNodeError {}
+impl Error for CloseError {}
 
-impl fmt::Display for EndNodeError {
+impl fmt::Display for CloseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "no node being built")
     }
@@ -62,11 +62,11 @@ impl fmt::Display for EndNodeError {
 /// # fn main() -> anyhow::Result<()> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.start_node(Syntax::Number);
+/// tree.open(Syntax::Number);
 /// tree.token(Syntax::Lit, 3);
-/// tree.end_node()?;
+/// tree.close()?;
 ///
-/// tree.start_node(Syntax::Number);
+/// tree.open(Syntax::Number);
 ///
 /// // Syntax::Number is left open.
 /// assert!(matches!(tree.build(), Err(BuildError { .. })));
@@ -99,7 +99,7 @@ pub(crate) struct Links<T> {
 /// A builder for a [Tree].
 ///
 /// This maintains a stack of nodes being built which has to be balanced with
-/// calls to [TreeBuilder::start_node] and [TreeBuilder::end_node].
+/// calls to [TreeBuilder::open] and [TreeBuilder::close].
 ///
 /// # Examples
 ///
@@ -115,12 +115,12 @@ pub(crate) struct Links<T> {
 /// # fn main() -> anyhow::Result<()> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.start_node(Syntax::Root);
-/// tree.start_node(Syntax::Child);
-/// tree.end_node()?;
-/// tree.start_node(Syntax::Child);
-/// tree.end_node()?;
-/// tree.end_node()?;
+/// tree.open(Syntax::Root);
+/// tree.open(Syntax::Child);
+/// tree.close()?;
+/// tree.open(Syntax::Child);
+/// tree.close()?;
+/// tree.close()?;
 ///
 /// let tree = tree.build()?;
 ///
@@ -164,15 +164,15 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
+    /// tree.open(Syntax::Root);
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     /// # Ok(()) }
     /// ```
     pub const fn new() -> Self {
@@ -188,7 +188,7 @@ impl<T> TreeBuilder<T> {
     ///
     /// This pushes a new link with the given type onto the stack which links
     /// itself onto the last sibling node that ben introduced either through
-    /// [TreeBuilder::end_node] or [TreeBuilder::insert_node_at].
+    /// [TreeBuilder::close] or [TreeBuilder::close_at].
     ///
     /// # Examples
     ///
@@ -204,29 +204,29 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
+    /// tree.open(Syntax::Root);
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     /// # Ok(()) }
     /// ```
-    pub fn start_node(&mut self, data: T) -> Id {
+    pub fn open(&mut self, data: T) -> Id {
         let id = self.insert(data, Kind::Node);
         self.stack.push(id);
         Id(id)
     }
 
     /// End a node being built. This call must be balanced with a prior call to
-    /// [TreeBuilder::start_node] and if its not will result in an
-    /// [EndNodeError].
+    /// [TreeBuilder::open] and if its not will result in an
+    /// [CloseError].
     ///
     /// This will pop a value of the stack, and set that value as the next
-    /// sibling which will be used with [TreeBuilder::start_node].
+    /// sibling which will be used with [TreeBuilder::open].
     ///
     /// # Examples
     ///
@@ -242,21 +242,21 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Root);
+    /// tree.open(Syntax::Root);
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     /// # Ok(()) }
     /// ```
-    pub fn end_node(&mut self) -> Result<(), EndNodeError> {
+    pub fn close(&mut self) -> Result<(), CloseError> {
         let head = match self.stack.pop() {
             Some(head) => head,
-            None => return Err(EndNodeError),
+            None => return Err(CloseError),
         };
 
         self.sibling = Some(head);
@@ -282,9 +282,9 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Child);
+    /// tree.open(Syntax::Child);
     /// tree.token(Syntax::Number, 3);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// # Ok(()) }
     /// ```
@@ -322,18 +322,18 @@ impl<T> TreeBuilder<T> {
     ///
     /// let c = b.checkpoint();
     ///
-    /// b.start_node(Syntax::Number);
+    /// b.open(Syntax::Number);
     /// b.token(Syntax::Lit, 1);
-    /// b.end_node()?;
+    /// b.close()?;
     ///
     /// b.token(Syntax::Whitespace, 3);
     ///
-    /// b.start_node(Syntax::Number);
+    /// b.open(Syntax::Number);
     /// b.token(Syntax::Lit, 2);
     /// b.token(Syntax::Lit, 2);
-    /// b.end_node()?;
+    /// b.close()?;
     ///
-    /// b.insert_node_at(c, Syntax::Root);
+    /// b.close_at(c, Syntax::Root);
     ///
     /// let tree = b.build()?;
     ///
@@ -353,25 +353,25 @@ impl<T> TreeBuilder<T> {
     /// This causes the node specified at `id` to become the previous sibling
     /// node. If `id` refers to a node that hasn't been allocated yet (through
     /// [TreeBuilder::checkpoint]), this call corresponds exactly to
-    /// [TreeBuilder::start_node] that is immediately closed with
-    /// [TreeBuilder::end_node].
+    /// [TreeBuilder::open] that is immediately closed with
+    /// [TreeBuilder::close].
     ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> anyhow::Result<()> {
     /// let mut a = TreeBuilder::<u32>::new();
-    /// a.start_node(0);
+    /// a.open(0);
     /// let c = a.checkpoint();
-    /// a.insert_node_at(c, 1);
-    /// a.end_node()?;
+    /// a.close_at(c, 1);
+    /// a.close()?;
     /// let a = a.build()?;
     ///
     /// let mut b = TreeBuilder::<u32>::new();
-    /// b.start_node(0);
+    /// b.open(0);
     /// let c = b.checkpoint();
-    /// b.insert_node_at(c, 1);
-    /// b.end_node()?;
+    /// b.close_at(c, 1);
+    /// b.close()?;
     /// let b = b.build()?;
     ///
     /// assert_eq!(a, b);
@@ -379,8 +379,8 @@ impl<T> TreeBuilder<T> {
     /// ```
     ///
     /// Note that this does not modify or try to balance the stack, so the last
-    /// item pushed using [TreeBuilder::start_node] will still be the one popped
-    /// through [TreeBuilder::end_node].
+    /// item pushed using [TreeBuilder::open] will still be the one popped
+    /// through [TreeBuilder::close].
     ///
     /// # Examples
     ///
@@ -389,39 +389,49 @@ impl<T> TreeBuilder<T> {
     ///
     /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     /// enum Syntax {
-    ///     Root,
-    ///     Number,
-    ///     Lit,
-    ///     Whitespace,
+    ///     ROOT,
+    ///     NUMBER,
+    ///     LIT,
+    ///     WHITESPACE,
     /// }
+    ///
+    /// use Syntax::*;
     ///
     /// # fn main() -> anyhow::Result<()> {
     /// let mut b = TreeBuilder::new();
     ///
     /// let c = b.checkpoint();
     ///
-    /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, 1);
-    /// b.end_node()?;
+    /// b.open(NUMBER);
+    /// b.token(LIT, 3);
+    /// b.close()?;
     ///
-    /// b.token(Syntax::Whitespace, 3);
+    /// b.token(WHITESPACE, 1);
     ///
-    /// b.start_node(Syntax::Number);
-    /// b.token(Syntax::Lit, 2);
-    /// b.token(Syntax::Lit, 2);
-    /// b.end_node()?;
+    /// b.open(NUMBER);
+    /// b.token(LIT, 2);
+    /// b.close()?;
     ///
-    /// b.insert_node_at(c, Syntax::Root);
+    /// b.close_at(c, ROOT);
     ///
     /// let tree = b.build()?;
     ///
-    /// let root = tree.first().unwrap();
-    /// assert_eq!(*root.data(), Syntax::Root);
-    /// assert_eq!(root.children().count(), 3);
-    /// assert_eq!(root.children().without_tokens().count(), 2);
+    /// let expected = syntree::tree! {
+    ///     ROOT => {
+    ///         NUMBER => {
+    ///             (LIT, 3)
+    ///         },
+    ///         (WHITESPACE, 1),
+    ///         NUMBER => {
+    ///             (LIT, 2)
+    ///         },
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn insert_node_at(&mut self, id: Id, data: T) -> Id {
+    pub fn close_at(&mut self, id: Id, data: T) -> Id {
         // With the layout of this data structure this is a fairly simple
         // operation.
         let child = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
@@ -471,11 +481,11 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Child);
+    /// tree.open(Syntax::Child);
     /// tree.token(Syntax::Number, 3);
-    /// tree.end_node()?;
-    /// tree.start_node(Syntax::Child);
-    /// tree.end_node()?;
+    /// tree.close()?;
+    /// tree.open(Syntax::Child);
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -504,11 +514,11 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node(Syntax::Number);
+    /// tree.open(Syntax::Number);
     /// tree.token(Syntax::Lit, 3);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
-    /// tree.start_node(Syntax::Number);
+    /// tree.open(Syntax::Number);
     ///
     /// // Syntax::Number is left open.
     /// assert!(matches!(tree.build(), Err(BuildError { .. })));

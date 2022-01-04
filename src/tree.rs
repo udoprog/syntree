@@ -54,17 +54,17 @@ impl<T> Tree<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root");
+    /// tree.open("root");
     ///
-    /// tree.start_node("number");
+    /// tree.open("number");
     /// tree.token("number", 5);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
-    /// tree.start_node("ident");
+    /// tree.open("ident");
     /// tree.token("ident", 2);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -107,13 +107,13 @@ impl<T> Tree<T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
-    /// tree.end_node()?;
+    /// tree.open("root1");
+    /// tree.open("child1");
+    /// tree.close()?;
+    /// tree.close()?;
     ///
-    /// tree.start_node("root2");
-    /// tree.end_node()?;
+    /// tree.open("root2");
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let mut it = tree.children();

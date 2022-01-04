@@ -16,20 +16,20 @@
 /// # fn main() -> anyhow::Result<()> {
 /// let mut b = TreeBuilder::new();
 ///
-/// b.start_node(Syntax::Root);
+/// b.open(Syntax::Root);
 ///
-/// b.start_node(Syntax::Number);
+/// b.open(Syntax::Number);
 /// b.token(Syntax::Lit, 1);
-/// b.end_node()?;
+/// b.close()?;
 ///
 /// b.token(Syntax::Whitespace, 3);
 ///
-/// b.start_node(Syntax::Number);
+/// b.open(Syntax::Number);
 /// b.token(Syntax::Lit, 2);
 /// b.token(Syntax::Lit, 2);
-/// b.end_node()?;
+/// b.close()?;
 ///
-/// b.end_node()?;
+/// b.close()?;
 ///
 /// let tree = b.build()?;
 ///
@@ -63,26 +63,26 @@ macro_rules! tree {
     }};
 
     (@o $b:ident, $expr:expr $(,)?) => {{
-        $b.start_node($expr);
-        $b.end_node()?;
+        $b.open($expr);
+        $b.close()?;
     }};
 
     (@o $b:ident, $expr:expr, $($rest:tt)*) => {{
-        $b.start_node($expr);
-        $b.end_node()?;
+        $b.open($expr);
+        $b.close()?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* } $(,)?) => {{
-        $b.start_node($expr);
+        $b.open($expr);
         $crate::tree!(@o $b, $($tt)*);
-        $b.end_node()?;
+        $b.close()?;
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* }, $($rest:tt)*) => {{
-        $b.start_node($expr);
+        $b.open($expr);
         $crate::tree!(@o $b, $($tt)*);
-        $b.end_node()?;
+        $b.close()?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 

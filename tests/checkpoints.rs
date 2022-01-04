@@ -14,18 +14,18 @@ fn balanced_checkpoint() -> anyhow::Result<()> {
 
     let c = b.checkpoint();
 
-    b.start_node(Syntax::Number);
+    b.open(Syntax::Number);
     b.token(Syntax::Lit, 2);
-    b.end_node()?;
+    b.close()?;
 
     b.token(Syntax::Whitespace, 3);
 
-    b.start_node(Syntax::Number);
+    b.open(Syntax::Number);
     b.token(Syntax::Lit, 2);
     b.token(Syntax::Lit, 2);
-    b.end_node()?;
+    b.close()?;
 
-    b.insert_node_at(c, Syntax::Root);
+    b.close_at(c, Syntax::Root);
 
     let tree = b.build()?;
 

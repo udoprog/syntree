@@ -3,18 +3,18 @@ use syntree::TreeBuilder;
 fn main() -> anyhow::Result<()> {
     let mut tree = TreeBuilder::new();
 
-    tree.start_node("root1");
+    tree.open("root1");
 
-    tree.start_node("child1");
-    tree.end_node()?;
+    tree.open("child1");
+    tree.close()?;
 
-    tree.start_node("child2");
-    tree.end_node()?;
+    tree.open("child2");
+    tree.close()?;
 
-    tree.end_node()?;
+    tree.close()?;
 
-    tree.start_node("root2");
-    tree.end_node()?;
+    tree.open("root2");
+    tree.close()?;
 
     let tree = tree.build()?;
     let mut it = tree.children();

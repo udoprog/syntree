@@ -38,17 +38,17 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root");
+    /// tree.open("root");
     ///
-    /// tree.start_node("number");
+    /// tree.open("number");
     /// tree.token("number", 5);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
-    /// tree.start_node("ident");
+    /// tree.open("ident");
     /// tree.token("ident", 2);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -74,12 +74,12 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("first");
-    /// tree.end_node()?;
+    /// tree.open("first");
+    /// tree.close()?;
     ///
-    /// tree.start_node("last");
+    /// tree.open("last");
     /// tree.token("token", 5);
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -108,13 +108,13 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
+    /// tree.open("root1");
+    /// tree.open("child1");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child2");
-    /// tree.end_node()?;
-    /// tree.end_node()?;
+    /// tree.open("child2");
+    /// tree.close()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let root = tree.first().expect("expected root node");
@@ -193,15 +193,15 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
+    /// tree.open("root1");
     ///
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
+    /// tree.open("child1");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child2");
-    /// tree.end_node()?;
+    /// tree.open("child2");
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let root = tree.first().expect("expected root node");
@@ -221,15 +221,15 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
+    /// tree.open("root1");
     ///
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
+    /// tree.open("child1");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child2");
-    /// tree.end_node()?;
+    /// tree.open("child2");
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let root = tree.first().expect("expected root node");
@@ -249,18 +249,18 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
+    /// tree.open("root1");
     ///
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
+    /// tree.open("child1");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child2");
-    /// tree.end_node()?;
+    /// tree.open("child2");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child3");
-    /// tree.end_node()?;
+    /// tree.open("child3");
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let root = tree.first().expect("expected root node");
@@ -282,18 +282,18 @@ impl<'a, T> Node<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.start_node("root1");
+    /// tree.open("root1");
     ///
-    /// tree.start_node("child1");
-    /// tree.end_node()?;
+    /// tree.open("child1");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child2");
-    /// tree.end_node()?;
+    /// tree.open("child2");
+    /// tree.close()?;
     ///
-    /// tree.start_node("child3");
-    /// tree.end_node()?;
+    /// tree.open("child3");
+    /// tree.close()?;
     ///
-    /// tree.end_node()?;
+    /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     /// let root = tree.first().expect("expected root node");

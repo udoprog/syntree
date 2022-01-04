@@ -187,17 +187,17 @@ mod parsing {
                 self.step();
             }
 
-            self.tree.insert_node_at(c, what);
+            self.tree.close_at(c, what);
             true
         }
 
         /// Bump the current input as the given syntax.
         pub(crate) fn bump_node(&mut self, what: Syntax) -> Result<()> {
-            self.tree.start_node(what);
+            self.tree.open(what);
             let tok = self.nth(0);
             self.step();
             self.tree.token(tok.syntax, tok.len);
-            self.tree.end_node()?;
+            self.tree.close()?;
             Ok(())
         }
 
@@ -289,7 +289,7 @@ mod grammar {
                         // an operator.
                         let c = p.tree.checkpoint();
                         p.advance_until(&[PLUS, MINUS]);
-                        p.tree.insert_node_at(c, ERROR);
+                        p.tree.close_at(c, ERROR);
                         continue;
                     }
                 }

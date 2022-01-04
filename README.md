@@ -85,41 +85,41 @@ use Syntax::*;
 
 let mut b = TreeBuilder::new();
 
-b.start_node(OPERATION);
+b.open(OPERATION);
 
-b.start_node(OPERATION);
+b.open(OPERATION);
 
-b.start_node(NUMBER);
+b.open(NUMBER);
 b.token(NUMBER, 4);
-b.end_node()?;
+b.close()?;
 
 b.token(WHITESPACE, 1);
 
-b.start_node(PLUS);
+b.open(PLUS);
 b.token(PLUS, 1);
-b.end_node()?;
+b.close()?;
 
 b.token(WHITESPACE, 1);
 
-b.start_node(NUMBER);
+b.open(NUMBER);
 b.token(NUMBER, 5);
-b.end_node()?;
+b.close()?;
 
-b.end_node()?;
+b.close()?;
 
 b.token(WHITESPACE, 1);
 
-b.start_node(MINUS);
+b.open(MINUS);
 b.token(MINUS, 1);
-b.end_node()?;
+b.close()?;
 
 b.token(WHITESPACE, 1);
 
-b.start_node(NUMBER);
+b.open(NUMBER);
 b.token(NUMBER, 3);
-b.end_node()?;
+b.close()?;
 
-b.end_node()?;
+b.close()?;
 
 let tree = b.build()?;
 
