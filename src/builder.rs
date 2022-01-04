@@ -516,7 +516,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn build(&self) -> Result<Tree<T>, BuildError>
     where
-        T: std::fmt::Debug + Clone,
+        T: Clone,
     {
         if !self.stack.is_empty() {
             return Err(BuildError);

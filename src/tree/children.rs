@@ -130,8 +130,6 @@ impl<'a, T> Children<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn walk(self) -> Walk<'a, T> {
-        dbg!(self.start, self.end);
-
         Walk {
             tree: self.tree,
             range: self.range(self.start, self.end),
