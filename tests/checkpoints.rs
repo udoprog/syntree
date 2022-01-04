@@ -30,16 +30,16 @@ fn balanced_checkpoint() -> anyhow::Result<()> {
     let tree = b.build()?;
 
     let expected = syntree::tree! {
-        >> Syntax::Root,
-            >> Syntax::Number,
-                (Syntax::Lit, 2),
-            <<
+        Syntax::Root => {
+            Syntax::Number => {
+                (Syntax::Lit, 2)
+            },
             (Syntax::Whitespace, 3),
-            >> Syntax::Number,
+            Syntax::Number => {
                 (Syntax::Lit, 2),
-                (Syntax::Lit, 2),
-            <<
-        <<
+                (Syntax::Lit, 2)
+            }
+        }
     };
 
     assert_eq!(expected, tree);

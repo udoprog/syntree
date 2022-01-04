@@ -125,12 +125,10 @@ pub(crate) struct Links<T> {
 /// let tree = tree.build()?;
 ///
 /// let expected = syntree::tree! {
-///     >> Syntax::Root,
-///         >> Syntax::Child,
-///         <<
-///         >> Syntax::Child,
-///         <<
-///     <<
+///     Syntax::Root => {
+///         Syntax::Child,
+///         Syntax::Child,
+///     }
 /// };
 ///
 /// assert_eq!(tree, expected);
@@ -482,10 +480,10 @@ impl<T> TreeBuilder<T> {
     /// let tree = tree.build()?;
     ///
     /// let expected = syntree::tree! {
-    ///     >> Syntax::Child,
-    ///         (Syntax::Number, 3),
-    ///     <<
-    ///     == Syntax::Child,
+    ///     Syntax::Child => {
+    ///         (Syntax::Number, 3)
+    ///     },
+    ///     Syntax::Child,
     /// };
     ///
     /// assert_eq!(tree, expected);

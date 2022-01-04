@@ -34,16 +34,16 @@
 /// let tree = b.build()?;
 ///
 /// let expected = syntree::tree! {
-///     >> Syntax::Root,
-///         >> Syntax::Number,
-///             (Syntax::Lit, 1),
-///         <<
+///     Syntax::Root => {
+///         Syntax::Number => {
+///             (Syntax::Lit, 1)
+///         },
 ///         (Syntax::Whitespace, 3),
-///         >> Syntax::Number,
+///         Syntax::Number => {
 ///             (Syntax::Lit, 2),
-///             (Syntax::Lit, 2),
-///         <<
-///     <<
+///             (Syntax::Lit, 2)
+///         }
+///     }
 /// };
 ///
 /// assert_eq!(expected, tree);
@@ -51,28 +51,40 @@
 /// ```
 #[macro_export]
 macro_rules! tree {
-    (@o $b:ident, == $expr:expr, $($tt:tt)*) => {{
-        $b.start_node($expr);
-        $b.end_node()?;
-        $crate::tree!(@o $b, $($tt)*);
-    }};
+    (@o $b:ident,) => {};
 
-    (@o $b:ident, >> $expr:expr, $($tt:tt)*) => {{
-        $b.start_node($expr);
-        $crate::tree!(@o $b, $($tt)*);
-    }};
-
-    (@o $b:ident, << $(,)? $($tt:tt)*) => {{
-        $b.end_node()?;
-        $crate::tree!(@o $b, $($tt)*);
-    }};
-
-    (@o $b:ident, ($expr:expr, $len:expr), $($tt:tt)*) => {{
+    (@o $b:ident, ($expr:expr, $len:expr) $(,)?) => {{
         $b.token($expr, $len);
-        $crate::tree!(@o $b, $($tt)*);
     }};
 
-    (@o $b:ident, $(,)?) => {};
+    (@o $b:ident, ($expr:expr, $len:expr), $($rest:tt)*) => {{
+        $b.token($expr, $len);
+        $crate::tree!(@o $b, $($rest)*);
+    }};
+
+    (@o $b:ident, $expr:expr $(,)?) => {{
+        $b.start_node($expr);
+        $b.end_node()?;
+    }};
+
+    (@o $b:ident, $expr:expr, $($rest:tt)*) => {{
+        $b.start_node($expr);
+        $b.end_node()?;
+        $crate::tree!(@o $b, $($rest)*);
+    }};
+
+    (@o $b:ident, $expr:expr => { $($tt:tt)* } $(,)?) => {{
+        $b.start_node($expr);
+        $crate::tree!(@o $b, $($tt)*);
+        $b.end_node()?;
+    }};
+
+    (@o $b:ident, $expr:expr => { $($tt:tt)* }, $($rest:tt)*) => {{
+        $b.start_node($expr);
+        $crate::tree!(@o $b, $($tt)*);
+        $b.end_node()?;
+        $crate::tree!(@o $b, $($rest)*);
+    }};
 
     ($($tt:tt)*) => {{
         let mut b = $crate::TreeBuilder::new();

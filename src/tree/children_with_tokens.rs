@@ -65,12 +65,12 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let tree = syntree::tree! {
     ///     ("t1", 1),
-    ///     == "child1",
+    ///     "child1",
     ///     ("t2", 1),
-    ///     == "child2",
+    ///     "child2",
     ///     ("t3", 1),
-    ///     == "child3",
-    ///     ("t4", 1),
+    ///     "child3",
+    ///     ("t4", 1)
     /// };
     ///
     /// let mut it = tree.children_with_tokens();
@@ -103,12 +103,12 @@ impl<'a, T> ChildrenWithTokens<'a, T> {
     /// # fn main() -> anyhow::Result<()> {
     /// let tree = syntree::tree! {
     ///     ("t1", 1),
-    ///     == "child1",
+    ///     "child1",
     ///     ("t2", 1),
-    ///     == "child2",
+    ///     "child2",
     ///     ("t3", 1),
-    ///     == "child3",
-    ///     ("t4", 1),
+    ///     "child3",
+    ///     ("t4", 1)
     /// };
     ///
     /// let mut it = tree.children_with_tokens();
