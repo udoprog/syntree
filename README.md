@@ -18,7 +18,7 @@ to be an efficient replacement for it (read more below).
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.5.0"
+syntree = "0.6.0"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
@@ -120,7 +120,6 @@ b.close()?;
 
 let tree = b.build()?;
 
-assert_eq!(tree.span().range(), 0..18);
 assert_eq!(tree.children().count(), 1);
 ```
 
