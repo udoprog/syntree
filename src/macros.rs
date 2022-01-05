@@ -13,7 +13,7 @@
 ///     Whitespace,
 /// }
 ///
-/// # fn main() -> anyhow::Result<()> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut b = TreeBuilder::new();
 ///
 /// b.open(Syntax::Root);

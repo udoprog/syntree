@@ -9,7 +9,7 @@ enum Syntax {
 }
 
 #[test]
-fn balanced_checkpoint() -> anyhow::Result<()> {
+fn balanced_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
     let mut b = TreeBuilder::new();
 
     let c = b.checkpoint();

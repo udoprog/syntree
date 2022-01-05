@@ -25,7 +25,7 @@ pub struct Id(NonMaxUsize);
 /// ```
 /// use syntree::{CloseError, Span, TreeBuilder};
 ///
-/// # fn main() -> anyhow::Result<()> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
 /// tree.open("root");
@@ -61,7 +61,7 @@ impl fmt::Display for CloseError {
 ///     Lit,
 /// }
 ///
-/// # fn main() -> anyhow::Result<()> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
 /// tree.open(Syntax::Number);
@@ -102,7 +102,7 @@ impl fmt::Display for BuildError {
 ///     Child,
 /// }
 ///
-/// # fn main() -> anyhow::Result<()> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
 /// tree.open(Syntax::Root);
@@ -151,7 +151,7 @@ impl<T> TreeBuilder<T> {
     ///     Child,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Root);
@@ -191,7 +191,7 @@ impl<T> TreeBuilder<T> {
     ///     Child,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Root);
@@ -229,7 +229,7 @@ impl<T> TreeBuilder<T> {
     ///     Child,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Root);
@@ -280,7 +280,7 @@ impl<T> TreeBuilder<T> {
     ///     Number,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Child);
@@ -307,39 +307,41 @@ impl<T> TreeBuilder<T> {
     /// # Examples
     ///
     /// ```
-    /// use anyhow::Result;
-    /// use syntree::{print, Span, TreeBuilder};
+    /// use syntree::TreeBuilder;
     ///
     /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     /// enum Syntax {
-    ///     Root,
-    ///     Number,
-    ///     Lit,
-    ///     Whitespace,
+    ///     ROOT,
+    ///     NUMBER,
+    ///     LIT,
+    ///     WHITESPACE,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// use Syntax::*;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut b = TreeBuilder::new();
     ///
     /// let c = b.checkpoint();
     ///
-    /// b.open(Syntax::Number);
-    /// b.token(Syntax::Lit, 1);
+    /// b.open(NUMBER);
+    /// b.token(LIT, 1);
     /// b.close()?;
     ///
-    /// b.token(Syntax::Whitespace, 3);
+    /// b.token(WHITESPACE, 3);
     ///
-    /// b.open(Syntax::Number);
-    /// b.token(Syntax::Lit, 2);
-    /// b.token(Syntax::Lit, 2);
+    /// b.open(NUMBER);
+    /// b.token(LIT, 2);
+    /// b.token(LIT, 2);
     /// b.close()?;
     ///
-    /// b.close_at(c, Syntax::Root);
+    /// b.close_at(c, ROOT);
     ///
     /// let tree = b.build()?;
     ///
-    /// let root = tree.first().unwrap();
-    /// assert_eq!(*root.data(), Syntax::Root);
+    /// let root = tree.first().ok_or("missing root")?;
+    ///
+    /// assert_eq!(*root.data(), ROOT);
     /// assert_eq!(root.children().count(), 3);
     /// assert_eq!(root.children().without_tokens().count(), 2);
     /// # Ok(()) }
@@ -359,7 +361,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut a = TreeBuilder::<u32>::new();
     /// a.open(0);
     /// let c = a.checkpoint();
@@ -397,7 +399,7 @@ impl<T> TreeBuilder<T> {
     ///
     /// use Syntax::*;
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut b = TreeBuilder::new();
     ///
     /// let c = b.checkpoint();
@@ -492,7 +494,7 @@ impl<T> TreeBuilder<T> {
     ///     Number,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Child);
@@ -525,7 +527,7 @@ impl<T> TreeBuilder<T> {
     ///     Lit,
     /// }
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open(Syntax::Number);
@@ -538,10 +540,7 @@ impl<T> TreeBuilder<T> {
     /// assert!(matches!(tree.build(), Err(BuildError { .. })));
     /// # Ok(()) }
     /// ```
-    pub fn build(self) -> Result<Tree<T>, BuildError>
-    where
-        T: Clone,
-    {
+    pub fn build(self) -> Result<Tree<T>, BuildError> {
         if !self.parents.is_empty() {
             return Err(BuildError);
         }

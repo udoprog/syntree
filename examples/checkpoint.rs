@@ -22,6 +22,6 @@ fn main() -> Result<()> {
 
     let tree = b.build()?;
 
-    print::print(&mut std::io::stdout(), &tree)?;
+    print::print(std::io::stdout(), &tree)?;
     Ok(())
 }

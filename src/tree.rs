@@ -1,6 +1,6 @@
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::{Children, Node, Walk};
+use crate::{Children, Node, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +32,7 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::<()>::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
@@ -44,58 +44,24 @@ impl<T> Tree<T> {
 
     /// Get all root nodes in the tree.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{Span, TreeBuilder};
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root1");
-    /// tree.open("child1");
-    /// tree.close()?;
-    /// tree.close()?;
-    ///
-    /// tree.open("root2");
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let mut it = tree.children();
-    ///
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("root1"));
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("root2"));
-    /// assert!(it.next().is_none());
-    /// # Ok(()) }
-    /// ```
+    /// See [Children] for documentation.
     pub fn children(&self) -> Children<'_, T> {
         Children::new(self.tree.as_ref(), NonMaxUsize::new(0))
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2",
-    ///             "c3",
-    ///             "c4",
-    ///         },
-    ///         "c5",
-    ///         "c6"
-    ///     }
-    /// };
-    ///
-    /// let nodes = tree.walk().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
-    /// # Ok(()) }
-    /// ```
+    /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'_, T> {
         Walk::new(self.tree.as_ref(), NonMaxUsize::new(0))
+    }
+
+    /// Walk the tree forwards in a depth-first fashion emitting events
+    /// indicating how the tree is being traversed.
+    ///
+    /// See [WalkEvents] for documentation.
+    pub fn walk_events(&self) -> WalkEvents<'_, T> {
+        WalkEvents::new(self.tree.as_ref(), NonMaxUsize::new(0))
     }
 
     /// Get the first child node in the tree.
@@ -103,17 +69,16 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> anyhow::Result<()> {
+    /// use syntree::Span;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
-    ///     "first" => {
-    ///         "child"
-    ///     },
-    ///     "last" => {
-    ///         "child2"
-    ///     }
+    ///     "root",
+    ///     "root2"
     /// };
     ///
-    /// assert_eq!(tree.first().map(|n| *n.data()), Some("first"));
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(*root.data(), "root");
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'_, T>> {

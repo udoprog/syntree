@@ -19,8 +19,8 @@ fn main() -> Result<()> {
         "root2"
     };
 
-    for n in tree.first().into_iter().flat_map(|n| n.walk()) {
-        dbg!(n.data());
+    for (event, n) in tree.walk_events() {
+        println!("{:?}: {:?}", event, n.data());
     }
 
     print::print(std::io::stdout(), &tree)?;

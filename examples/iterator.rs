@@ -1,6 +1,6 @@
 use syntree::TreeBuilder;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tree = TreeBuilder::new();
 
     tree.open("root1");

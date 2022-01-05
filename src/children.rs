@@ -5,6 +5,36 @@ use crate::{Kind, Node, WithoutTokens};
 /// Iterator over the children of a node or tree.
 ///
 /// See [Tree::children][crate::Tree::children] or [Node::children].
+///
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let mut tree = syntree::tree! {
+///     "root" => {
+///         "child1" => {
+///             "child2"
+///         },
+///         "child3"
+///     },
+///     "root2" => {
+///         "child4"
+///     }
+/// };
+///
+/// assert_eq!(
+///     tree.children().map(|n| *n.data()).collect::<Vec<_>>(),
+///     ["root", "root2"]
+/// );
+///
+/// let root = tree.first().ok_or("missing root node")?;
+///
+/// assert_eq!(
+///     root.children().map(|n| *n.data()).collect::<Vec<_>>(),
+///     ["child1", "child3"]
+/// );
+/// # Ok(()) }
+/// ```
 pub struct Children<'a, T> {
     tree: &'a [Links<T>],
     node: Option<NonMaxUsize>,
@@ -16,32 +46,10 @@ impl<'a, T> Children<'a, T> {
         Self { tree, node }
     }
 
-    /// Access the children to this node.
+    /// Construct a [WithoutTokens] iterator from the remainder of this
+    /// iterator. This filters out [Kind::Token] elements.
     ///
-    /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root1");
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let mut it = root.children().without_tokens();
-    ///
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("child1"));
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("child2"));
-    /// assert!(it.next().is_none());
-    /// # Ok(()) }
-    /// ```
+    /// See [WithoutTokens] for documentation.
     pub fn without_tokens(self) -> WithoutTokens<Self> {
         WithoutTokens::new(self)
     }
@@ -52,7 +60,7 @@ impl<'a, T> Children<'a, T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> anyhow::Result<()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     ("t1", 1),
     ///     "child1",

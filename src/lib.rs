@@ -78,7 +78,7 @@
 //!
 //! use Syntax::*;
 //!
-//! # fn main() -> anyhow::Result<()> {
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut b = TreeBuilder::new();
 //!
 //! b.open(OPERATION);
@@ -159,6 +159,9 @@ pub use self::tree::{Kind, Tree};
 
 mod walk;
 pub use self::walk::{Walk, WithDepths};
+
+mod walk_events;
+pub use self::walk_events::{Event, WalkEvents};
 
 mod without_tokens;
 pub use self::without_tokens::WithoutTokens;

@@ -35,7 +35,7 @@ fn main() -> Result<()> {
     }
 
     writeln!(o, "# Tree:")?;
-    syntree::print::print_with_source(&mut o.lock(), &tree, &source)?;
+    syntree::print::print_with_source(o.lock(), &tree, &source)?;
     Ok(())
 }
 

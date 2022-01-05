@@ -3,7 +3,7 @@ use std::fmt;
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
-use crate::{Children, Span, Walk};
+use crate::{Children, Span, Walk, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -26,34 +26,34 @@ impl<'a, T> Node<'a, T> {
         self.links.kind
     }
 
-    /// Calculate the span of the node. If there is no span information
-    /// available, the range returned will be from 0 to [usize::MAX].
+    /// Get the span of the current node. The span of a node is the complete
+    /// span of all its children.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// use syntree::Span;
     ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
     ///
-    /// tree.open("root");
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.span(), Span::new(0, 8));
     ///
-    /// tree.open("number");
-    /// tree.token("number", 5);
-    /// tree.close()?;
-    ///
-    /// tree.open("ident");
-    /// tree.token("ident", 2);
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    ///
-    /// let root = tree.first().unwrap();
-    ///
-    /// assert_eq!(root.span(), Span::new(0, 7));
+    /// let root2 = root.next().ok_or("missing second root")?;
+    /// assert_eq!(root2.span(), Span::new(8, 13));
     /// # Ok(()) }
     /// ```
     pub fn span(&self) -> Span {
@@ -63,23 +63,19 @@ impl<'a, T> Node<'a, T> {
     /// Check if the current node is empty. In that it doesn't have any
     /// children.
     ///
+    /// # Examples
+    ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = syntree::tree! {
+    ///     "root",
+    ///     "root2" => {
+    ///         ("token", 5)
+    ///     }
+    /// };
     ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("first");
-    /// tree.close()?;
-    ///
-    /// tree.open("last");
-    /// tree.token("token", 5);
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    ///
-    /// let first = tree.first().expect("expected first root node");
-    /// let last = first.next().expect("expected last root node");
+    /// let first = tree.first().ok_or("missing first root node")?;
+    /// let last = first.next().ok_or("missing last root node")?;
     ///
     /// assert!(first.is_empty());
     /// assert!(!last.is_empty());
@@ -89,32 +85,9 @@ impl<'a, T> Node<'a, T> {
         self.links.first.is_none()
     }
 
-    /// Access the children to this node.
+    /// Get an iterator over the children of this node.
     ///
-    /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root1");
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let mut it = root.children();
-    ///
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("child1"));
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("child2"));
-    /// assert!(it.next().is_none());
-    /// # Ok(()) }
-    /// ```
+    /// See [Children] for documentation.
     pub fn children(&self) -> Children<'a, T> {
         Children::new(self.tree, self.links.first)
     }
@@ -122,54 +95,44 @@ impl<'a, T> Node<'a, T> {
     /// Walk the subtree forward starting with the first child of the current
     /// node.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2",
-    ///             "c3",
-    ///             "c4",
-    ///         },
-    ///         "c5",
-    ///         "c6"
-    ///     }
-    /// };
-    ///
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let nodes = root.walk().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["c1", "c2", "c3", "c4", "c5", "c6"]);
-    /// # Ok(()) }
-    /// ```
+    /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'a, T> {
         Walk::new(self.tree, self.links.first)
     }
 
+    /// Walk the node forwards in a depth-first fashion emitting events
+    /// indicating how the rest of the tree is being traversed.
+    ///
+    /// See [WalkEvents] for documentation.
+    pub fn walk_events(&self) -> WalkEvents<'_, T> {
+        WalkEvents::new(self.tree.as_ref(), self.links.first)
+    }
+
     /// Get the first child node.
     ///
+    /// # Examples
+    ///
     /// ```
-    /// use syntree::TreeBuilder;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
     ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(*root.data(), "root");
     ///
-    /// tree.open("root1");
-    ///
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// assert_eq!(root.first().map(|n| *n.data()), Some("child1"));
+    /// let number = root.first().ok_or("missing number")?;
+    /// assert_eq!(*number.data(), "number");
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'a, T>> {
@@ -178,31 +141,29 @@ impl<'a, T> Node<'a, T> {
 
     /// Get the next sibling.
     ///
+    /// # Examples
+    ///
     /// ```
-    /// use syntree::TreeBuilder;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     }
+    /// };
     ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(*root.data(), "root");
     ///
-    /// tree.open("root1");
+    /// let number = root.first().ok_or("missing second root")?;
+    /// assert_eq!(*number.data(), "number");
     ///
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    ///
-    /// tree.open("child3");
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let child = root.first().expect("expected first node");
-    /// assert_eq!(*child.data(), "child1");
-    /// assert_eq!(child.next().map(|n| *n.data()), Some("child2"));
+    /// let ident = number.next().ok_or("missing second root")?;
+    /// assert_eq!(*ident.data(), "ident");
     /// # Ok(()) }
     /// ```
     pub fn next(&self) -> Option<Node<'a, T>> {
