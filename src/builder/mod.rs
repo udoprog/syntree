@@ -3,10 +3,10 @@ use std::fmt;
 use std::mem;
 
 use crate::non_max::NonMaxUsize;
+use crate::tree::Links;
+use crate::Kind;
+use crate::Span;
 use crate::Tree;
-
-pub(crate) mod walk;
-use self::walk::Walk;
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
@@ -86,24 +86,6 @@ impl fmt::Display for BuildError {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum LinkKind {
-    Node,
-    Token(usize),
-}
-
-#[derive(Debug)]
-pub(crate) struct Links<T> {
-    /// The data associated with the node.
-    pub(crate) data: T,
-    /// The kind of the element.
-    pub(crate) kind: LinkKind,
-    /// Next sibling id.
-    pub(crate) next: Option<NonMaxUsize>,
-    /// The first child element.
-    pub(crate) first: Option<NonMaxUsize>,
-}
-
 /// A builder for a [Tree].
 ///
 /// This maintains a stack of nodes being built which has to be balanced with
@@ -145,11 +127,13 @@ pub(crate) struct Links<T> {
 #[derive(Debug)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
-    data: Vec<Links<T>>,
+    pub(crate) data: Vec<Links<T>>,
     /// Nodes currently being built.
     stack: Vec<NonMaxUsize>,
     /// The last sibling inserted.
     sibling: Option<NonMaxUsize>,
+    /// The current cursor.
+    cursor: usize,
 }
 
 /// Build a new syntax tree.
@@ -186,6 +170,7 @@ impl<T> TreeBuilder<T> {
             data: Vec::new(),
             stack: Vec::new(),
             sibling: None,
+            cursor: 0,
         }
     }
 
@@ -221,7 +206,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn open(&mut self, data: T) -> Id {
-        let id = self.insert(data, LinkKind::Node);
+        let id = self.insert(data, Kind::Node, Span::point(self.cursor));
         self.stack.push(id);
         Id(id)
     }
@@ -265,6 +250,17 @@ impl<T> TreeBuilder<T> {
         };
 
         self.sibling = Some(head);
+
+        if let Some(parent) = self.stack.last().copied() {
+            if let Some(node) = self.data.get_mut(head.get()) {
+                let end = node.span.end;
+
+                if let Some(parent) = self.data.get_mut(parent.get()) {
+                    parent.span.end = end;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -294,7 +290,10 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn token(&mut self, data: T, len: usize) -> Id {
-        let id = self.insert(data, LinkKind::Token(len));
+        let start = self.cursor;
+        let end = self.cursor + len;
+        self.cursor = end;
+        let id = self.insert(data, Kind::Token, Span::new(start, end));
         self.sibling = Some(id);
         Id(id)
     }
@@ -442,7 +441,7 @@ impl<T> TreeBuilder<T> {
         let links = match self.data.get_mut(id.0.get()) {
             Some(links) => links,
             None => {
-                let id = self.insert(data, LinkKind::Node);
+                let id = self.insert(data, Kind::Node, Span::point(self.cursor));
                 self.sibling = Some(id);
                 return Id(id);
             }
@@ -452,11 +451,28 @@ impl<T> TreeBuilder<T> {
             links,
             Links {
                 data,
-                kind: LinkKind::Node,
+                kind: Kind::Node,
                 next: None,
                 first: Some(child),
+                span: links.span,
             },
         );
+
+        // Adjust span to encapsulate all children.
+        let mut span = links.span;
+
+        if let Some(mut cur) = removed.next.and_then(|id| self.data.get(id.get())) {
+            span = span.join(cur.span);
+
+            while let Some(next) = cur.next.and_then(|id| self.data.get(id.get())) {
+                span = span.join(next.span);
+                cur = next;
+            }
+
+            if let Some(node) = self.data.get_mut(id.0.get()) {
+                node.span = span;
+            }
+        }
 
         self.data.push(removed);
 
@@ -527,7 +543,7 @@ impl<T> TreeBuilder<T> {
     /// assert!(matches!(tree.build(), Err(BuildError { .. })));
     /// # Ok(()) }
     /// ```
-    pub fn build(&self) -> Result<Tree<T>, BuildError>
+    pub fn build(self) -> Result<Tree<T>, BuildError>
     where
         T: Clone,
     {
@@ -535,26 +551,11 @@ impl<T> TreeBuilder<T> {
             return Err(BuildError);
         }
 
-        Ok(crate::convert::builder_to_tree(self))
-    }
-
-    /// Walk over the builder.
-    pub(crate) fn walk(&self) -> Walk<'_, T> {
-        Walk::new(self)
-    }
-
-    /// The length of the tree.
-    pub(crate) fn len(&self) -> usize {
-        self.data.len()
-    }
-
-    /// Get the links corresponding to the given id.
-    pub(crate) fn get(&self, id: usize) -> Option<&Links<T>> {
-        self.data.get(id)
+        Ok(Tree::new(self.data.into()))
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: LinkKind) -> NonMaxUsize {
+    fn insert(&mut self, data: T, kind: Kind, span: Span) -> NonMaxUsize {
         let new = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
 
         let prev = std::mem::replace(&mut self.sibling, None);
@@ -565,16 +566,19 @@ impl<T> TreeBuilder<T> {
             kind,
             next: None,
             first: None,
+            span,
         });
 
-        if let Some(prev) = prev.and_then(|id| self.data.get_mut(id.get())) {
-            prev.next = Some(new);
+        if let Some(node) = prev.and_then(|id| self.data.get_mut(id.get())) {
+            node.next = Some(new);
         }
 
-        if let Some(n) = parent.and_then(|id| self.data.get_mut(id.get())) {
-            if n.first.is_none() {
-                n.first = Some(new);
+        if let Some(node) = parent.and_then(|id| self.data.get_mut(id.get())) {
+            if node.first.is_none() {
+                node.first = Some(new);
             }
+
+            node.span.end = span.end;
         }
 
         new

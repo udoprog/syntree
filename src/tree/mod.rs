@@ -17,18 +17,17 @@ pub enum Kind {
     Token,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
     pub(crate) span: Span,
-    pub(crate) parent: Option<NonMaxUsize>,
     pub(crate) next: Option<NonMaxUsize>,
     pub(crate) first: Option<NonMaxUsize>,
 }
 
 /// A syntax tree.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Tree<T> {
     tree: Box<[Links<T>]>,
 }
@@ -170,3 +169,14 @@ impl<T> Tree<T> {
         Some(Node::new(cur, &self.tree))
     }
 }
+
+impl<T> PartialEq for Tree<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.walk_with_depths().eq(other.walk_with_depths())
+    }
+}
+
+impl<T> Eq for Tree<T> where T: Eq {}

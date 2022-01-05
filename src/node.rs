@@ -241,26 +241,6 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.node.next)
     }
 
-    /// Get the parent node.
-    ///
-    /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = syntree::tree! {
-    ///     "root" => {
-    ///         "child1"
-    ///     }
-    /// };
-    ///
-    /// let child1 = tree.first().and_then(|n| n.first()).expect("expected child node");
-    /// assert_eq!(child1.parent().map(|n| *n.data()), Some("root"));
-    /// # Ok(()) }
-    /// ```
-    pub fn parent(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.node.parent)
-    }
-
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
         let cur = self.tree.get(index?.get())?;
 
@@ -290,3 +270,14 @@ impl<'a, T> Clone for Node<'a, T> {
 }
 
 impl<'a, T> Copy for Node<'a, T> {}
+
+impl<'a, T> PartialEq for Node<'a, T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.node.data == other.node.data && self.node.kind == other.node.kind
+    }
+}
+
+impl<'a, T> Eq for Node<'a, T> where T: Eq {}

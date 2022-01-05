@@ -143,8 +143,6 @@ mod builder;
 
 pub use self::builder::{BuildError, CloseError, Id, TreeBuilder};
 
-mod convert;
-
 pub mod print;
 
 mod node;

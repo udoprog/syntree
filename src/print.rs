@@ -59,7 +59,8 @@ where
     let mut stack = VecDeque::new();
     stack.extend(tree.children().map(|n| (0, n)));
 
-    while let Some((n, node)) = stack.pop_front() {
+    for (n, node) in tree.walk_with_depths() {
+        let n = n * 2;
         let data = node.data();
 
         if let Kind::Token = node.kind() {

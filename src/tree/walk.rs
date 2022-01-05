@@ -9,8 +9,10 @@ pub struct Walk<'a, T> {
     tree: &'a [Links<T>],
     // The current node.
     start: Option<NonMaxUsize>,
-    /// The terminating node that once visited we need to stop.
+    // The terminating node that once visited we need to stop.
     term: Option<NonMaxUsize>,
+    // Parent nodes.
+    parents: Vec<NonMaxUsize>,
 }
 
 impl<'a, T> Walk<'a, T> {
@@ -19,20 +21,26 @@ impl<'a, T> Walk<'a, T> {
         start: Option<NonMaxUsize>,
         term: Option<NonMaxUsize>,
     ) -> Self {
-        Self { tree, start, term }
+        Self {
+            tree,
+            start,
+            term,
+            parents: Vec::new(),
+        }
     }
 
-    fn walk(&self, links: &Links<T>) -> Option<NonMaxUsize> {
-        if let Some(id) = links.first.or(links.next) {
-            return Some(id);
+    fn walk(&mut self, id: NonMaxUsize, links: &Links<T>) -> Option<NonMaxUsize> {
+        if let Some(first) = links.first {
+            self.parents.push(id);
+            return Some(first);
         }
 
-        let mut links = links;
+        if let Some(next) = links.next {
+            return Some(next);
+        }
 
-        while let Some(parent) = links.parent {
-            links = self.tree.get(parent.get())?;
-
-            if let Some(id) = links.next {
+        while let Some(parent) = self.parents.pop() {
+            if let Some(id) = self.tree.get(parent.get())?.next {
                 if self.term == Some(id) {
                     return None;
                 }
@@ -52,7 +60,7 @@ impl<'a, T> Iterator for Walk<'a, T> {
         let id = self.start.take()?;
         let links = self.tree.get(id.get())?;
 
-        if let Some(id) = self.walk(links) {
+        if let Some(id) = self.walk(id, links) {
             self.start = Some(id);
         }
 
@@ -71,7 +79,7 @@ pub struct WalkWithDepths<'a, T> {
     /// The terminating node that once visited we need to stop.
     term: Option<NonMaxUsize>,
     /// The current depth being walked.
-    depth: usize,
+    parents: Vec<NonMaxUsize>,
 }
 
 impl<'a, T> WalkWithDepths<'a, T> {
@@ -84,27 +92,22 @@ impl<'a, T> WalkWithDepths<'a, T> {
             tree,
             start,
             term,
-            depth: 0,
+            parents: Vec::new(),
         }
     }
 
-    fn walk(&mut self, links: &Links<T>) -> Option<NonMaxUsize> {
-        if let Some(id) = links.first {
-            self.depth = self.depth.checked_add(1)?;
-            return Some(id);
+    fn walk(&mut self, id: NonMaxUsize, links: &Links<T>) -> Option<NonMaxUsize> {
+        if let Some(first) = links.first {
+            self.parents.push(id);
+            return Some(first);
         }
 
-        if let Some(id) = links.next {
-            return Some(id);
+        if let Some(next) = links.next {
+            return Some(next);
         }
 
-        let mut links = links;
-
-        while let Some(parent) = links.parent {
-            self.depth = self.depth.checked_sub(1)?;
-            links = self.tree.get(parent.get())?;
-
-            if let Some(id) = links.next {
+        while let Some(parent) = self.parents.pop() {
+            if let Some(id) = self.tree.get(parent.get())?.next {
                 if self.term == Some(id) {
                     return None;
                 }
@@ -122,10 +125,10 @@ impl<'a, T> Iterator for WalkWithDepths<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.start.take()?;
+        let depth = self.parents.len();
         let links = self.tree.get(id.get())?;
-        let depth = self.depth;
 
-        if let Some(id) = self.walk(links) {
+        if let Some(id) = self.walk(id, links) {
             self.start = Some(id);
         }
 
