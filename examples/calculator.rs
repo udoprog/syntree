@@ -132,10 +132,9 @@ mod parsing {
                     }
                 };
 
-                return Some(Token {
-                    len: self.pos.checked_sub(start).expect("length underflow"),
-                    syntax,
-                });
+                let len = self.pos.saturating_sub(start);
+
+                return Some(Token { len, syntax });
             }
 
             None

@@ -40,8 +40,14 @@ impl<'a, T> WithoutTokens<Children<'a, T>> {
     /// assert_eq!(it.span(), Some(Span::new(5, 7)));
     /// # Ok(()) }
     /// ```
-    pub fn span(self) -> Option<Span> {
-        self.iter.span()
+    pub fn span(mut self) -> Option<Span> {
+        let first = self.next().map(|n| n.span());
+        let last = self.next_back().map(|n| n.span());
+
+        match (first, last) {
+            (Some(first), Some(last)) => Some(first.join(last)),
+            (first, last) => first.or(last),
+        }
     }
 
     /// Walk the rest of the tree forwards in a depth-first fashion.
@@ -83,7 +89,7 @@ where
         loop {
             let node = self.iter.next()?;
 
-            if !matches!(node.kind(), Kind::Token(..)) {
+            if !matches!(node.kind(), Kind::Token) {
                 return Some(node);
             }
         }
@@ -98,7 +104,7 @@ where
         loop {
             let node = self.iter.next_back()?;
 
-            if !matches!(node.kind(), Kind::Token(..)) {
+            if !matches!(node.kind(), Kind::Token) {
                 return Some(node);
             }
         }

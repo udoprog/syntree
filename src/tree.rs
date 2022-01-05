@@ -17,13 +17,14 @@ pub enum Kind {
     /// A node.
     Node,
     /// The token and a corresponding span.
-    Token(Span),
+    Token,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
+    pub(crate) span: Span,
     pub(crate) prev: Option<NonMaxUsize>,
     pub(crate) next: Option<NonMaxUsize>,
     pub(crate) first: Option<NonMaxUsize>,
@@ -44,7 +45,7 @@ impl<T> Tree<T> {
     }
 
     /// Calculate the span of the tree. If there is no span information
-    /// available, the range returned will be from 0 to [usize::MAX].
+    /// available, the range returned will be [`Span::point(0)`][Span::point].
     ///
     /// # Examples
     ///
@@ -72,11 +73,7 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn span(&self) -> Span {
-        if let Some(span) = self.children().span() {
-            span
-        } else {
-            Span::new(0, usize::MAX)
-        }
+        self.children().span().unwrap_or(Span::point(0))
     }
 
     /// Check if the current tree is empty. In that it doesn't have any

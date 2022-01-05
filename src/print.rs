@@ -62,18 +62,18 @@ where
     while let Some((indent, n, node)) = stack.pop_front() {
         let data = node.data();
 
-        if let Kind::Token(span) = node.kind() {
-            token(o, data, span, n)?;
+        if let Kind::Token = node.kind() {
+            token(o, data, node.span(), n)?;
             continue;
         }
 
         if node.is_empty() {
-            writeln!(o, "{:indent$}== {:?}", "", data, indent = n)?;
+            writeln!(o, "{:indent$}== {:?}@{}", "", data, node.span(), indent = n)?;
             continue;
         }
 
         if indent {
-            writeln!(o, "{:indent$}>> {:?}", "", data, indent = n)?;
+            writeln!(o, "{:indent$}>> {:?}@{}", "", data, node.span(), indent = n)?;
 
             stack.push_front((false, n, node));
 

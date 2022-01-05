@@ -68,22 +68,14 @@ impl<'a, T> Children<'a, T> {
     /// assert_eq!(it.span(), Some(Span::new(5, 7)));
     /// # Ok(()) }
     /// ```
-    pub fn span(self) -> Option<Span> {
-        let mut it = self.walk();
+    pub fn span(mut self) -> Option<Span> {
+        let first = self.next().map(|n| n.span());
+        let last = self.next_back().map(|n| n.span());
 
-        let start = loop {
-            if let Kind::Token(span) = it.next()?.kind() {
-                break span;
-            }
-        };
-
-        while let Some(node) = it.next_back() {
-            if let Kind::Token(end) = node.kind() {
-                return Some(Span::new(start.start, end.end));
-            }
+        match (first, last) {
+            (Some(first), Some(last)) => Some(first.join(last)),
+            (first, last) => first.or(last),
         }
-
-        Some(start)
     }
 
     /// Walk the rest of the tree forwards in a depth-first fashion.

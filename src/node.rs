@@ -58,11 +58,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn span(&self) -> Span {
-        if let Some(span) = self.children().span() {
-            span
-        } else {
-            Span::new(0, usize::MAX)
-        }
+        self.node.span
     }
 
     /// Check if the current node is empty. In that it doesn't have any

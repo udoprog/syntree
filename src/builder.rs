@@ -3,11 +3,10 @@ use std::fmt;
 use std::mem;
 
 use crate::non_max::NonMaxUsize;
-use crate::tree::Kind;
-use crate::{Span, Tree};
+use crate::Tree;
 
-mod walk;
-pub(crate) use self::walk::Walk;
+pub(crate) mod walk;
+use self::walk::Walk;
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
@@ -87,12 +86,18 @@ impl fmt::Display for BuildError {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum LinkKind {
+    Node,
+    Token(usize),
+}
+
 #[derive(Debug)]
 pub(crate) struct Links<T> {
     /// The data associated with the node.
     pub(crate) data: T,
     /// The kind of the element.
-    pub(crate) kind: Kind,
+    pub(crate) kind: LinkKind,
     /// Next sibling id.
     pub(crate) next: Option<NonMaxUsize>,
     /// The first child element.
@@ -145,8 +150,6 @@ pub struct TreeBuilder<T> {
     stack: Vec<NonMaxUsize>,
     /// The last sibling inserted.
     sibling: Option<NonMaxUsize>,
-    /// The current cursor to the source code being referenced.
-    cursor: usize,
 }
 
 /// Build a new syntax tree.
@@ -183,7 +186,6 @@ impl<T> TreeBuilder<T> {
             data: Vec::new(),
             stack: Vec::new(),
             sibling: None,
-            cursor: 0,
         }
     }
 
@@ -219,7 +221,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn open(&mut self, data: T) -> Id {
-        let id = self.insert(data, Kind::Node);
+        let id = self.insert(data, LinkKind::Node);
         self.stack.push(id);
         Id(id)
     }
@@ -292,9 +294,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn token(&mut self, data: T, len: usize) -> Id {
-        let start = self.cursor;
-        self.cursor = self.cursor.checked_add(len).expect("length overflow");
-        let id = self.insert(data, Kind::Token(Span::new(start, self.cursor)));
+        let id = self.insert(data, LinkKind::Token(len));
         self.sibling = Some(id);
         Id(id)
     }
@@ -442,7 +442,7 @@ impl<T> TreeBuilder<T> {
         let links = match self.data.get_mut(id.0.get()) {
             Some(links) => links,
             None => {
-                let id = self.insert(data, Kind::Node);
+                let id = self.insert(data, LinkKind::Node);
                 self.sibling = Some(id);
                 return Id(id);
             }
@@ -452,7 +452,7 @@ impl<T> TreeBuilder<T> {
             links,
             Links {
                 data,
-                kind: Kind::Node,
+                kind: LinkKind::Node,
                 next: None,
                 first: Some(child),
             },
@@ -549,7 +549,7 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind) -> NonMaxUsize {
+    fn insert(&mut self, data: T, kind: LinkKind) -> NonMaxUsize {
         let new = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
 
         let prev = std::mem::replace(&mut self.sibling, None);
