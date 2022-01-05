@@ -17,3 +17,8 @@ A memory efficient syntax tree for language developers.
 anyhow = "1.0"
 thiserror = "1.0"
 codespan-reporting = "0.11.1"
+
+[workspace] 
+members = [
+    "benches"
+]

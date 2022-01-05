@@ -1,0 +1,17 @@
+[package]
+name = "benches"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.8.4"
+
+# benchmark targets
+syntree = {path = ".."}
+rowan = "0.15.2"
+
+[[bench]]
+name = "comparison"
+harness = false
