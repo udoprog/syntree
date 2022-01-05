@@ -18,7 +18,7 @@ to be an efficient replacement for it (read more below).
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.4.3"
+syntree = "0.5.0"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
@@ -46,17 +46,14 @@ like this:
 > ```
 
 ```
->> NUMBER
+NUMBER@0..3
   NUMBER@0..3 "128"
-<< NUMBER
 WHITESPACE@3..4 " "
->> OPERATOR
+OPERATOR@4..5
   PLUS@4..5 "+"
-<< OPERATOR
 WHITESPACE@5..6 " "
->> NUMBER
+NUMBER@6..8
   NUMBER@6..8 "64"
-<< NUMBER
 ```
 
 The primary difference between `syntree` and [`rowan`] is that *we don't
