@@ -119,7 +119,7 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [WalkEvents] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T> {
-        WalkEvents::new(self.tree.as_ref(), self.links.first)
+        WalkEvents::new(self.tree, self.links.first)
     }
 
     /// Get the first child node.
