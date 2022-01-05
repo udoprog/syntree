@@ -119,7 +119,6 @@
 //!
 //! let tree = b.build()?;
 //!
-//! assert_eq!(tree.span().range(), 0..18);
 //! assert_eq!(tree.children().count(), 1);
 //! # Ok(()) }
 //! ```
@@ -155,7 +154,7 @@ mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, Kind, Tree, Walk};
+pub use self::tree::{Children, Kind, Tree, Walk, WalkWithDepths};
 
 mod without_tokens;
 pub use self::without_tokens::WithoutTokens;

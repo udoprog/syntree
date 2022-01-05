@@ -74,7 +74,7 @@ where
 
         writeln!(o, "{:indent$}{:?}@{}", "", data, node.span(), indent = n)?;
 
-        for out in node.children().rev() {
+        for out in node.children() {
             stack.push_front((n + 2, out));
         }
     }

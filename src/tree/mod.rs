@@ -5,7 +5,7 @@ mod children;
 pub use self::children::Children;
 
 mod walk;
-pub use self::walk::Walk;
+pub use self::walk::{Walk, WalkWithDepths};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,55 +22,21 @@ pub(crate) struct Links<T> {
     pub(crate) data: T,
     pub(crate) kind: Kind,
     pub(crate) span: Span,
-    pub(crate) prev: Option<NonMaxUsize>,
+    pub(crate) parent: Option<NonMaxUsize>,
     pub(crate) next: Option<NonMaxUsize>,
     pub(crate) first: Option<NonMaxUsize>,
-    pub(crate) last: Option<NonMaxUsize>,
 }
 
 /// A syntax tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tree<T> {
     tree: Box<[Links<T>]>,
-    last: Option<NonMaxUsize>,
 }
 
 impl<T> Tree<T> {
     /// Construct a new tree.
-    pub(crate) fn new(tree: Box<[Links<T>]>, last: Option<NonMaxUsize>) -> Self {
-        Self { tree, last }
-    }
-
-    /// Calculate the span of the tree. If there is no span information
-    /// available, the range returned will be [`Span::point(0)`][Span::point].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{Span, TreeBuilder};
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root");
-    ///
-    /// tree.open("number");
-    /// tree.token("number", 5);
-    /// tree.close()?;
-    ///
-    /// tree.open("ident");
-    /// tree.token("ident", 2);
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    ///
-    /// assert_eq!(tree.span(), Span::new(0, 7));
-    /// # Ok(()) }
-    /// ```
-    pub fn span(&self) -> Span {
-        self.children().span().unwrap_or(Span::point(0))
+    pub(crate) fn new(tree: Box<[Links<T>]>) -> Self {
+        Self { tree }
     }
 
     /// Check if the current tree is empty. In that it doesn't have any
@@ -88,7 +54,7 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.last.is_none()
+        self.tree.is_empty()
     }
 
     /// Get all root nodes in the tree.
@@ -121,11 +87,10 @@ impl<T> Tree<T> {
         Children {
             tree: self.tree.as_ref(),
             start: NonMaxUsize::new(0),
-            end: self.last,
         }
     }
 
-    /// Walk the rest of the tree forwards in a depth-first fashion.
+    /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
     /// # Examples
     ///
@@ -147,8 +112,14 @@ impl<T> Tree<T> {
     /// assert_eq!(nodes, vec!["root", "c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
+    pub fn walk(&self) -> Walk<'_, T> {
+        Walk::new(self.tree.as_ref(), NonMaxUsize::new(0), None)
+    }
+
+    /// Walk the tree forwards in a depth-first fashion visiting every node
+    /// once including the depth of the node being walked.
     ///
-    /// Walking backwards.
+    /// # Examples
     ///
     /// ```
     /// # fn main() -> anyhow::Result<()> {
@@ -164,15 +135,12 @@ impl<T> Tree<T> {
     ///     }
     /// };
     ///
-    /// let nodes = tree.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["c6", "c5", "c4", "c3", "c2", "c1", "root"]);
+    /// let nodes = tree.walk_with_depths().map(|(d, n)| (d, *n.data())).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec![(0, "root"), (1, "c1"), (2, "c2"), (2, "c3"), (2, "c4"), (1, "c5"), (1, "c6")]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(&self) -> Walk<'_, T> {
-        Walk {
-            tree: self.tree.as_ref(),
-            range: self.range(self.last),
-        }
+    pub fn walk_with_depths(&self) -> WalkWithDepths<'_, T> {
+        WalkWithDepths::new(self.tree.as_ref(), NonMaxUsize::new(0), None)
     }
 
     /// Get the first child node in the tree.
@@ -197,38 +165,8 @@ impl<T> Tree<T> {
         self.node_at(NonMaxUsize::new(0))
     }
 
-    /// Get the last child node in the tree.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "first" => {
-    ///         "child"
-    ///     },
-    ///     "last" => {
-    ///         "child2"
-    ///     }
-    /// };
-    ///
-    /// assert_eq!(tree.last().map(|n| *n.data()), Some("last"));
-    /// # Ok(()) }
-    /// ```
-    pub fn last(&self) -> Option<Node<'_, T>> {
-        self.node_at(self.last)
-    }
-
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {
         let cur = self.tree.get(index?.get())?;
         Some(Node::new(cur, &self.tree))
-    }
-
-    fn range(&self, mut end: Option<NonMaxUsize>) -> Option<(usize, usize)> {
-        while let Some(last) = self.tree.get(end?.get())?.last {
-            end = Some(last);
-        }
-
-        Some((0, end?.get()))
     }
 }

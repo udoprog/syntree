@@ -7,23 +7,11 @@ pub(crate) fn builder_to_tree<T>(b: &TreeBuilder<T>) -> tree::Tree<T>
 where
     T: Clone,
 {
-    let mut tree = Vec::<tree::Links<T>>::new();
-    let mut last = None;
+    let mut tree = Vec::<tree::Links<T>>::with_capacity(b.len());
 
     for step in b.walk() {
         match step {
             Dir::Next(next) => {
-                if next.parent.is_none() {
-                    // The last top-level item in the tree.
-                    last = Some(next.id);
-                }
-
-                if next.links.next.is_none() {
-                    if let Some(parent) = next.parent.and_then(|id| tree.get_mut(id.get())) {
-                        parent.last = Some(next.id);
-                    }
-                }
-
                 if let Some(node) = next.sibling.and_then(|id| tree.get_mut(id.get())) {
                     node.next = Some(next.id);
                 }
@@ -32,10 +20,9 @@ where
                     data: next.links.data.clone(),
                     kind: next.kind,
                     span: next.span,
-                    prev: next.sibling,
+                    parent: next.parent,
                     next: None,
                     first: next.first,
-                    last: None,
                 });
             }
             Dir::Up(step) => {
@@ -46,5 +33,5 @@ where
         }
     }
 
-    tree::Tree::new(tree.into(), last)
+    tree::Tree::new(tree.into())
 }

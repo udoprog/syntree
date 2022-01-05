@@ -1,30 +1,25 @@
 use anyhow::Result;
 use syntree::print;
 
-#[derive(Debug, Clone, Copy)]
-enum Syntax {
-    Root,
-    Operation,
-    Number,
-    Plus,
-}
-
 fn main() -> Result<()> {
     let tree = syntree::tree! {
-        Syntax::Root => {
-            Syntax::Operation => {
-                Syntax::Operation => {
-                    (Syntax::Number, 4),
-                    (Syntax::Plus, 1),
-                    (Syntax::Number, 5)
+        "root" => {
+            "child1" => {
+                "nested1" => {
+                    ("token1", 4),
+                    ("token2", 1),
+                    ("token3", 5)
                 },
-                (Syntax::Plus, 1),
-                (Syntax::Number, 5)
+                ("token4", 1),
+                ("token5", 5)
+            },
+            "child2" => {
             }
-        }
+        },
+        "root2"
     };
 
-    for n in tree.walk() {
+    for n in tree.first().into_iter().flat_map(|n| n.walk()) {
         dbg!(n.data());
     }
 

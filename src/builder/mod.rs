@@ -543,6 +543,11 @@ impl<T> TreeBuilder<T> {
         Walk::new(self)
     }
 
+    /// The length of the tree.
+    pub(crate) fn len(&self) -> usize {
+        self.data.len()
+    }
+
     /// Get the links corresponding to the given id.
     pub(crate) fn get(&self, id: usize) -> Option<&Links<T>> {
         self.data.get(id)

@@ -1,10 +1,8 @@
 use std::fmt;
 
 use crate::non_max::NonMaxUsize;
-use crate::{
-    tree::{Kind, Links},
-    Children, Span, Walk,
-};
+use crate::tree::{Kind, Links};
+use crate::{Children, Span, Walk, WalkWithDepths};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -80,19 +78,13 @@ impl<'a, T> Node<'a, T> {
     /// let tree = tree.build()?;
     ///
     /// let first = tree.first().expect("expected first root node");
-    /// let last = tree.last().expect("expected last root node");
+    /// let last = first.next().expect("expected last root node");
     ///
     /// assert!(first.is_empty());
     /// assert!(!last.is_empty());
     /// # Ok(()) }
     /// ```
     pub fn is_empty(&self) -> bool {
-        if cfg!(debug_assertions) {
-            if self.node.first.is_none() {
-                debug_assert_eq!(self.node.last, None);
-            }
-        }
-
         self.node.first.is_none()
     }
 
@@ -126,11 +118,11 @@ impl<'a, T> Node<'a, T> {
         Children {
             tree: self.tree,
             start: self.node.first,
-            end: self.node.last,
         }
     }
 
-    /// Walk the rest of the tree forwards in a depth-first fashion.
+    /// Walk the subtree forward starting with the first child of the current
+    /// node.
     ///
     /// # Examples
     ///
@@ -154,8 +146,15 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(nodes, vec!["c1", "c2", "c3", "c4", "c5", "c6"]);
     /// # Ok(()) }
     /// ```
+    pub fn walk(&self) -> Walk<'a, T> {
+        Walk::new(self.tree, self.node.first, self.node.next)
+    }
+
+    /// Walk the subtree forward starting with the first child of the current
+    /// node returning the depths of the nodes being walked relative to the
+    /// current node.
     ///
-    /// Iterate backwards:
+    /// # Examples
     ///
     /// ```
     /// # fn main() -> anyhow::Result<()> {
@@ -173,12 +172,12 @@ impl<'a, T> Node<'a, T> {
     ///
     /// let root = tree.first().expect("expected root node");
     ///
-    /// let nodes = root.walk().rev().map(|n| *n.data()).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec!["c6", "c5", "c4", "c3", "c2", "c1"]);
+    /// let nodes = root.walk_with_depths().map(|(d, n)| (d, *n.data())).collect::<Vec<_>>();
+    /// assert_eq!(nodes, vec![(0, "c1"), (1, "c2"), (1, "c3"), (1, "c4"), (0, "c5"), (0, "c6")]);
     /// # Ok(()) }
     /// ```
-    pub fn walk(&self) -> Walk<'a, T> {
-        self.children().walk()
+    pub fn walk_with_depths(&self) -> WalkWithDepths<'a, T> {
+        WalkWithDepths::new(self.tree, self.node.first, self.node.next)
     }
 
     /// Get the first child node.
@@ -207,34 +206,6 @@ impl<'a, T> Node<'a, T> {
     /// ```
     pub fn first(&self) -> Option<Node<'a, T>> {
         self.node_at(self.node.first)
-    }
-
-    /// Get the last child node.
-    ///
-    /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root1");
-    ///
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// assert_eq!(root.last().map(|n| *n.data()), Some("child2"));
-    /// # Ok(()) }
-    /// ```
-    pub fn last(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.node.last)
     }
 
     /// Get the next sibling.
@@ -270,37 +241,24 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.node.next)
     }
 
-    /// Get the previous sibling.
+    /// Get the parent node.
     ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> anyhow::Result<()> {
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::tree! {
+    ///     "root" => {
+    ///         "child1"
+    ///     }
+    /// };
     ///
-    /// tree.open("root1");
-    ///
-    /// tree.open("child1");
-    /// tree.close()?;
-    ///
-    /// tree.open("child2");
-    /// tree.close()?;
-    ///
-    /// tree.open("child3");
-    /// tree.close()?;
-    ///
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let child = root.last().expect("expected last node");
-    /// assert_eq!(*child.data(), "child3");
-    /// assert_eq!(child.prev().map(|n| *n.data()), Some("child2"));
+    /// let child1 = tree.first().and_then(|n| n.first()).expect("expected child node");
+    /// assert_eq!(child1.parent().map(|n| *n.data()), Some("root"));
     /// # Ok(()) }
     /// ```
-    pub fn prev(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.node.prev)
+    pub fn parent(&self) -> Option<Node<'a, T>> {
+        self.node_at(self.node.parent)
     }
 
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'a, T>> {

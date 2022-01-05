@@ -360,9 +360,9 @@ mod eval {
         use EvalErrorKind::*;
 
         let mut it = tree.children().without_tokens();
-        let tree_span = tree.span();
+        let root_span = Span::new(0, source.len());
 
-        let initial = expect!(tree_span, it.next(), NUMBER, NUMBER);
+        let initial = expect!(root_span, it.next(), NUMBER, NUMBER);
         let span = initial.span();
         let mut n = source[span.range()]
             .parse::<i64>()
@@ -382,7 +382,7 @@ mod eval {
                 None => return Err(EvalError::new(span, ExpectedOperator)),
             };
 
-            let arg = expect!(tree_span, it.next(), NUMBER, NUMBER);
+            let arg = expect!(root_span, it.next(), NUMBER, NUMBER);
             let span = arg.span();
             let arg = source[arg.span().range()]
                 .parse::<i64>()
