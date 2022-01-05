@@ -44,17 +44,14 @@
 //! > ```
 //!
 //! ```text
-//! >> NUMBER
+//! NUMBER@0..3
 //!   NUMBER@0..3 "128"
-//! << NUMBER
 //! WHITESPACE@3..4 " "
-//! >> OPERATOR
+//! OPERATOR@4..5
 //!   PLUS@4..5 "+"
-//! << OPERATOR
 //! WHITESPACE@5..6 " "
-//! >> NUMBER
+//! NUMBER@6..8
 //!   NUMBER@6..8 "64"
-//! << NUMBER
 //! ```
 //!
 //! The primary difference between `syntree` and [`rowan`] is that *we don't
@@ -158,4 +155,7 @@ mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, Kind, Tree, Walk, WithoutTokens};
+pub use self::tree::{Children, Kind, Tree, Walk};
+
+mod without_tokens;
+pub use self::without_tokens::WithoutTokens;

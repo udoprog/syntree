@@ -1,6 +1,6 @@
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Links, Node, Walk, WithoutTokens};
-use crate::{Kind, Span};
+use crate::tree::{Links, Node, Walk};
+use crate::{Kind, Span, WithoutTokens};
 
 /// Iterator over the children of a node or tree.
 ///

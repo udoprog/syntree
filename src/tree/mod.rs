@@ -1,9 +1,6 @@
 use crate::non_max::NonMaxUsize;
 use crate::{Node, Span};
 
-mod without_tokens;
-pub use self::without_tokens::WithoutTokens;
-
 mod children;
 pub use self::children::Children;
 

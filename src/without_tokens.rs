@@ -1,8 +1,6 @@
-use crate::tree::{Kind, Node};
-use crate::{Children, Span, Walk};
+use crate::{Children, Kind, Node, Span, Walk};
 
-/// Iterator over the children of a [Node] or [Tree]. This excludes [Kind::Token]
-/// nodes.
+/// Wrapped around an iterator that excludes [Kind::Token] nodes.
 ///
 /// See [Children::without_tokens].
 pub struct WithoutTokens<I> {

@@ -13,7 +13,7 @@ where
     T: Debug,
 {
     print_with_callback(o, tree, |o, data, span, indent| {
-        writeln!(o, "{:indent$}{:?} {}", "", data, span, indent = indent)
+        writeln!(o, "{:indent$}+ {:?} {}", "", data, span, indent = indent)
     })
 }
 
@@ -57,9 +57,9 @@ where
     T: Debug,
 {
     let mut stack = VecDeque::new();
-    stack.extend(tree.children().map(|n| (true, 0, n)));
+    stack.extend(tree.children().map(|n| (0, n)));
 
-    while let Some((indent, n, node)) = stack.pop_front() {
+    while let Some((n, node)) = stack.pop_front() {
         let data = node.data();
 
         if let Kind::Token = node.kind() {
@@ -68,20 +68,14 @@ where
         }
 
         if node.is_empty() {
-            writeln!(o, "{:indent$}== {:?}@{}", "", data, node.span(), indent = n)?;
+            writeln!(o, "{:indent$}{:?}@{}", "", data, node.span(), indent = n)?;
             continue;
         }
 
-        if indent {
-            writeln!(o, "{:indent$}>> {:?}@{}", "", data, node.span(), indent = n)?;
+        writeln!(o, "{:indent$}{:?}@{}", "", data, node.span(), indent = n)?;
 
-            stack.push_front((false, n, node));
-
-            for out in node.children().rev() {
-                stack.push_front((true, n + 2, out));
-            }
-        } else {
-            writeln!(o, "{:indent$}<< {:?}", "", data, indent = n)?;
+        for out in node.children().rev() {
+            stack.push_front((n + 2, out));
         }
     }
 
