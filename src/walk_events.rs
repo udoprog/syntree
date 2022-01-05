@@ -99,6 +99,10 @@ impl<'a, T> WalkEvents<'a, T> {
     ///
     /// # Examples
     ///
+    /// Somewhat unintuitively if you want to know the depth of the next element
+    /// from the iterator you need to query the depth *before* advancing the
+    /// iterator.
+    ///
     /// ```
     /// use syntree::Event::*;
     ///
@@ -113,18 +117,26 @@ impl<'a, T> WalkEvents<'a, T> {
     /// };
     ///
     /// let mut it = tree.walk_events();
+    /// let mut depth = it.depth();
+    ///
+    /// let mut nodes = Vec::new();
+    ///
+    /// while let Some((event, node)) = it.next() {
+    ///     // Only register each node once.
+    ///     if !matches!(event, Up) {
+    ///         nodes.push((depth, *node.data()));
+    ///     }
+    ///
+    ///     // Query the *next* depth here.
+    ///     depth = it.depth();
+    /// }
     ///
     /// assert_eq!(it.depth(), 0);
-    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Next, "root")));
-    /// assert_eq!(it.depth(), 1);
-    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Down, "c1")));
-    /// assert_eq!(it.depth(), 2);
-    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Down, "c2")));
-    /// assert_eq!(it.depth(), 2);
-    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Next, "c3")));
-    /// assert_eq!(it.depth(), 1);
-    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Up, "c1")));
-    /// assert_eq!(it.depth(), 0);
+    ///
+    /// assert_eq!(
+    ///     nodes,
+    ///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]
+    /// );
     /// # Ok(()) }
     /// ```
     pub fn depth(&self) -> usize {
