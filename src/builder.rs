@@ -6,6 +6,9 @@ use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
 use crate::{Span, Tree};
 
+mod walk;
+pub(crate) use self::walk::Walk;
+
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
 ///
@@ -533,6 +536,11 @@ impl<T> TreeBuilder<T> {
         }
 
         Ok(crate::convert::builder_to_tree(self))
+    }
+
+    /// Walk over the builder.
+    pub(crate) fn walk(&self) -> Walk<'_, T> {
+        Walk::new(self)
     }
 
     /// Get the links corresponding to the given id.
