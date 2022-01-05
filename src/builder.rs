@@ -329,7 +329,7 @@ impl<T> TreeBuilder<T> {
     /// b.token("lit", 2);
     /// b.close()?;
     ///
-    /// b.close_at(c, "root");
+    /// b.close_at(c, "root")?;
     ///
     /// let tree = b.build()?;
     ///
@@ -348,20 +348,6 @@ impl<T> TreeBuilder<T> {
     ///
     /// The checkpoint being closed *must* be a sibling. Otherwise a
     /// [TreeBuilderError::CloseAtError] will be raised.
-    ///
-    /// ```
-    /// use syntree::{TreeBuilder, TreeBuilderError};
-    ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut tree = TreeBuilder::new();
-    /// let c = tree.checkpoint();
-    ///
-    /// tree.open("child");
-    /// tree.close()?;
-    ///
-    /// assert_eq!(tree.close_at(c, "root"), Err(TreeBuilderError::CloseAtError));
-    /// # Ok(()) }
-    /// ```
     ///
     /// # Examples
     ///
@@ -416,6 +402,8 @@ impl<T> TreeBuilder<T> {
             }
         };
 
+        let needs_restructuring = self.sibling != Some(id.0);
+
         let removed = mem::replace(
             links,
             Links {
@@ -427,31 +415,33 @@ impl<T> TreeBuilder<T> {
             },
         );
 
-        // Adjust span to encapsulate all children and check that we just
-        // inserted ourselves in the right location.
-        let start = links.span.start;
+        if needs_restructuring {
+            // Adjust span to encapsulate all children and check that we just
+            // inserted ourselves in the right location.
+            let start = links.span.start;
 
-        let sibling = self
-            .tree
-            .node_at(self.sibling)
-            .ok_or(TreeBuilderError::CloseAtError)?;
+            let sibling = self
+                .tree
+                .node_at(self.sibling)
+                .ok_or(TreeBuilderError::CloseAtError)?;
 
-        if let Some(mut node) = self.tree.node_at(removed.next) {
-            while let Some(next) = node.next() {
-                node = next;
-            }
+            if let Some(mut node) = self.tree.node_at(removed.next) {
+                while let Some(next) = node.next() {
+                    node = next;
+                }
 
-            let span = Span::new(start, node.span().end);
+                let span = Span::new(start, node.span().end);
 
-            if !sibling.is_same(&node) {
+                if !sibling.is_same(&node) {
+                    return Err(TreeBuilderError::CloseAtError);
+                }
+
+                if let Some(node) = self.tree.get_mut(id.0) {
+                    node.span = span;
+                }
+            } else if !sibling.is_same_as_links(&removed) {
                 return Err(TreeBuilderError::CloseAtError);
             }
-
-            if let Some(node) = self.tree.get_mut(id.0) {
-                node.span = span;
-            }
-        } else if !sibling.is_same_as_links(&removed) {
-            return Err(TreeBuilderError::CloseAtError);
         }
 
         self.tree.push(removed);

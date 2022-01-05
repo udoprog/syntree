@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{Rng, RngCore};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{Tree, TreeBuilder};
+use syntree::{Tree, TreeBuilder, TreeBuilderError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -34,7 +34,7 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree(strings: &[Box<str>], count: usize) -> Tree<SyntaxKind> {
+fn syntree(strings: &[Box<str>], count: usize) -> Result<Tree<SyntaxKind>, TreeBuilderError> {
     let mut builder = TreeBuilder::new();
 
     let c = builder.checkpoint();
@@ -43,8 +43,8 @@ fn syntree(strings: &[Box<str>], count: usize) -> Tree<SyntaxKind> {
         builder.token(STRING, s.len());
     }
 
-    builder.close_at(c, ROOT);
-    builder.build().unwrap()
+    builder.close_at(c, ROOT)?;
+    builder.build()
 }
 
 fn rowan(strings: &[Box<str>], count: usize) -> SyntaxNode<Lang> {
@@ -64,7 +64,9 @@ fn rowan(strings: &[Box<str>], count: usize) -> SyntaxNode<Lang> {
 fn rowan_benchmark(c: &mut Criterion) {
     let sources = generate_random(100, 5, 20);
 
-    c.bench_function("syntree", |b| b.iter(|| syntree(&sources, 1000000)));
+    c.bench_function("syntree", |b| {
+        b.iter(|| syntree(&sources, 1000000).expect("failed to build tree"))
+    });
     c.bench_function("rowan", |b| b.iter(|| rowan(&sources, 1000000)));
 }
 
