@@ -59,77 +59,77 @@ NUMBER@6..8
 The primary difference between `syntree` and [`rowan`] is that *we don't
 store the original source* in the syntax tree. Instead, the user of the
 library is responsible for providing it as necessary. Like when calling
-[print_with_source].
+[`print_with_source`].
 
-The API for constructing a syntax tree is provided through [TreeBuilder]
+The API for constructing a syntax tree is provided through [`TreeBuilder`]
 which provides streaming builder methods. Internally the builder is
 represented as a contiguous slab of memory. Once a tree is built the
-structure of the tree can be queried through the [Tree] type.
+structure of the tree can be queried through the [`Tree`] type.
+
+Note that below, [`syntree::tree!`] is only a helper which simplifies
+building trees for examples. It corresponds exactly to performing the
+corresponding [`open`] and [`close`] calls on [`TreeBuilder`].
 
 ```rust
 use syntree::{Span, TreeBuilder};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
-    OPERATION,
     NUMBER,
-    PLUS,
-    MINUS,
-    WHITESPACE,
+    LIT,
+    NESTED,
 }
 
 use Syntax::*;
 
 let mut b = TreeBuilder::new();
 
-b.open(OPERATION);
-
-b.open(OPERATION);
-
 b.open(NUMBER);
-b.token(NUMBER, 4);
-b.close()?;
+b.token(LIT, 1);
+b.token(LIT, 3);
 
-b.token(WHITESPACE, 1);
-
-b.open(PLUS);
-b.token(PLUS, 1);
-b.close()?;
-
-b.token(WHITESPACE, 1);
-
-b.open(NUMBER);
-b.token(NUMBER, 5);
-b.close()?;
-
-b.close()?;
-
-b.token(WHITESPACE, 1);
-
-b.open(MINUS);
-b.token(MINUS, 1);
-b.close()?;
-
-b.token(WHITESPACE, 1);
-
-b.open(NUMBER);
-b.token(NUMBER, 3);
+b.open(NESTED);
+b.token(LIT, 1);
 b.close()?;
 
 b.close()?;
 
 let tree = b.build()?;
 
-assert_eq!(tree.children().count(), 1);
+let expected = syntree::tree! {
+    NUMBER => {
+        (LIT, 1),
+        (LIT, 3),
+        NESTED => {
+            (LIT, 1)
+        }
+    }
+};
+
+assert_eq!(tree, expected);
+
+let number = tree.first().ok_or("missing number")?;
+assert_eq!(number.span(), Span::new(0, 5));
 ```
 
-[abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+Note how the resulting [`Span`] for `NUMBER` corresponds to the full span of
+its `LIT` children. Including the ones within `NESTED`.
+
+Trees are usually constructed by parsing an input. This library encourages
+the use of a [handwritten pratt parser]. See the [calculator example] for a
+complete use case.
+
+[`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
+[`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
+[`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 [`rowan`]: https://docs.rs/rowan/latest/rowan/
-[Span]: https://docs.rs/syntree/latest/syntree/struct.Span.html
+[`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
+[`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
+[`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
+[abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
 [could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
-[print_with_source]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
-[TreeBuilder]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
-[Tree]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
+[handwritten pratt parser]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+[`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 
 License: MIT/Apache-2.0
