@@ -424,6 +424,12 @@ impl<T> TreeBuilder<T> {
             }
         };
 
+        // We attempt to restructure the current node, unless it is an immediate
+        // and sole sibling - which it is if it was just inserted into
+        // next.sibling.
+        //
+        // The primary purpose of restructuring is to calculate the span of the
+        // range of nodes we are wrapping.
         let needs_restructuring = self.sibling != Some(id.0);
 
         let removed = mem::replace(
@@ -438,32 +444,8 @@ impl<T> TreeBuilder<T> {
         );
 
         if needs_restructuring {
-            // Adjust span to encapsulate all children and check that we just
-            // inserted ourselves in the right location.
             let start = links.span.start;
-
-            let sibling = self
-                .tree
-                .node_at(self.sibling)
-                .ok_or(TreeBuilderError::CloseAtError)?;
-
-            if let Some(mut node) = self.tree.node_at(removed.next) {
-                while let Some(next) = node.next() {
-                    node = next;
-                }
-
-                let span = Span::new(start, node.span().end);
-
-                if !sibling.is_same(&node) {
-                    return Err(TreeBuilderError::CloseAtError);
-                }
-
-                if let Some(node) = self.tree.get_mut(id.0) {
-                    node.span = span;
-                }
-            } else if !sibling.is_same_as_links(&removed) {
-                return Err(TreeBuilderError::CloseAtError);
-            }
+            self.restructure_close_at(id.0, start, &removed)?;
         }
 
         self.tree.push(removed);
@@ -471,6 +453,41 @@ impl<T> TreeBuilder<T> {
         // The current sibling is the newly replaced node in the tree.
         self.sibling = Some(id.0);
         Ok(Id(id.0))
+    }
+
+    // Adjust span to encapsulate all children and check that we just inserted
+    // the checkpointed node in the right location which should be the tail
+    // sibling of the replaced node.
+    fn restructure_close_at(
+        &mut self,
+        id: NonMaxUsize,
+        start: usize,
+        removed: &Links<T>,
+    ) -> Result<(), TreeBuilderError> {
+        let sibling = self
+            .tree
+            .node_at(self.sibling)
+            .ok_or(TreeBuilderError::CloseAtError)?;
+
+        if let Some(mut node) = self.tree.node_at(removed.next) {
+            while let Some(next) = node.next() {
+                node = next;
+            }
+
+            let span = Span::new(start, node.span().end);
+
+            if !sibling.is_same(&node) {
+                return Err(TreeBuilderError::CloseAtError);
+            }
+
+            if let Some(node) = self.tree.get_mut(id) {
+                node.span = span;
+            }
+        } else if !sibling.is_same_as_links(&removed) {
+            return Err(TreeBuilderError::CloseAtError);
+        }
+
+        Ok(())
     }
 
     /// Build a [Tree] from the current state of the builder.
