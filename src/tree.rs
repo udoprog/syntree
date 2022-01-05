@@ -1,11 +1,6 @@
+use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::{Node, Span};
-
-mod children;
-pub use self::children::Children;
-
-mod walk;
-pub use self::walk::{Walk, WithDepths};
+use crate::{Children, Node, Walk};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,15 +10,6 @@ pub enum Kind {
     Node,
     /// The token and a corresponding span.
     Token,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct Links<T> {
-    pub(crate) data: T,
-    pub(crate) kind: Kind,
-    pub(crate) span: Span,
-    pub(crate) next: Option<NonMaxUsize>,
-    pub(crate) first: Option<NonMaxUsize>,
 }
 
 /// A syntax tree.
@@ -83,10 +69,7 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn children(&self) -> Children<'_, T> {
-        Children {
-            tree: self.tree.as_ref(),
-            start: NonMaxUsize::new(0),
-        }
+        Children::new(self.tree.as_ref(), NonMaxUsize::new(0))
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
@@ -112,7 +95,7 @@ impl<T> Tree<T> {
     /// # Ok(()) }
     /// ```
     pub fn walk(&self) -> Walk<'_, T> {
-        Walk::new(self.tree.as_ref(), NonMaxUsize::new(0), None)
+        Walk::new(self.tree.as_ref(), NonMaxUsize::new(0))
     }
 
     /// Get the first child node in the tree.
@@ -142,11 +125,6 @@ impl<T> Tree<T> {
         self.tree.len()
     }
 
-    /// Get a reference to an element in the tree.
-    pub(crate) fn get(&mut self, id: NonMaxUsize) -> Option<&Links<T>> {
-        self.tree.get(id.get())
-    }
-
     /// Get a mutable reference to an element in the tree.
     pub(crate) fn get_mut(&mut self, id: NonMaxUsize) -> Option<&mut Links<T>> {
         self.tree.get_mut(id.get())
@@ -157,7 +135,13 @@ impl<T> Tree<T> {
         self.tree.push(links);
     }
 
-    fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {
+    /// Optionally get the links at the given location.
+    pub(crate) fn links_at_mut(&mut self, index: Option<NonMaxUsize>) -> Option<&mut Links<T>> {
+        self.tree.get_mut(index?.get())
+    }
+
+    /// Construct a node at the given location.
+    pub(crate) fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {
         let cur = self.tree.get(index?.get())?;
         Some(Node::new(cur, &self.tree))
     }

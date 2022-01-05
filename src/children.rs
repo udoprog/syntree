@@ -1,16 +1,21 @@
+use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Links, Node};
-use crate::{Kind, WithoutTokens};
+use crate::{Kind, Node, WithoutTokens};
 
 /// Iterator over the children of a node or tree.
 ///
-/// See [Tree::children][crate::Tree::children].
+/// See [Tree::children][crate::Tree::children] or [Node::children].
 pub struct Children<'a, T> {
-    pub(crate) tree: &'a [Links<T>],
-    pub(crate) start: Option<NonMaxUsize>,
+    tree: &'a [Links<T>],
+    node: Option<NonMaxUsize>,
 }
 
 impl<'a, T> Children<'a, T> {
+    /// Construct a new child iterator.
+    pub(crate) fn new(tree: &'a [Links<T>], node: Option<NonMaxUsize>) -> Self {
+        Self { tree, node }
+    }
+
     /// Access the children to this node.
     ///
     /// ```
@@ -65,8 +70,8 @@ impl<'a, T> Children<'a, T> {
     /// ```
     pub fn next_node(&mut self) -> Option<Node<'a, T>> {
         loop {
-            let node = self.tree.get(self.start?.get())?;
-            self.start = node.next;
+            let node = self.tree.get(self.node?.get())?;
+            self.node = node.next;
 
             if matches!(node.kind, Kind::Node) {
                 return Some(Node::new(node, self.tree));
@@ -79,8 +84,8 @@ impl<'a, T> Iterator for Children<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.start?.get())?;
-        self.start = node.next;
+        let node = self.tree.get(self.node?.get())?;
+        self.node = node.next;
         Some(Node::new(node, self.tree))
     }
 }

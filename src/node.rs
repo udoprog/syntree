@@ -1,28 +1,29 @@
 use std::fmt;
 
+use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Kind, Links};
+use crate::tree::Kind;
 use crate::{Children, Span, Walk};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
-    node: &'a Links<T>,
+    links: &'a Links<T>,
     tree: &'a [Links<T>],
 }
 
 impl<'a, T> Node<'a, T> {
     pub(crate) fn new(node: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
-        Self { node, tree }
+        Self { links: node, tree }
     }
 
     /// Access the data associated with the node.
     pub fn data(&self) -> &'a T {
-        &self.node.data
+        &self.links.data
     }
 
     /// Access the kind of the node.
     pub fn kind(&self) -> Kind {
-        self.node.kind
+        self.links.kind
     }
 
     /// Calculate the span of the node. If there is no span information
@@ -56,7 +57,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn span(&self) -> Span {
-        self.node.span
+        self.links.span
     }
 
     /// Check if the current node is empty. In that it doesn't have any
@@ -85,7 +86,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.node.first.is_none()
+        self.links.first.is_none()
     }
 
     /// Access the children to this node.
@@ -115,10 +116,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn children(&self) -> Children<'a, T> {
-        Children {
-            tree: self.tree,
-            start: self.node.first,
-        }
+        Children::new(self.tree, self.links.first)
     }
 
     /// Walk the subtree forward starting with the first child of the current
@@ -147,7 +145,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn walk(&self) -> Walk<'a, T> {
-        Walk::new(self.tree, self.node.first, self.node.next)
+        Walk::new(self.tree, self.links.first)
     }
 
     /// Get the first child node.
@@ -175,7 +173,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.node.first)
+        self.node_at(self.links.first)
     }
 
     /// Get the next sibling.
@@ -208,14 +206,14 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn next(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.node.next)
+        self.node_at(self.links.next)
     }
 
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
         let cur = self.tree.get(index?.get())?;
 
         Some(Self {
-            node: cur,
+            links: cur,
             tree: self.tree,
         })
     }
@@ -227,8 +225,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
-            .field("data", &self.node.data)
-            .field("kind", &self.node.kind)
+            .field("data", &self.links.data)
+            .field("kind", &self.links.kind)
             .finish()
     }
 }
@@ -246,7 +244,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.node.data == other.node.data && self.node.kind == other.node.kind
+        self.links.data == other.links.data && self.links.kind == other.links.kind
     }
 }
 

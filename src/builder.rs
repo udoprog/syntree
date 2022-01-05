@@ -2,8 +2,8 @@ use std::error::Error;
 use std::fmt;
 use std::mem;
 
+use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::tree::Links;
 use crate::Kind;
 use crate::Span;
 use crate::Tree;
@@ -457,18 +457,15 @@ impl<T> TreeBuilder<T> {
         );
 
         // Adjust span to encapsulate all children.
-        let mut span = links.span;
+        let start = links.span.start;
 
-        if let Some(mut cur) = removed.next.and_then(|id| self.tree.get(id)) {
-            span = span.join(cur.span);
+        if let Some(node) = self.tree.node_at(removed.next) {
+            if let Some(last) = node.children().last() {
+                let span = Span::new(start, last.span().end);
 
-            while let Some(next) = cur.next.and_then(|id| self.tree.get(id)) {
-                span = span.join(next.span);
-                cur = next;
-            }
-
-            if let Some(node) = self.tree.get_mut(id.0) {
-                node.span = span;
+                if let Some(node) = self.tree.get_mut(id.0) {
+                    node.span = span;
+                }
             }
         }
 
@@ -567,11 +564,11 @@ impl<T> TreeBuilder<T> {
             span,
         });
 
-        if let Some(node) = prev.and_then(|id| self.tree.get_mut(id)) {
+        if let Some(node) = self.tree.links_at_mut(prev) {
             node.next = Some(new);
         }
 
-        if let Some(node) = parent.and_then(|id| self.tree.get_mut(id)) {
+        if let Some(node) = self.tree.links_at_mut(parent) {
             if node.first.is_none() {
                 node.first = Some(new);
             }

@@ -1,30 +1,24 @@
+use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::tree::{Links, Node};
+use crate::Node;
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
 ///
-/// See [Tree::walk][crate::Tree::walk].
+/// See [Tree::walk][crate::Tree::walk] or [Node::walk].
 pub struct Walk<'a, T> {
     tree: &'a [Links<T>],
     // The current node.
     start: Option<NonMaxUsize>,
-    // The terminating node that once visited we need to stop.
-    term: Option<NonMaxUsize>,
     // Parent nodes.
     parents: Vec<NonMaxUsize>,
 }
 
 impl<'a, T> Walk<'a, T> {
-    pub(crate) fn new(
-        tree: &'a [Links<T>],
-        start: Option<NonMaxUsize>,
-        term: Option<NonMaxUsize>,
-    ) -> Self {
+    pub(crate) fn new(tree: &'a [Links<T>], start: Option<NonMaxUsize>) -> Self {
         Self {
             tree,
             start,
-            term,
             parents: Vec::new(),
         }
     }
@@ -41,10 +35,6 @@ impl<'a, T> Walk<'a, T> {
 
         while let Some(parent) = self.parents.pop() {
             if let Some(id) = self.tree.get(parent.get())?.next {
-                if self.term == Some(id) {
-                    return None;
-                }
-
                 return Some(id);
             }
         }
@@ -128,7 +118,7 @@ impl<'a, T> Iterator for Walk<'a, T> {
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
 ///
-/// See [Tree::walk_with_depths][crate::Tree::walk_with_depths].
+/// See [Walk::with_depths].
 pub struct WithDepths<'a, T> {
     iter: Walk<'a, T>,
 }

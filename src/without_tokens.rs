@@ -2,7 +2,7 @@ use crate::{Kind, Node};
 
 /// Wrapped around an iterator that excludes [Kind::Token] nodes.
 ///
-/// See [Children::without_tokens].
+/// See [Children::without_tokens][crate::Children::without_tokens].
 pub struct WithoutTokens<I> {
     iter: I,
 }

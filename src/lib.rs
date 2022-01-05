@@ -143,6 +143,9 @@ mod builder;
 
 pub use self::builder::{BuildError, CloseError, Id, TreeBuilder};
 
+mod children;
+pub use self::children::Children;
+
 pub mod print;
 
 mod node;
@@ -152,7 +155,12 @@ mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, Kind, Tree, Walk, WithDepths};
+pub use self::tree::{Kind, Tree};
+
+mod walk;
+pub use self::walk::{Walk, WithDepths};
 
 mod without_tokens;
 pub use self::without_tokens::WithoutTokens;
+
+mod links;
