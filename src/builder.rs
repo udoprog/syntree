@@ -352,7 +352,31 @@ impl<T> TreeBuilder<T> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::{print, Span, TreeBuilder};
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut b = TreeBuilder::new();
+    ///
+    /// let c = b.checkpoint();
+    /// b.token("lit", 3);
+    /// b.close_at(c, "root")?;
+    ///
+    /// let tree = b.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         ("lit", 3)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// More complex example:
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut b = TreeBuilder::new();
@@ -389,8 +413,6 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeBuilderError> {
-        // With the layout of this data structure this is a fairly simple
-        // operation.
         let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
 
         let links = match self.tree.get_mut(id.0) {
