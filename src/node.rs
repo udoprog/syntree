@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::non_max::NonMaxUsize;
 use crate::tree::{Kind, Links};
-use crate::{Children, Span, Walk, WalkWithDepths};
+use crate::{Children, Span, Walk};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -148,36 +148,6 @@ impl<'a, T> Node<'a, T> {
     /// ```
     pub fn walk(&self) -> Walk<'a, T> {
         Walk::new(self.tree, self.node.first, self.node.next)
-    }
-
-    /// Walk the subtree forward starting with the first child of the current
-    /// node returning the depths of the nodes being walked relative to the
-    /// current node.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2",
-    ///             "c3",
-    ///             "c4",
-    ///         },
-    ///         "c5",
-    ///         "c6"
-    ///     }
-    /// };
-    ///
-    /// let root = tree.first().expect("expected root node");
-    ///
-    /// let nodes = root.walk_with_depths().map(|(d, n)| (d, *n.data())).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec![(0, "c1"), (1, "c2"), (1, "c3"), (1, "c4"), (0, "c5"), (0, "c6")]);
-    /// # Ok(()) }
-    /// ```
-    pub fn walk_with_depths(&self) -> WalkWithDepths<'a, T> {
-        WalkWithDepths::new(self.tree, self.node.first, self.node.next)
     }
 
     /// Get the first child node.

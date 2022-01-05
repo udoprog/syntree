@@ -5,7 +5,7 @@ mod children;
 pub use self::children::Children;
 
 mod walk;
-pub use self::walk::{Walk, WalkWithDepths};
+pub use self::walk::{Walk, WithDepths};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,33 +115,6 @@ impl<T> Tree<T> {
         Walk::new(self.tree.as_ref(), NonMaxUsize::new(0), None)
     }
 
-    /// Walk the tree forwards in a depth-first fashion visiting every node
-    /// once including the depth of the node being walked.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> anyhow::Result<()> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2",
-    ///             "c3",
-    ///             "c4",
-    ///         },
-    ///         "c5",
-    ///         "c6"
-    ///     }
-    /// };
-    ///
-    /// let nodes = tree.walk_with_depths().map(|(d, n)| (d, *n.data())).collect::<Vec<_>>();
-    /// assert_eq!(nodes, vec![(0, "root"), (1, "c1"), (2, "c2"), (2, "c3"), (2, "c4"), (1, "c5"), (1, "c6")]);
-    /// # Ok(()) }
-    /// ```
-    pub fn walk_with_depths(&self) -> WalkWithDepths<'_, T> {
-        WalkWithDepths::new(self.tree.as_ref(), NonMaxUsize::new(0), None)
-    }
-
     /// Get the first child node in the tree.
     ///
     /// # Examples
@@ -175,7 +148,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.walk_with_depths().eq(other.walk_with_depths())
+        self.walk().with_depths().eq(other.walk().with_depths())
     }
 }
 

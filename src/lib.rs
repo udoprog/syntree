@@ -152,7 +152,7 @@ mod span;
 pub use self::span::Span;
 
 mod tree;
-pub use self::tree::{Children, Kind, Tree, Walk, WalkWithDepths};
+pub use self::tree::{Children, Kind, Tree, Walk, WithDepths};
 
 mod without_tokens;
 pub use self::without_tokens::WithoutTokens;

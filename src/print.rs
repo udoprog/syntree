@@ -59,7 +59,7 @@ where
     let mut stack = VecDeque::new();
     stack.extend(tree.children().map(|n| (0, n)));
 
-    for (n, node) in tree.walk_with_depths() {
+    for (n, node) in tree.walk().with_depths() {
         let n = n * 2;
         let data = node.data();
 
