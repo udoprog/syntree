@@ -11,7 +11,7 @@ pub enum Event {
     /// when entering the iterator.
     Next,
     /// Walk down the first child of a sub tree.
-    First,
+    Down,
     /// Walk up a single step from a sub tree.
     Up,
 }
@@ -44,8 +44,8 @@ pub enum Event {
 ///     tree.walk_events().map(|(e, n)| (e, *n.data())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "root"),
-///         (First, "c1"),
-///         (First, "c2"),
+///         (Down, "c1"),
+///         (Down, "c2"),
 ///         (Next, "c3"),
 ///         (Next, "c4"),
 ///         (Up, "c1"),
@@ -61,7 +61,7 @@ pub enum Event {
 ///     root.walk_events().map(|(e, n)| (e, *n.data())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "c1"),
-///         (First, "c2"),
+///         (Down, "c2"),
 ///         (Next, "c3"),
 ///         (Next, "c4"),
 ///         (Up, "c1"),
@@ -95,6 +95,42 @@ impl<'a, T> WalkEvents<'a, T> {
         }
     }
 
+    /// Get the current depth of the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Event::*;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2",
+    ///             "c3",
+    ///         }
+    ///     }
+    /// };
+    ///
+    /// let mut it = tree.walk_events();
+    ///
+    /// assert_eq!(it.depth(), 0);
+    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Next, "root")));
+    /// assert_eq!(it.depth(), 1);
+    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Down, "c1")));
+    /// assert_eq!(it.depth(), 2);
+    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Down, "c2")));
+    /// assert_eq!(it.depth(), 2);
+    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Next, "c3")));
+    /// assert_eq!(it.depth(), 1);
+    /// assert_eq!(it.next().map(|(e, n)| (e, *n.data())), Some((Up, "c1")));
+    /// assert_eq!(it.depth(), 0);
+    /// # Ok(()) }
+    /// ```
+    pub fn depth(&self) -> usize {
+        self.parents.len()
+    }
+
     fn step(
         &mut self,
         id: NonMaxUsize,
@@ -108,7 +144,7 @@ impl<'a, T> WalkEvents<'a, T> {
         } else {
             if let Some(first) = links.first {
                 self.parents.push(id);
-                return Some((first, Event::First));
+                return Some((first, Event::Down));
             }
 
             if let Some(next) = links.next {

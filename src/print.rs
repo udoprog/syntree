@@ -133,41 +133,32 @@ where
     O: Write,
     T: Debug,
 {
-    let mut depth = 0usize;
+    let mut it = tree.walk_events();
+    let mut current_depth = it.depth();
 
-    for (event, node) in tree.walk_events() {
-        // We ignore up events because we're not interested in rendering closing
-        // elements.
+    while let Some((event, node)) = it.next() {
         if matches!(event, Event::Up) {
-            depth = depth.checked_sub(1).expect("depth underflow");
             continue;
         }
 
-        if matches!(event, Event::First) {
-            depth = depth.checked_add(1).expect("depth overflow");
-        }
-
-        // Indentation is one level down.
-        let n = depth * 2;
-
+        let n = current_depth * 2;
         let data = node.data();
+        let span = node.span();
 
-        if let Kind::Token = node.kind() {
-            if let Some(source) = source(node.span()) {
-                writeln!(o, "{:n$}{:?}@{} {:?}", "", data, node.span(), source, n = n)?;
-            } else {
-                writeln!(o, "{:n$}{:?}@{} +", "", data, node.span(), n = n)?;
+        match node.kind() {
+            Kind::Token => {
+                if let Some(source) = source(span) {
+                    writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source, n = n)?;
+                } else {
+                    writeln!(o, "{:n$}{:?}@{} +", "", data, span, n = n)?;
+                }
             }
-
-            continue;
+            Kind::Node => {
+                writeln!(o, "{:n$}{:?}@{}", "", data, span, n = n)?;
+            }
         }
 
-        if node.is_empty() {
-            writeln!(o, "{:n$}{:?}@{}", "", data, node.span(), n = n)?;
-            continue;
-        }
-
-        writeln!(o, "{:n$}{:?}@{}", "", data, node.span(), n = n)?;
+        current_depth = it.depth();
     }
 
     Ok(())
