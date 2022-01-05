@@ -124,7 +124,7 @@ impl fmt::Display for BuildError {
 /// assert_eq!(tree, expected);
 /// # Ok(()) }
 /// ```
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
     tree: Tree<T>,
@@ -271,7 +271,7 @@ impl<T> TreeBuilder<T> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// use syntree::TreeBuilder;
     ///
     /// #[derive(Debug, Clone, Copy)]
     /// enum Syntax {
@@ -341,7 +341,7 @@ impl<T> TreeBuilder<T> {
     ///
     /// let root = tree.first().ok_or("missing root")?;
     ///
-    /// assert_eq!(*root.data(), ROOT);
+    /// assert_eq!(*root.value(), ROOT);
     /// assert_eq!(root.children().count(), 3);
     /// assert_eq!(root.children().without_tokens().count(), 2);
     /// # Ok(()) }
@@ -486,7 +486,7 @@ impl<T> TreeBuilder<T> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// use syntree::TreeBuilder;
     ///
     /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     /// enum Syntax {

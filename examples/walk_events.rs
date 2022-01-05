@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     };
 
     for (event, n) in tree.walk_events() {
-        println!("{:?}: {:?}", event, n.data());
+        println!("{:?}: {:?}", event, n.value());
     }
 
     print::print(std::io::stdout(), &tree)?;

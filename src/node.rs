@@ -17,7 +17,7 @@ impl<'a, T> Node<'a, T> {
     }
 
     /// Access the data associated with the node.
-    pub fn data(&self) -> &'a T {
+    pub fn value(&self) -> &'a T {
         &self.links.data
     }
 
@@ -129,10 +129,10 @@ impl<'a, T> Node<'a, T> {
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.data(), "root");
+    /// assert_eq!(*root.value(), "root");
     ///
     /// let number = root.first().ok_or("missing number")?;
-    /// assert_eq!(*number.data(), "number");
+    /// assert_eq!(*number.value(), "number");
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'a, T>> {
@@ -157,13 +157,13 @@ impl<'a, T> Node<'a, T> {
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.data(), "root");
+    /// assert_eq!(*root.value(), "root");
     ///
     /// let number = root.first().ok_or("missing second root")?;
-    /// assert_eq!(*number.data(), "number");
+    /// assert_eq!(*number.value(), "number");
     ///
     /// let ident = number.next().ok_or("missing second root")?;
-    /// assert_eq!(*ident.data(), "ident");
+    /// assert_eq!(*ident.value(), "ident");
     /// # Ok(()) }
     /// ```
     pub fn next(&self) -> Option<Node<'a, T>> {

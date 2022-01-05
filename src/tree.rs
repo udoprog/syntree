@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
 use crate::{Children, Node, Walk, WalkEvents};
@@ -13,7 +15,7 @@ pub enum Kind {
 }
 
 /// A syntax tree.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Tree<T> {
     pub(crate) tree: Vec<Links<T>>,
 }
@@ -78,7 +80,7 @@ impl<T> Tree<T> {
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.data(), "root");
+    /// assert_eq!(*root.value(), "root");
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'_, T>> {
@@ -122,3 +124,23 @@ where
 }
 
 impl<T> Eq for Tree<T> where T: Eq {}
+
+impl<T> fmt::Debug for Tree<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return f.debug_tuple("Tree").field(&List(self)).finish();
+
+        struct List<'a, T>(&'a Tree<T>);
+
+        impl<T> fmt::Debug for List<'_, T>
+        where
+            T: fmt::Debug,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_list().entries(self.0.walk().with_depths()).finish()
+            }
+        }
+    }
+}

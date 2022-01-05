@@ -345,8 +345,8 @@ mod eval {
     macro_rules! expect {
         ($span:expr, $item:expr, $expect:expr, $pat:pat) => {
             if let Some(n) = $item {
-                if !matches!(n.data(), $pat) {
-                    return Err(EvalError::new(n.span(), Expected($expect, *n.data())));
+                if !matches!(n.value(), $pat) {
+                    return Err(EvalError::new(n.span(), Expected($expect, *n.value())));
                 }
 
                 n
@@ -371,11 +371,11 @@ mod eval {
         while let Some(node) = it.next() {
             let span = node.span();
 
-            if *node.data() != OPERATOR {
-                return Err(EvalError::new(span, Expected(OPERATOR, *node.data())));
+            if *node.value() != OPERATOR {
+                return Err(EvalError::new(span, Expected(OPERATOR, *node.value())));
             }
 
-            let op: fn(i64, i64) -> i64 = match node.first().map(|n| *n.data()) {
+            let op: fn(i64, i64) -> i64 = match node.first().map(|n| *n.value()) {
                 Some(PLUS) => i64::wrapping_add,
                 Some(MINUS) => i64::wrapping_sub,
                 Some(what) => return Err(EvalError::new(node.span(), UnexpectedOperator(what))),

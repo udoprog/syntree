@@ -3,7 +3,7 @@
 /// # Examples
 ///
 /// ```
-/// use syntree::{Span, TreeBuilder};
+/// use syntree::TreeBuilder;
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// enum Syntax {

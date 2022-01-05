@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     };
 
     for n in tree.first().into_iter().flat_map(|n| n.walk()) {
-        dbg!(n.data());
+        dbg!(n.value());
     }
 
     print::print(std::io::stdout(), &tree)?;

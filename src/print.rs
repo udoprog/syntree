@@ -142,7 +142,7 @@ where
         }
 
         let n = current_depth * 2;
-        let data = node.data();
+        let data = node.value();
         let span = node.span();
 
         match node.kind() {

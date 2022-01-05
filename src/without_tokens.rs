@@ -24,7 +24,7 @@ use crate::{Kind, Node};
 /// let mut it = tree.children().without_tokens();
 ///
 /// assert_eq!(
-///     it.map(|n| *n.data()).collect::<Vec<_>>(),
+///     it.map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3"]
 /// );
 /// # Ok(()) }
@@ -48,7 +48,7 @@ use crate::{Kind, Node};
 /// let mut it = tree.walk().without_tokens();
 ///
 /// assert_eq!(
-///     it.map(|n| *n.data()).collect::<Vec<_>>(),
+///     it.map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3", "child4"]
 /// );
 /// # Ok(()) }

@@ -23,14 +23,14 @@ use crate::{Kind, Node, WithoutTokens};
 /// };
 ///
 /// assert_eq!(
-///     tree.children().map(|n| *n.data()).collect::<Vec<_>>(),
+///     tree.children().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["root", "root2"]
 /// );
 ///
 /// let root = tree.first().ok_or("missing root node")?;
 ///
 /// assert_eq!(
-///     root.children().map(|n| *n.data()).collect::<Vec<_>>(),
+///     root.children().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child3"]
 /// );
 /// # Ok(()) }
@@ -72,8 +72,8 @@ impl<'a, T> Children<'a, T> {
     /// };
     ///
     /// let mut it = tree.children();
-    /// assert_eq!(it.next_node().map(|n| *n.data()), Some("child1"));
-    /// assert_eq!(it.next().map(|n| *n.data()), Some("t2"));
+    /// assert_eq!(it.next_node().map(|n| *n.value()), Some("child1"));
+    /// assert_eq!(it.next().map(|n| *n.value()), Some("t2"));
     /// # Ok(()) }
     /// ```
     pub fn next_node(&mut self) -> Option<Node<'a, T>> {

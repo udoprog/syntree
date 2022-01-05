@@ -41,7 +41,7 @@ pub enum Event {
 /// };
 ///
 /// assert_eq!(
-///     tree.walk_events().map(|(e, n)| (e, *n.data())).collect::<Vec<_>>(),
+///     tree.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "root"),
 ///         (Down, "c1"),
@@ -58,7 +58,7 @@ pub enum Event {
 /// let root = tree.first().ok_or("missing root")?;
 ///
 /// assert_eq!(
-///     root.walk_events().map(|(e, n)| (e, *n.data())).collect::<Vec<_>>(),
+///     root.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "c1"),
 ///         (Down, "c2"),
@@ -73,7 +73,7 @@ pub enum Event {
 /// let c1 = root.first().ok_or("missing c1")?;
 ///
 /// assert_eq!(
-///     c1.walk_events().map(|(e, n)| (e, *n.data())).collect::<Vec<_>>(),
+///     c1.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
 ///     [(Next, "c2"), (Next, "c3"), (Next, "c4")]
 /// );
 /// # Ok(()) }
@@ -124,7 +124,7 @@ impl<'a, T> WalkEvents<'a, T> {
     /// while let Some((event, node)) = it.next() {
     ///     // Only register each node once.
     ///     if !matches!(event, Up) {
-    ///         nodes.push((depth, *node.data()));
+    ///         nodes.push((depth, *node.value()));
     ///     }
     ///
     ///     // Query the *next* depth here.
