@@ -13,12 +13,12 @@ use crate::Tree;
 ///
 /// This can be used as a checkpoint in [TreeBuilder::close_at], and a
 /// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Id(NonMaxUsize);
 
 /// Errors raised while building a tree.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TreeBuilderError {
     /// Error raised by [TreeBuilder::close] if there currently is no node being
@@ -36,7 +36,7 @@ pub enum TreeBuilderError {
     /// tree.close()?;
     ///
     /// // Syntax::Root and Syntax::Child is left open.
-    /// assert!(matches!(tree.close(), Err(TreeBuilderError::CloseError)));
+    /// assert_eq!(tree.close(), Err(TreeBuilderError::CloseError));
     /// # Ok(()) }
     /// ```
     CloseError,
@@ -58,7 +58,7 @@ pub enum TreeBuilderError {
     /// tree.open("number");
     ///
     /// // Syntax::Number is left open.
-    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError)));
+    /// assert_eq!(tree.build(), Err(TreeBuilderError::BuildError));
     /// # Ok(()) }
     /// ```
     BuildError,
@@ -79,7 +79,7 @@ pub enum TreeBuilderError {
     /// tree.token("token", 3);
     ///
     /// let result = tree.close_at(c, "operation");
-    /// assert!(matches!(result, Err(TreeBuilderError::CloseAtError)));
+    /// assert_eq!(result, Err(TreeBuilderError::CloseAtError));
     /// # Ok(()) }
     /// ```
     CloseAtError,
@@ -116,28 +116,22 @@ impl fmt::Display for TreeBuilderError {
 /// ```
 /// use syntree::TreeBuilder;
 ///
-/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// enum Syntax {
-///     Root,
-///     Child,
-/// }
-///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.open(Syntax::Root);
-/// tree.open(Syntax::Child);
+/// tree.open("root");
+/// tree.open("child");
 /// tree.close()?;
-/// tree.open(Syntax::Child);
+/// tree.open("child");
 /// tree.close()?;
 /// tree.close()?;
 ///
 /// let tree = tree.build()?;
 ///
 /// let expected = syntree::tree! {
-///     Syntax::Root => {
-///         Syntax::Child,
-///         Syntax::Child
+///     "root" => {
+///         "child",
+///         "child"
 ///     }
 /// };
 ///
@@ -165,24 +159,32 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy)]
-    /// enum Syntax {
-    ///     Root,
-    ///     Child,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Root);
+    /// tree.open("root");
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
+    /// tree.token("token", 5);
     /// tree.close()?;
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child2");
     /// tree.close()?;
     ///
     /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         "child" => {
+    ///             ("token", 5)
+    ///         },
+    ///         "child2"
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
     pub const fn new() -> Self {
@@ -205,21 +207,15 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy)]
-    /// enum Syntax {
-    ///     Root,
-    ///     Child,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Root);
+    /// tree.open("root");
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
     /// tree.close()?;
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
     /// tree.close()?;
     ///
     /// tree.close()?;
@@ -231,9 +227,10 @@ impl<T> TreeBuilder<T> {
         Id(id)
     }
 
-    /// End a node being built. This call must be balanced with a prior call to
-    /// [TreeBuilder::open] and if its not will result in an
-    /// [CloseError].
+    /// End a node being built.
+    ///
+    /// This call must be balanced with a prior call to [TreeBuilder::open]. If
+    /// not this will result in an [TreeBuilderError::CloseError] being raised.
     ///
     /// This will pop a value of the stack, and set that value as the next
     /// sibling which will be used with [TreeBuilder::open].
@@ -243,21 +240,15 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy)]
-    /// enum Syntax {
-    ///     Root,
-    ///     Child,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Root);
+    /// tree.open("root");
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
     /// tree.close()?;
     ///
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
     /// tree.close()?;
     ///
     /// tree.close()?;
@@ -293,18 +284,11 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy)]
-    /// enum Syntax {
-    ///     Root,
-    ///     Child,
-    ///     Number,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Child);
-    /// tree.token(Syntax::Number, 3);
+    /// tree.open("child");
+    /// tree.token("lit", 3);
     /// tree.close()?;
     ///
     /// # Ok(()) }
@@ -329,39 +313,29 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    /// enum Syntax {
-    ///     ROOT,
-    ///     NUMBER,
-    ///     LIT,
-    ///     WHITESPACE,
-    /// }
-    ///
-    /// use Syntax::*;
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut b = TreeBuilder::new();
     ///
     /// let c = b.checkpoint();
     ///
-    /// b.open(NUMBER);
-    /// b.token(LIT, 1);
+    /// b.open("number");
+    /// b.token("lit", 1);
     /// b.close()?;
     ///
-    /// b.token(WHITESPACE, 3);
+    /// b.token("whitespace", 3);
     ///
-    /// b.open(NUMBER);
-    /// b.token(LIT, 2);
-    /// b.token(LIT, 2);
+    /// b.open("number");
+    /// b.token("lit", 2);
+    /// b.token("lit", 2);
     /// b.close()?;
     ///
-    /// b.close_at(c, ROOT);
+    /// b.close_at(c, "root");
     ///
     /// let tree = b.build()?;
     ///
     /// let root = tree.first().ok_or("missing root")?;
     ///
-    /// assert_eq!(*root.value(), ROOT);
+    /// assert_eq!(*root.value(), "root");
     /// assert_eq!(root.children().count(), 3);
     /// assert_eq!(root.children().without_tokens().count(), 2);
     /// # Ok(()) }
@@ -372,80 +346,55 @@ impl<T> TreeBuilder<T> {
 
     /// Insert a node that wraps from the given checkpointed location.
     ///
-    /// This causes the node specified at `id` to become the previous sibling
-    /// node. If `id` refers to a node that hasn't been allocated yet (through
-    /// [TreeBuilder::checkpoint]), this call corresponds exactly to
-    /// [TreeBuilder::open] that is immediately closed with
-    /// [TreeBuilder::close].
+    /// The checkpoint being closed *must* be a sibling. Otherwise a
+    /// [TreeBuilderError::CloseAtError] will be raised.
     ///
     /// ```
-    /// use syntree::TreeBuilder;
+    /// use syntree::{TreeBuilder, TreeBuilderError};
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut a = TreeBuilder::<u32>::new();
-    /// a.open(0);
-    /// let c = a.checkpoint();
-    /// a.close_at(c, 1);
-    /// a.close()?;
-    /// let a = a.build()?;
+    /// let mut tree = TreeBuilder::new();
+    /// let c = tree.checkpoint();
     ///
-    /// let mut b = TreeBuilder::<u32>::new();
-    /// b.open(0);
-    /// let c = b.checkpoint();
-    /// b.close_at(c, 1);
-    /// b.close()?;
-    /// let b = b.build()?;
+    /// tree.open("child");
+    /// tree.close()?;
     ///
-    /// assert_eq!(a, b);
+    /// assert_eq!(tree.close_at(c, "root"), Err(TreeBuilderError::CloseAtError));
     /// # Ok(()) }
     /// ```
-    ///
-    /// Note that this does not modify or try to balance the stack, so the last
-    /// item pushed using [TreeBuilder::open] will still be the one popped
-    /// through [TreeBuilder::close].
     ///
     /// # Examples
     ///
     /// ```
     /// use syntree::{print, Span, TreeBuilder};
     ///
-    /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    /// enum Syntax {
-    ///     ROOT,
-    ///     NUMBER,
-    ///     LIT,
-    ///     WHITESPACE,
-    /// }
-    ///
-    /// use Syntax::*;
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut b = TreeBuilder::new();
     ///
     /// let c = b.checkpoint();
     ///
-    /// b.open(NUMBER);
-    /// b.token(LIT, 3);
+    /// b.open("number");
+    /// b.token("lit", 3);
     /// b.close()?;
     ///
-    /// b.token(WHITESPACE, 1);
+    /// b.token("whitespace", 1);
     ///
-    /// b.open(NUMBER);
-    /// b.token(LIT, 2);
+    /// b.open("number");
+    /// b.token("lit", 2);
     /// b.close()?;
     ///
-    /// b.close_at(c, ROOT);
+    /// b.close_at(c, "root")?;
     ///
     /// let tree = b.build()?;
     ///
     /// let expected = syntree::tree! {
-    ///     ROOT => {
-    ///         NUMBER => {
-    ///             (LIT, 3)
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 3)
     ///         },
-    ///         (WHITESPACE, 1),
-    ///         NUMBER => {
-    ///             (LIT, 2)
+    ///         ("whitespace", 1),
+    ///         "number" => {
+    ///             ("lit", 2)
     ///         },
     ///     }
     /// };
@@ -515,35 +464,29 @@ impl<T> TreeBuilder<T> {
     /// Build a [Tree] from the current state of the builder.
     ///
     /// This requires the stack in the builder to be empty. Otherwise a
-    /// [BuildError] will be raised.
+    /// [TreeBuilderError::BuildError] will be raised.
     ///
     /// # Examples
     ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    /// enum Syntax {
-    ///     Child,
-    ///     Number,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Child);
-    /// tree.token(Syntax::Number, 3);
+    /// tree.open("child");
+    /// tree.token("number", 3);
     /// tree.close()?;
-    /// tree.open(Syntax::Child);
+    /// tree.open("child");
     /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
     /// let expected = syntree::tree! {
-    ///     Syntax::Child => {
-    ///         (Syntax::Number, 3)
+    ///     "child" => {
+    ///         ("number", 3)
     ///     },
-    ///     Syntax::Child,
+    ///     "child",
     /// };
     ///
     /// assert_eq!(tree, expected);
@@ -555,23 +498,17 @@ impl<T> TreeBuilder<T> {
     /// ```
     /// use syntree::{TreeBuilderError, Span, TreeBuilder};
     ///
-    /// #[derive(Debug, Clone, Copy)]
-    /// enum Syntax {
-    ///     Number,
-    ///     Lit,
-    /// }
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open(Syntax::Number);
-    /// tree.token(Syntax::Lit, 3);
+    /// tree.open("number");
+    /// tree.token("lit", 3);
     /// tree.close()?;
     ///
-    /// tree.open(Syntax::Number);
+    /// tree.open("number");
     ///
-    /// // Syntax::Number is left open.
-    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError { .. })));
+    /// // "number" is left open.
+    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError)));
     /// # Ok(()) }
     /// ```
     pub fn build(self) -> Result<Tree<T>, TreeBuilderError> {
