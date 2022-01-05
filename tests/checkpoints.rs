@@ -25,7 +25,7 @@ fn balanced_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
     b.token(Syntax::Lit, 2);
     b.close()?;
 
-    b.close_at(c, Syntax::Root);
+    b.close_at(c, Syntax::Root)?;
 
     let tree = b.build()?;
 

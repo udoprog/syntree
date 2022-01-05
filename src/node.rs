@@ -16,6 +16,20 @@ impl<'a, T> Node<'a, T> {
         Self { links: node, tree }
     }
 
+    /// Test if this node is the same as another node.
+    ///
+    /// This is a cheap pointer comparison.
+    pub(crate) fn is_same(&self, other: &Node<'a, T>) -> bool {
+        std::ptr::eq(self.links, other.links)
+    }
+
+    /// Test if this node is the same as another set of links.
+    ///
+    /// This is a cheap pointer comparison.
+    pub(crate) fn is_same_as_links(&self, links: &Links<T>) -> bool {
+        std::ptr::eq(self.links, links)
+    }
+
     /// Access the data associated with the node.
     pub fn value(&self) -> &'a T {
         &self.links.data

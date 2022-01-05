@@ -1,9 +1,8 @@
 //! Example converted from https://github.com/rust-analyzer/rowan/blob/master/examples/math.rs
 
+use anyhow::Result;
 use std::iter::Peekable;
-use syntree::{print, Tree, TreeBuilder};
-
-type BoxedError = Box<dyn std::error::Error>;
+use syntree::{print, Tree, TreeBuilder, TreeBuilderError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
@@ -47,7 +46,7 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
         }
     }
 
-    fn parse_val(&mut self) -> Result<(), BoxedError> {
+    fn parse_val(&mut self) -> Result<(), TreeBuilderError> {
         match self.peek() {
             Some(NUMBER) => self.bump(),
             _ => {
@@ -63,28 +62,29 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
     fn handle_operation(
         &mut self,
         tokens: &[SyntaxKind],
-        next: fn(&mut Self) -> Result<(), BoxedError>,
-    ) -> Result<(), BoxedError> {
-        let checkpoint = self.builder.checkpoint();
+        next: fn(&mut Self) -> Result<(), TreeBuilderError>,
+    ) -> Result<(), TreeBuilderError> {
+        let c = self.builder.checkpoint();
         next(self)?;
+
         while self.peek().map(|t| tokens.contains(&t)).unwrap_or(false) {
             self.bump();
             next(self)?;
-            self.builder.close_at(checkpoint, OPERATION);
+            self.builder.close_at(c, OPERATION)?;
         }
 
         Ok(())
     }
 
-    fn parse_mul(&mut self) -> Result<(), BoxedError> {
+    fn parse_mul(&mut self) -> Result<(), TreeBuilderError> {
         self.handle_operation(&[MUL, DIV], Self::parse_val)
     }
 
-    fn parse_add(&mut self) -> Result<(), BoxedError> {
+    fn parse_add(&mut self) -> Result<(), TreeBuilderError> {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<SyntaxKind>, BoxedError> {
+    fn parse(mut self) -> Result<Tree<SyntaxKind>, TreeBuilderError> {
         self.builder.open(ROOT);
         self.parse_add()?;
         self.builder.close()?;
@@ -99,47 +99,38 @@ fn lexer(source: &str) -> impl Iterator<Item = (SyntaxKind, usize)> + '_ {
     return std::iter::from_fn(move || {
         let (start, c) = it.next()?;
 
-        if c.is_whitespace() {
-            consume_while(&mut it, char::is_whitespace);
-            let end = next(&mut it).unwrap_or(len);
-            return Some((WHITESPACE, end.saturating_sub(start)));
-        }
-
         let syntax = match c {
+            c if c.is_whitespace() => {
+                eat(&mut it, char::is_whitespace);
+                WHITESPACE
+            }
             '+' => ADD,
             '-' => SUB,
             '/' => DIV,
             '*' => MUL,
-            _ => {
-                consume_while(&mut it, |c| !c.is_whitespace());
+            '0'..='9' => {
+                eat(&mut it, |c| matches!(c, '0'..='9' | '.'));
                 NUMBER
+            }
+            _ => {
+                eat(&mut it, |c| !c.is_whitespace());
+                ERROR
             }
         };
 
-        let end = next(&mut it).unwrap_or(len);
+        let end = it.peek().map(|(n, _)| *n).unwrap_or(len);
         Some((syntax, end.saturating_sub(start)))
     });
 
-    fn next(it: &mut Peekable<impl Iterator<Item = (usize, char)>>) -> Option<usize> {
-        it.peek().map(|(n, _)| *n)
-    }
-
     /// Consume all available whitespace.
-    fn consume_while(
-        it: &mut Peekable<impl Iterator<Item = (usize, char)>>,
-        condition: fn(char) -> bool,
-    ) {
-        while let Some(&(_, c)) = it.peek() {
-            if !condition(c) {
-                break;
-            }
-
+    fn eat(it: &mut Peekable<impl Iterator<Item = (usize, char)>>, cond: fn(char) -> bool) {
+        while it.peek().filter(|&(_, c)| cond(*c)).is_some() {
             it.next();
         }
     }
 }
 
-fn main() -> Result<(), BoxedError> {
+fn main() -> Result<()> {
     let source = std::env::args().skip(1).collect::<String>();
 
     let iter = lexer(&source);

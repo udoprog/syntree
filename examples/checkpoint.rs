@@ -18,7 +18,10 @@ fn main() -> Result<()> {
     b.token(7, 3);
     b.close()?;
 
-    b.close_at(c, 0);
+    dbg!(&b);
+    print::print(std::io::stdout(), &b.clone().build()?)?;
+
+    b.close_at(c, 0)?;
 
     let tree = b.build()?;
 

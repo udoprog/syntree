@@ -141,7 +141,7 @@ mod non_max;
 
 mod builder;
 
-pub use self::builder::{BuildError, CloseError, Id, TreeBuilder};
+pub use self::builder::{Id, TreeBuilder, TreeBuilderError};
 
 mod children;
 pub use self::children::Children;

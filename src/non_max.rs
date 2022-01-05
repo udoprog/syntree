@@ -23,6 +23,6 @@ impl NonMaxUsize {
 
 impl fmt::Debug for NonMaxUsize {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("NonMaxUsize").field(&self.get()).finish()
+        self.get().fmt(f)
     }
 }

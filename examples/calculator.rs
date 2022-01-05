@@ -55,7 +55,7 @@ mod parsing {
     use crate::Syntax;
     use anyhow::Result;
     use std::collections::VecDeque;
-    use syntree::TreeBuilder;
+    use syntree::{TreeBuilder, TreeBuilderError};
 
     #[derive(Debug, Clone, Copy)]
     pub(crate) struct Token {
@@ -168,7 +168,11 @@ mod parsing {
         }
 
         /// Try to eat the given sequence of syntax as the given node `what`.
-        pub(crate) fn eat(&mut self, what: Syntax, expected: &[Syntax]) -> bool {
+        pub(crate) fn eat(
+            &mut self,
+            what: Syntax,
+            expected: &[Syntax],
+        ) -> Result<bool, TreeBuilderError> {
             // Ensure we consume leading whitespace before we take the checkpoint.
             self.fill(0);
 
@@ -176,7 +180,7 @@ mod parsing {
 
             for (n, syntax) in expected.iter().copied().enumerate() {
                 if self.nth(n).syntax != syntax {
-                    return false;
+                    return Ok(false);
                 }
             }
 
@@ -186,8 +190,8 @@ mod parsing {
                 self.step();
             }
 
-            self.tree.close_at(c, what);
-            true
+            self.tree.close_at(c, what)?;
+            Ok(true)
         }
 
         /// Bump the current input as the given syntax.
@@ -267,7 +271,7 @@ mod grammar {
     pub(crate) fn root(p: &mut Parser<'_>) -> Result<()> {
         while !p.is_eof() {
             // Consume first number.
-            if !p.eat(NUMBER, &[NUMBER]) {
+            if !p.eat(NUMBER, &[NUMBER])? {
                 p.bump_node(ERROR)?;
                 continue;
             }
@@ -288,12 +292,12 @@ mod grammar {
                         // an operator.
                         let c = p.tree.checkpoint();
                         p.advance_until(&[PLUS, MINUS]);
-                        p.tree.close_at(c, ERROR);
+                        p.tree.close_at(c, ERROR)?;
                         continue;
                     }
                 }
 
-                if !p.eat(NUMBER, &[NUMBER]) {
+                if !p.eat(NUMBER, &[NUMBER])? {
                     p.bump_node(ERROR)?;
                     continue;
                 }

@@ -17,72 +17,92 @@ use crate::Tree;
 #[repr(transparent)]
 pub struct Id(NonMaxUsize);
 
-/// Error raised by [TreeBuilder::close] if there currently is no node being
-/// built.
-///
-/// # Examples
-///
-/// ```
-/// use syntree::{CloseError, Span, TreeBuilder};
-///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut tree = TreeBuilder::new();
-///
-/// tree.open("root");
-/// tree.close()?;
-///
-/// // Syntax::Root and Syntax::Child is left open.
-/// assert!(matches!(tree.close(), Err(CloseError { .. })));
-/// # Ok(()) }
-/// ```
-#[derive(Debug)]
+/// Errors raised while building a tree.
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
-pub struct CloseError;
-
-impl Error for CloseError {}
-
-impl fmt::Display for CloseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "no node being built")
-    }
+pub enum TreeBuilderError {
+    /// Error raised by [TreeBuilder::close] if there currently is no node being
+    /// built.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{TreeBuilder, TreeBuilderError};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// tree.open("root");
+    /// tree.close()?;
+    ///
+    /// // Syntax::Root and Syntax::Child is left open.
+    /// assert!(matches!(tree.close(), Err(TreeBuilderError::CloseError)));
+    /// # Ok(()) }
+    /// ```
+    CloseError,
+    /// Error raised by [TreeBuilder::build] if the tree isn't correctly
+    /// balanced.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{TreeBuilder, TreeBuilderError};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// tree.open("number");
+    /// tree.token("lit", 3);
+    /// tree.close()?;
+    ///
+    /// tree.open("number");
+    ///
+    /// // Syntax::Number is left open.
+    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError)));
+    /// # Ok(()) }
+    /// ```
+    BuildError,
+    /// Error raised by [TreeBuilder::close_at] if we're not trying to close at
+    /// a sibling node.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{TreeBuilder, TreeBuilderError};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// let c = tree.checkpoint();
+    ///
+    /// tree.open("child");
+    /// tree.token("token", 3);
+    ///
+    /// let result = tree.close_at(c, "operation");
+    /// assert!(matches!(result, Err(TreeBuilderError::CloseAtError)));
+    /// # Ok(()) }
+    /// ```
+    CloseAtError,
 }
 
-/// Error raised by [TreeBuilder::build] if the tree isn't correctly
-/// balanced.
-///
-/// # Examples
-///
-/// ```
-/// use syntree::{BuildError, Span, TreeBuilder};
-///
-/// #[derive(Debug, Clone, Copy)]
-/// enum Syntax {
-///     Number,
-///     Lit,
-/// }
-///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut tree = TreeBuilder::new();
-///
-/// tree.open(Syntax::Number);
-/// tree.token(Syntax::Lit, 3);
-/// tree.close()?;
-///
-/// tree.open(Syntax::Number);
-///
-/// // Syntax::Number is left open.
-/// assert!(matches!(tree.build(), Err(BuildError { .. })));
-/// # Ok(()) }
-/// ```
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct BuildError;
+impl Error for TreeBuilderError {}
 
-impl Error for BuildError {}
-
-impl fmt::Display for BuildError {
+impl fmt::Display for TreeBuilderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "tree is currently being built")
+        match self {
+            TreeBuilderError::CloseError => {
+                write!(f, "no node being built")
+            }
+            TreeBuilderError::BuildError => {
+                write!(f, "tree is currently being built")
+            }
+            TreeBuilderError::CloseAtError => {
+                write!(
+                    f,
+                    "trying to close a node which is not a sibling of the checkpoint being closed"
+                )
+            }
+        }
     }
 }
 
@@ -124,7 +144,7 @@ impl fmt::Display for BuildError {
 /// assert_eq!(tree, expected);
 /// # Ok(()) }
 /// ```
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
     tree: Tree<T>,
@@ -243,10 +263,10 @@ impl<T> TreeBuilder<T> {
     /// tree.close()?;
     /// # Ok(()) }
     /// ```
-    pub fn close(&mut self) -> Result<(), CloseError> {
+    pub fn close(&mut self) -> Result<(), TreeBuilderError> {
         let head = match self.parents.pop() {
             Some(head) => head,
-            None => return Err(CloseError),
+            None => return Err(TreeBuilderError::CloseError),
         };
 
         self.sibling = Some(head);
@@ -433,7 +453,7 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn close_at(&mut self, id: Id, data: T) -> Id {
+    pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeBuilderError> {
         // With the layout of this data structure this is a fairly simple
         // operation.
         let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
@@ -443,7 +463,7 @@ impl<T> TreeBuilder<T> {
             None => {
                 let id = self.insert(data, Kind::Node, Span::point(self.cursor));
                 self.sibling = Some(id);
-                return Id(id);
+                return Ok(Id(id));
             }
         };
 
@@ -458,16 +478,32 @@ impl<T> TreeBuilder<T> {
             },
         );
 
-        // Adjust span to encapsulate all children.
+        // Adjust span to encapsulate all children and check that we just
+        // inserted ourselves in the right location.
         let start = links.span.start;
 
-        if let Some(node) = self.tree.node_at(removed.next) {
-            if let Some(last) = node.children().last() {
-                let span = Span::new(start, last.span().end);
+        let sibling = self
+            .tree
+            .node_at(self.sibling)
+            .ok_or(TreeBuilderError::CloseAtError)?;
 
-                if let Some(node) = self.tree.get_mut(id.0) {
-                    node.span = span;
-                }
+        if let Some(mut node) = self.tree.node_at(removed.next) {
+            while let Some(next) = node.next() {
+                node = next;
+            }
+
+            let span = Span::new(start, node.span().end);
+
+            if !sibling.is_same(&node) {
+                return Err(TreeBuilderError::CloseAtError);
+            }
+
+            if let Some(node) = self.tree.get_mut(id.0) {
+                node.span = span;
+            }
+        } else {
+            if !sibling.is_same_as_links(&removed) {
+                return Err(TreeBuilderError::CloseAtError);
             }
         }
 
@@ -475,7 +511,7 @@ impl<T> TreeBuilder<T> {
 
         // The current sibling is the newly replaced node in the tree.
         self.sibling = Some(id.0);
-        Id(id.0)
+        Ok(Id(id.0))
     }
 
     /// Build a [Tree] from the current state of the builder.
@@ -519,7 +555,7 @@ impl<T> TreeBuilder<T> {
     /// If a tree is unbalanced during construction, building will fail with an error:
     ///
     /// ```
-    /// use syntree::{BuildError, Span, TreeBuilder};
+    /// use syntree::{TreeBuilderError, Span, TreeBuilder};
     ///
     /// #[derive(Debug, Clone, Copy)]
     /// enum Syntax {
@@ -537,12 +573,12 @@ impl<T> TreeBuilder<T> {
     /// tree.open(Syntax::Number);
     ///
     /// // Syntax::Number is left open.
-    /// assert!(matches!(tree.build(), Err(BuildError { .. })));
+    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError { .. })));
     /// # Ok(()) }
     /// ```
-    pub fn build(self) -> Result<Tree<T>, BuildError> {
+    pub fn build(self) -> Result<Tree<T>, TreeBuilderError> {
         if !self.parents.is_empty() {
-            return Err(BuildError);
+            return Err(TreeBuilderError::BuildError);
         }
 
         Ok(self.tree)
