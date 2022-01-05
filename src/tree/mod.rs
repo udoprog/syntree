@@ -29,13 +29,13 @@ pub(crate) struct Links<T> {
 /// A syntax tree.
 #[derive(Debug, Clone)]
 pub struct Tree<T> {
-    tree: Box<[Links<T>]>,
+    pub(crate) tree: Vec<Links<T>>,
 }
 
 impl<T> Tree<T> {
-    /// Construct a new tree.
-    pub(crate) fn new(tree: Box<[Links<T>]>) -> Self {
-        Self { tree }
+    /// Construct a new empty tree.
+    pub(crate) const fn new() -> Self {
+        Self { tree: Vec::new() }
     }
 
     /// Check if the current tree is empty. In that it doesn't have any
@@ -135,6 +135,26 @@ impl<T> Tree<T> {
     /// ```
     pub fn first(&self) -> Option<Node<'_, T>> {
         self.node_at(NonMaxUsize::new(0))
+    }
+
+    /// The total number of elements in the tree.
+    pub(crate) fn len(&self) -> usize {
+        self.tree.len()
+    }
+
+    /// Get a reference to an element in the tree.
+    pub(crate) fn get(&mut self, id: NonMaxUsize) -> Option<&Links<T>> {
+        self.tree.get(id.get())
+    }
+
+    /// Get a mutable reference to an element in the tree.
+    pub(crate) fn get_mut(&mut self, id: NonMaxUsize) -> Option<&mut Links<T>> {
+        self.tree.get_mut(id.get())
+    }
+
+    /// Push a new element onto the tree.
+    pub(crate) fn push(&mut self, links: Links<T>) {
+        self.tree.push(links);
     }
 
     fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'_, T>> {

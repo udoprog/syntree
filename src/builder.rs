@@ -117,7 +117,7 @@ impl fmt::Display for BuildError {
 /// let expected = syntree::tree! {
 ///     Syntax::Root => {
 ///         Syntax::Child,
-///         Syntax::Child,
+///         Syntax::Child
 ///     }
 /// };
 ///
@@ -127,10 +127,10 @@ impl fmt::Display for BuildError {
 #[derive(Debug)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
-    pub(crate) data: Vec<Links<T>>,
-    /// Nodes currently being built.
-    stack: Vec<NonMaxUsize>,
-    /// The last sibling inserted.
+    tree: Tree<T>,
+    /// References to parent nodes of the current node being constructed.
+    parents: Vec<NonMaxUsize>,
+    /// Reference to last sibling inserted.
     sibling: Option<NonMaxUsize>,
     /// The current cursor.
     cursor: usize,
@@ -167,8 +167,8 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub const fn new() -> Self {
         TreeBuilder {
-            data: Vec::new(),
-            stack: Vec::new(),
+            tree: Tree::new(),
+            parents: Vec::new(),
             sibling: None,
             cursor: 0,
         }
@@ -207,7 +207,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn open(&mut self, data: T) -> Id {
         let id = self.insert(data, Kind::Node, Span::point(self.cursor));
-        self.stack.push(id);
+        self.parents.push(id);
         Id(id)
     }
 
@@ -244,18 +244,18 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn close(&mut self) -> Result<(), CloseError> {
-        let head = match self.stack.pop() {
+        let head = match self.parents.pop() {
             Some(head) => head,
             None => return Err(CloseError),
         };
 
         self.sibling = Some(head);
 
-        if let Some(parent) = self.stack.last().copied() {
-            if let Some(node) = self.data.get_mut(head.get()) {
+        if let Some(parent) = self.parents.last().copied() {
+            if let Some(node) = self.tree.get_mut(head) {
                 let end = node.span.end;
 
-                if let Some(parent) = self.data.get_mut(parent.get()) {
+                if let Some(parent) = self.tree.get_mut(parent) {
                     parent.span.end = end;
                 }
             }
@@ -291,9 +291,8 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn token(&mut self, data: T, len: usize) -> Id {
         let start = self.cursor;
-        let end = self.cursor + len;
-        self.cursor = end;
-        let id = self.insert(data, Kind::Token, Span::new(start, end));
+        self.cursor = self.cursor.checked_add(len).expect("cursor out of bounds");
+        let id = self.insert(data, Kind::Token, Span::new(start, self.cursor));
         self.sibling = Some(id);
         Id(id)
     }
@@ -346,8 +345,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn checkpoint(&self) -> Id {
-        let id = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
-        Id(id)
+        Id(NonMaxUsize::new(self.tree.len()).expect("ran out of ids"))
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -436,9 +434,9 @@ impl<T> TreeBuilder<T> {
     pub fn close_at(&mut self, id: Id, data: T) -> Id {
         // With the layout of this data structure this is a fairly simple
         // operation.
-        let child = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
+        let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
 
-        let links = match self.data.get_mut(id.0.get()) {
+        let links = match self.tree.get_mut(id.0) {
             Some(links) => links,
             None => {
                 let id = self.insert(data, Kind::Node, Span::point(self.cursor));
@@ -461,20 +459,20 @@ impl<T> TreeBuilder<T> {
         // Adjust span to encapsulate all children.
         let mut span = links.span;
 
-        if let Some(mut cur) = removed.next.and_then(|id| self.data.get(id.get())) {
+        if let Some(mut cur) = removed.next.and_then(|id| self.tree.get(id)) {
             span = span.join(cur.span);
 
-            while let Some(next) = cur.next.and_then(|id| self.data.get(id.get())) {
+            while let Some(next) = cur.next.and_then(|id| self.tree.get(id)) {
                 span = span.join(next.span);
                 cur = next;
             }
 
-            if let Some(node) = self.data.get_mut(id.0.get()) {
+            if let Some(node) = self.tree.get_mut(id.0) {
                 node.span = span;
             }
         }
 
-        self.data.push(removed);
+        self.tree.push(removed);
 
         // The current sibling is the newly replaced node in the tree.
         self.sibling = Some(id.0);
@@ -547,21 +545,21 @@ impl<T> TreeBuilder<T> {
     where
         T: Clone,
     {
-        if !self.stack.is_empty() {
+        if !self.parents.is_empty() {
             return Err(BuildError);
         }
 
-        Ok(Tree::new(self.data.into()))
+        Ok(self.tree)
     }
 
     /// Insert a new node.
     fn insert(&mut self, data: T, kind: Kind, span: Span) -> NonMaxUsize {
-        let new = NonMaxUsize::new(self.data.len()).expect("ran out of ids");
+        let new = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
 
         let prev = std::mem::replace(&mut self.sibling, None);
-        let parent = self.stack.last().copied();
+        let parent = self.parents.last().copied();
 
-        self.data.push(Links {
+        self.tree.push(Links {
             data,
             kind,
             next: None,
@@ -569,11 +567,11 @@ impl<T> TreeBuilder<T> {
             span,
         });
 
-        if let Some(node) = prev.and_then(|id| self.data.get_mut(id.get())) {
+        if let Some(node) = prev.and_then(|id| self.tree.get_mut(id)) {
             node.next = Some(new);
         }
 
-        if let Some(node) = parent.and_then(|id| self.data.get_mut(id.get())) {
+        if let Some(node) = parent.and_then(|id| self.tree.get_mut(id)) {
             if node.first.is_none() {
                 node.first = Some(new);
             }
