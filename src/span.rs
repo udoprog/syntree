@@ -67,10 +67,18 @@ impl Span {
     /// assert_eq!(span.end, 9);
     /// assert_eq!(span, b.join(a));
     /// ```
-    pub fn join(self, other: Self) -> Self {
+    pub const fn join(self, other: Self) -> Self {
         Self {
-            start: self.start.min(other.start),
-            end: self.end.max(other.end),
+            start: if self.start < other.start {
+                self.start
+            } else {
+                other.start
+            },
+            end: if self.end > other.end {
+                self.end
+            } else {
+                other.end
+            },
         }
     }
 
@@ -85,7 +93,7 @@ impl Span {
     ///
     /// assert_eq!(a.range(), 4..8);
     /// ```
-    pub fn range(self) -> ops::Range<usize> {
+    pub const fn range(self) -> ops::Range<usize> {
         self.start..self.end
     }
 }
