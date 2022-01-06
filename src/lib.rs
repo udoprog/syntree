@@ -245,7 +245,7 @@
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 //! [`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
-//! [`TreeError`]: https://docs.rs/syntree/latest/syntree/struct.TreeError.html
+//! [`TreeError`]: https://docs.rs/syntree/latest/syntree/enum.TreeError.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
 //! [could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
