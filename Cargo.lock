@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "syntree"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "codespan-reporting",
