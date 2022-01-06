@@ -13,5 +13,5 @@ syntree = {path = ".."}
 rowan = "0.15.2"
 
 [[bench]]
-name = "comparison"
+name = "comparisons"
 harness = false
