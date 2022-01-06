@@ -184,6 +184,45 @@
 //! tree itself. Even if you want to deduplicate string storage. All of that can
 //! be done on the side and encoded into the syntax tree as you wish.
 //!
+//! <br>
+//!
+//! ### Errors instead of panics
+//!
+//! Another point where this crate differs is that we rely on propagating a
+//! [`TreeError`] during tree construction if the API is used incorrectly
+//! instead of panicking.
+//!
+//! While on the surface this might seem like a minor difference in opinion on
+//! whether programming mistakes should be errors or not, in my experience
+//! parsers tend to be part of a crate in a larger project and errors are
+//! triggered by edge cases in user-provided input.
+//!
+//! So let's say that [Rune] is embedded in [OxidizeBot]. There's a piece of
+//! code in a user-provided script which triggers a bug in the rune compiler
+//! that causes an illegal tree to be constructed. If tree construction simply
+//! panics, the whole bot will go down. But if we instead propagate an error
+//! this would have to be handled instead in however [OxidizeBot] uses [Rune].
+//! For that instance it's simply more appropriate to log the error and unload
+//! the script (and hopefully receive a bug report by the user) than to crash
+//! the bot.
+//!
+//! <br>
+//!
+//! ## Performance and memory use
+//!
+//! The only goal in terms of performance is to be as performant as `rowan`. And
+//! cursory testing shows `syntree` to be a bit faster on synthetic workloads
+//! which can probably be solely attributed to storing and manipulating the
+//! entire tree in a single contiguous memory region. This might or might not
+//! change in the future, depending on if the needs for `syntree` changes. While
+//! performance is important, it *is not* a primary focus.
+//!
+//! I also expect (but haven't verified) that `syntree` could end up having a
+//! similarly low memory profile as `rowan` which performs node deduplication.
+//! The one caveat is that it depends on how the original source is stored and
+//! queried. Something which `rowan` solves for you, but `syntree` leaves as an
+//! exercise to the reader.
+//!
 //! [`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
@@ -192,6 +231,7 @@
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 //! [`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
+//! [`TreeError`]: https://docs.rs/syntree/latest/syntree/struct.TreeError.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
 //! [could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
@@ -199,6 +239,7 @@
 //! [handwritten pratt parser]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 //! [kind-str]: https://github.com/rune-rs/rune/blob/e97a32e/crates/rune/src/ast/generated.rs#L4359
 //! [Rune]: https://github.com/rune-rs/rune
+//! [OxidizeBot]: https://github.com/udoprog/OxidizeBot
 //! [synthetic_strings]: https://github.com/udoprog/syntree/blob/main/examples/synthetic_strings.rs
 
 #![deny(missing_docs)]
