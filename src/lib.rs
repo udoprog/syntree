@@ -143,8 +143,8 @@ mod builder;
 
 pub use self::builder::{Id, TreeBuilder, TreeBuilderError};
 
-mod children;
-pub use self::children::Children;
+mod nodes;
+pub use self::nodes::Nodes;
 
 pub mod print;
 

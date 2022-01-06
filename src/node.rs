@@ -3,7 +3,7 @@ use std::fmt;
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
 use crate::tree::Kind;
-use crate::{Children, Span, Walk, WalkEvents};
+use crate::{Nodes, Span, Walk, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -99,11 +99,18 @@ impl<'a, T> Node<'a, T> {
         self.links.first.is_none()
     }
 
+    /// Get an iterator over the siblings of this node, including itself.
+    ///
+    /// See [Nodes] for documentation.
+    pub fn siblings(&self) -> Nodes<'a, T> {
+        Nodes::new(Some(*self))
+    }
+
     /// Get an iterator over the children of this node.
     ///
-    /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'a, T> {
-        Children::new(self.first())
+    /// See [Nodes] for documentation.
+    pub fn children(&self) -> Nodes<'a, T> {
+        Nodes::new(self.first())
     }
 
     /// Walk the subtree forward starting with the first child of the current

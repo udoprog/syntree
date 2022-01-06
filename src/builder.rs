@@ -463,11 +463,12 @@ impl<T> TreeBuilder<T> {
             .node_at(self.sibling)
             .ok_or(TreeBuilderError::CloseAtError)?;
 
-        if let Some(mut node) = self.tree.node_at(removed.next) {
-            while let Some(next) = node.next() {
-                node = next;
-            }
+        let node = self
+            .tree
+            .node_at(removed.next)
+            .and_then(|n| n.siblings().last());
 
+        if let Some(node) = node {
             let span = Span::new(start, node.span().end);
 
             if !sibling.is_same(&node) {

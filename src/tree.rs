@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::{Children, Node, Walk, WalkEvents};
+use crate::{Node, Nodes, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,9 +46,9 @@ impl<T> Tree<T> {
 
     /// Get all root nodes in the tree.
     ///
-    /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'_, T> {
-        Children::new(self.first())
+    /// See [Nodes] for documentation.
+    pub fn children(&self) -> Nodes<'_, T> {
+        Nodes::new(self.first())
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
