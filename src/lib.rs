@@ -204,21 +204,27 @@
 //!
 //! Another point where this crate differs is that we rely on propagating a
 //! [`TreeError`] during tree construction if the API is used incorrectly
-//! instead of panicking.
+//! *instead* of panicking.
 //!
 //! While on the surface this might seem like a minor difference in opinion on
-//! whether programming mistakes should be errors or not, in my experience
-//! parsers tend to be part of a crate in a larger project and errors are
-//! triggered by edge cases in user-provided input.
+//! whether programming mistakes should be errors or not. In my experience
+//! parsers tend to be part of a crate in a larger project. And errors triggered
+//! by edge cases in user-provided input that once encountered can usually be
+//! avoided.
 //!
-//! So let's say that [Rune] is embedded in [OxidizeBot]. There's a piece of
-//! code in a user-provided script which triggers a bug in the rune compiler
-//! that causes an illegal tree to be constructed. If tree construction simply
-//! panics, the whole bot will go down. But if we instead propagate an error
-//! this would have to be handled instead in however [OxidizeBot] uses [Rune].
-//! For that instance it's simply more appropriate to log the error and unload
-//! the script (and hopefully receive a bug report by the user) than to crash
+//! So let's say [Rune] is embedded in [OxidizeBot] and there's a piece of code
+//! in a user-provided script which triggers a bug in the rune compiler. Which
+//! in turn causes an illegal tree to be constructed. If tree construction
+//! simply panics, the whole bot will go down. But if we instead propagate an
+//! error this would have to be handled in [OxidizeBot] which could panic if it
+//! wanted to. In this instance it's simply more appropriate to log the error
+//! and unload the script (and hopefully receive a bug report!) than to crash
 //! the bot.
+//!
+//! Rust has great diagnostics for indicating that results should be handled,
+//! and while it is [more awkward to deal with results][syntree-math] than [to
+//! simply panic][rowan-math] I believe that the end result is more robust
+//! software.
 //!
 //! <br>
 //!
@@ -237,6 +243,8 @@
 //! queried. Something which `rowan` solves for you, but `syntree` leaves as an
 //! exercise to the reader.
 //!
+//! [syntree-math]: https://github.com/udoprog/syntree/blob/main/examples/math.rs
+//! [rowan-math]: https://github.com/rust-analyzer/rowan/blob/master/examples/math.rs
 //! [`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
