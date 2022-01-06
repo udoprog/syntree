@@ -112,15 +112,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             SYNTHETIC(id) => match id.and_then(|id| storage.get(id)) {
                 Some(string) => string,
                 None => {
-                    println!("{} = {} (not found)", count, &source[node.span().range()]);
+                    println!("{} = {} (not found)", count, &source[node.range()]);
                     count += 1;
                     continue;
                 }
             },
-            LITERAL => &source[node.span().range()],
+            LITERAL => &source[node.range()],
             WHITESPACE => continue,
             ERROR => {
-                println!("Error: {}", &source[node.span().range()]);
+                println!("Error: {}", &source[node.range()]);
                 continue;
             }
         };

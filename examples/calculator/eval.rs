@@ -61,7 +61,7 @@ fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError>
                     .ok_or(EvalError::new(node.span(), Missing(NUMBER)))?;
                 continue;
             }
-            NUMBER => source[node.span().range()]
+            NUMBER => source[node.range()]
                 .parse::<i64>()
                 .map_err(|_| EvalError::new(node.span(), BadNumber)),
             OPERATION => {
