@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Range;
 use std::ptr;
 
 use crate::links::Links;
@@ -118,6 +119,37 @@ impl<'a, T> Node<'a, T> {
     /// ```
     pub const fn span(&self) -> Span {
         self.links.span
+    }
+
+    /// Access the [span] as a [Range][ops::Range].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.range(), 0..8);
+    ///
+    /// let root2 = root.next().ok_or("missing second root")?;
+    /// assert_eq!(root2.range(), 8..13);
+    /// # Ok(()) }
+    /// ```
+    pub const fn range(&self) -> Range<usize> {
+        self.links.span.range()
     }
 
     /// Check if the current node is empty. In that it doesn't have any

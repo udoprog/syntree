@@ -1,8 +1,9 @@
 use std::fmt;
+use std::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::{Node, Nodes, Walk, WalkEvents};
+use crate::{Node, Nodes, Span, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,12 +19,73 @@ pub enum Kind {
 #[derive(Clone)]
 pub struct Tree<T> {
     pub(crate) tree: Vec<Links<T>>,
+    pub(crate) span: Span,
 }
 
 impl<T> Tree<T> {
     /// Construct a new empty tree.
     pub(crate) const fn new() -> Self {
-        Self { tree: Vec::new() }
+        Self {
+            tree: Vec::new(),
+            span: Span::point(0),
+        }
+    }
+
+    /// Get the span of the current node. The span of a node is the complete
+    /// span of all its children.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree.span(), Span::new(0, 13));
+    /// # Ok(()) }
+    /// ```
+    pub const fn span(&self) -> Span {
+        self.span
+    }
+
+    /// Access the [span] as a [Range][ops::Range].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree.range(), 0..13);
+    /// # Ok(()) }
+    /// ```
+    pub const fn range(&self) -> Range<usize> {
+        self.span.range()
     }
 
     /// Check if the current tree is empty. In that it doesn't have any

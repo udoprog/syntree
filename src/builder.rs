@@ -200,7 +200,12 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn token(&mut self, value: T, len: usize) -> Id {
         let start = self.cursor;
-        self.cursor = self.cursor.checked_add(len).expect("cursor out of bounds");
+
+        if len > 0 {
+            self.cursor = self.cursor.checked_add(len).expect("cursor out of bounds");
+            self.tree.span.end = self.cursor;
+        }
+
         let id = self.insert(value, Kind::Token, Span::new(start, self.cursor));
         self.sibling = Some(id);
         Id(id)
