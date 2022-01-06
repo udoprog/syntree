@@ -107,3 +107,14 @@ where
 }
 
 impl<I> Copy for WithoutTokens<I> where I: Copy {}
+
+impl<I> Default for WithoutTokens<I>
+where
+    I: Default,
+{
+    fn default() -> Self {
+        Self {
+            iter: Default::default(),
+        }
+    }
+}
