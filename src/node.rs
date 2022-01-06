@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ptr;
 
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
@@ -12,7 +13,7 @@ pub struct Node<'a, T> {
 }
 
 impl<'a, T> Node<'a, T> {
-    pub(crate) fn new(node: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
+    pub(crate) const fn new(node: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
         Self { links: node, tree }
     }
 
@@ -20,23 +21,68 @@ impl<'a, T> Node<'a, T> {
     ///
     /// This is a cheap pointer comparison.
     pub(crate) fn is_same(&self, other: &Node<'a, T>) -> bool {
-        std::ptr::eq(self.links, other.links)
+        ptr::eq(self.links, other.links)
     }
 
     /// Test if this node is the same as another set of links.
     ///
     /// This is a cheap pointer comparison.
     pub(crate) fn is_same_as_links(&self, links: &Links<T>) -> bool {
-        std::ptr::eq(self.links, links)
+        ptr::eq(self.links, links)
     }
 
     /// Access the data associated with the node.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         ("number", 5),
+    ///         ("ident", 3),
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(*root.value(), "root");
+    ///
+    /// let number = root.first().ok_or("missing number")?;
+    /// assert_eq!(*number.value(), "number");
+    ///
+    /// let ident = number.next().ok_or("missing ident")?;
+    /// assert_eq!(*ident.value(), "ident");
+    /// # Ok(()) }
+    /// ```
     pub fn value(&self) -> &'a T {
         &self.links.data
     }
 
     /// Access the kind of the node.
-    pub fn kind(&self) -> Kind {
+    ///
+    /// Terminating nodes are [Kind::Token] and intermediary nodes are
+    /// [Kind::Node].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Kind;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         ("number", 5),
+    ///         ("ident", 3),
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.kind(), Kind::Node);
+    ///
+    /// assert!(root.children().all(|n| matches!(n.kind(), Kind::Token)));
+    /// # Ok(()) }
+    /// ```
+    pub const fn kind(&self) -> Kind {
         self.links.kind
     }
 
@@ -70,7 +116,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(root2.span(), Span::new(8, 13));
     /// # Ok(()) }
     /// ```
-    pub fn span(&self) -> Span {
+    pub const fn span(&self) -> Span {
         self.links.span
     }
 
@@ -95,7 +141,7 @@ impl<'a, T> Node<'a, T> {
     /// assert!(!last.is_empty());
     /// # Ok(()) }
     /// ```
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.links.first.is_none()
     }
 
