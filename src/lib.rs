@@ -16,7 +16,7 @@
 //! Add `syntree` to your crate:
 //!
 //! ```toml
-//! syntree = "0.9.1"
+//! syntree = "0.10.0"
 //! ```
 //!
 //! If you want a complete sample for how `syntree` can be used for parsing, see
@@ -119,18 +119,87 @@
 //! the use of a [handwritten pratt parser]. See the [calculator example] for a
 //! complete use case.
 //!
+//! <br>
+//!
+//! ## Why not `rowan`?
+//!
+//! I love [`rowan`]. It's the reason why I started this project. But this crate
+//! still exists for a few philosophical differences that would be hard to
+//! reconcile directly in `rowan`.
+//!
+//! `rowan` only supports adding types which in some way can be coerced into an
+//! `repr(u16)` as part of the syntax tree. I think this decision is reasonable,
+//! but it precludes you from designing trees which contain anything else other
+//! than source references without having to perform some form of indirect
+//! lookup on the side. This is something I need in order to move [Rune] to
+//! lossless syntax trees like (see [the representation of `Kind::Str`
+//! enum][kind-str]).
+//!
+//! So consider the following tokens:
+//!
+//! ```
+//! #[derive(Debug, Clone, Copy)]
+//! enum Syntax {
+//!     /// A string referenced somewhere else using the provided ID.
+//!     SYNTHETIC(Option<usize>),
+//!     /// A literal string from the source.
+//!     LITERAL,
+//!     /// Whitespace.
+//!     WHITESPACE,
+//!     /// A lexer error.
+//!     ERROR,
+//! }
+//! ```
+//!
+//! You can see the [full `synthetic_strings` example][synthetic_strings] for
+//! how this might be used. But not only can the `SYNTHETIC` token correspond to
+//! some source location (as it should because it was expanded from one!). It
+//! also directly represents that it's *not* a literal string referencing a
+//! source location.
+//!
+//! In [Rune] this became apparent once we started [expanding macros]. Because
+//! macros expand to things which do not reference source locations so we need
+//! some other way to include what the tokens represent in the syntax trees.
+//!
+//! You can try a *very* simple lex-time variable expander in the
+//! [`synthetic_strings` example][synthetic_strings]:
+//!
+//! ```sh
+//! cargo run --example synthetic_strings -- "Hello $world"
+//! ```
+//!
+//! Which would output:
+//!
+//! ```text
+//! Tree:
+//! LITERAL@0..5 "Hello"
+//! WHITESPACE@5..6 " "
+//! SYNTHETIC(Some(0))@6..12 "$world"
+//! Eval:
+//! 0 = "Hello"
+//! 1 = "Earth"
+//! ```
+//!
+//! So in essense `syntree` doesn't believe you need to store strings in the
+//! tree itself. Even if you want to deduplicate string storage. All of that can
+//! be done on the side and encoded into the syntax tree as you wish.
+//!
 //! [`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 //! [`rowan`]: https://docs.rs/rowan/latest/rowan/
+//! [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 //! [`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator.rs
 //! [could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
+//! [expanding macros]: https://github.com/rune-rs/rune/blob/main/crates/rune-modules/src/core.rs#L36
 //! [handwritten pratt parser]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-//! [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
+//! [kind-str]: https://github.com/rune-rs/rune/blob/e97a32e/crates/rune/src/ast/generated.rs#L4359
+//! [Rune]: https://github.com/rune-rs/rune
+//! [synthetic_strings]: https://github.com/udoprog/syntree/blob/main/examples/synthetic_strings.rs
 
 #![deny(missing_docs)]
 
