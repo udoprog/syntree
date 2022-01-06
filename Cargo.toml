@@ -17,6 +17,11 @@ A memory efficient syntax tree for language developers.
 # dependencies in there which would otherwise hog down testing this crate.
 autobenches = false
 
+[features]
+# Use a u32 instead of usize for indexes which reduces memory use on larger than
+# 32-bit platforms.
+u32 = []
+
 [dev-dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
