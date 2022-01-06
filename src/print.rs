@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 use std::io::{Error, Write};
 
-use crate::{Event, Kind, Span, Tree};
+use crate::{Kind, Span, Tree};
 
 /// Pretty-print a tree without a source.
 ///
@@ -133,15 +133,10 @@ where
     O: Write,
     T: Debug,
 {
-    let mut it = tree.walk_events();
-    let mut current_depth = it.depth();
+    let mut it = tree.walk();
 
-    while let Some((event, node)) = it.next() {
-        if matches!(event, Event::Up) {
-            continue;
-        }
-
-        let n = current_depth * 2;
+    while let Some((depth, node)) = it.next_with_depth() {
+        let n = depth * 2;
         let data = node.value();
         let span = node.span();
 
@@ -157,8 +152,6 @@ where
                 writeln!(o, "{:n$}{:?}@{}", "", data, span, n = n)?;
             }
         }
-
-        current_depth = it.depth();
     }
 
     Ok(())

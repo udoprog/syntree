@@ -5,17 +5,17 @@ use syntree::{Tree, TreeBuilder, TreeError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
-enum SyntaxKind {
+enum Syntax {
     STRING,
     ENTRY,
     WHITESPACE,
     ROOT,
 }
 
-use SyntaxKind::*;
+use Syntax::*;
 
-impl From<SyntaxKind> for rowan::SyntaxKind {
-    fn from(kind: SyntaxKind) -> Self {
+impl From<Syntax> for rowan::SyntaxKind {
+    fn from(kind: Syntax) -> Self {
         Self(kind as u16)
     }
 }
@@ -24,11 +24,11 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
 enum Lang {}
 
 impl rowan::Language for Lang {
-    type Kind = SyntaxKind;
+    type Kind = Syntax;
 
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
         assert!(raw.0 <= ROOT as u16);
-        unsafe { std::mem::transmute::<u16, SyntaxKind>(raw.0) }
+        unsafe { std::mem::transmute::<u16, Syntax>(raw.0) }
     }
 
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
@@ -36,7 +36,7 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<SyntaxKind>, TreeError> {
+fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax>, TreeError> {
     let mut builder = TreeBuilder::new();
 
     let c = builder.checkpoint();
@@ -80,7 +80,7 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
     SyntaxNode::new_root(builder.finish())
 }
 
-fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<SyntaxKind>, TreeError> {
+fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax>, TreeError> {
     let mut builder = TreeBuilder::new();
 
     let c = builder.checkpoint();

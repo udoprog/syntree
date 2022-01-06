@@ -312,6 +312,36 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
+    ///
+    /// Adding a token after a checkpoint:
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// let c = tree.checkpoint();
+    /// tree.open("child");
+    /// tree.token("lit", 3);
+    /// tree.close()?;
+    /// tree.close_at(c, "root")?;
+    /// tree.token("sibling", 3);
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         "child" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     ("sibling", 3)
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok(()) }
+    /// ```
     pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
         let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
 

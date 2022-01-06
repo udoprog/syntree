@@ -13,6 +13,10 @@ description = """
 A memory efficient syntax tree for language developers.
 """
 
+# Avoid loading benches from the benches directory so we can add more
+# dependencies in there which would otherwise hog down testing this crate.
+autobenches = false
+
 [dev-dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
@@ -20,5 +24,5 @@ codespan-reporting = "0.11.1"
 
 [workspace] 
 members = [
-    "benches"
+    "benches",
 ]

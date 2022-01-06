@@ -36,25 +36,39 @@ Each tree consists of *nodes* and *tokens*. Nodes are intermediary elements
 in the tree which encapsulate zero or more other nodes or tokens, while
 tokens are leaf elements representing exact source locations.
 
-An example tree for the simple expression `128 + 64` could be represented
+An example tree for the simple expression `256 / 2 + 64 * 2` could be represented
 like this:
+
+```
+OPERATION@0..16
+  NUMBER@0..3
+    NUMBER@0..3 "256"
+  WHITESPACE@3..4 " "
+  OPERATOR@4..5
+    DIV@4..5 "/"
+  WHITESPACE@5..6 " "
+  NUMBER@6..7
+    NUMBER@6..7 "2"
+  WHITESPACE@7..8 " "
+  OPERATOR@8..9
+    PLUS@8..9 "+"
+  WHITESPACE@9..10 " "
+  OPERATION@10..16
+    NUMBER@10..12
+      NUMBER@10..12 "64"
+    WHITESPACE@12..13 " "
+    OPERATOR@13..14
+      MUL@13..14 "*"
+    WHITESPACE@14..15 " "
+    NUMBER@15..16
+      NUMBER@15..16 "2"
+```
 
 > Try it for yourself with:
 >
 > ```sh
-> cargo run --example calculator -- "128 + 64"
+> cargo run --example calculator -- "256 / 2 + 64 * 2"
 > ```
-
-```
-NUMBER@0..3
-  NUMBER@0..3 "128"
-WHITESPACE@3..4 " "
-OPERATOR@4..5
-  PLUS@4..5 "+"
-WHITESPACE@5..6 " "
-NUMBER@6..8
-  NUMBER@6..8 "64"
-```
 
 The primary difference between `syntree` and [`rowan`] is that *we don't
 store the original source* in the syntax tree. Instead, the user of the

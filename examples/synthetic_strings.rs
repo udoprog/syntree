@@ -16,6 +16,8 @@ enum Syntax {
     ERROR,
 }
 
+use Syntax::*;
+
 #[derive(Default)]
 struct Storage {
     lookup: HashMap<String, usize>,
@@ -40,8 +42,6 @@ impl Storage {
         Some(self.storage.get(id)?.as_str())
     }
 }
-
-use Syntax::*;
 
 fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syntax, usize)> + 'a {
     let mut it = source.char_indices().peekable();

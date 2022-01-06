@@ -6,13 +6,13 @@ use syntree::{print, Tree, TreeBuilder, TreeError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
-enum SyntaxKind {
-    WHITESPACE = 0,
-
+enum Syntax {
     ADD,
     SUB,
     MUL,
     DIV,
+
+    WHITESPACE,
 
     NUMBER,
     ERROR,
@@ -20,15 +20,15 @@ enum SyntaxKind {
     ROOT,
 }
 
-use SyntaxKind::*;
+use Syntax::*;
 
-struct Parser<I: Iterator<Item = (SyntaxKind, usize)>> {
-    builder: TreeBuilder<SyntaxKind>,
+struct Parser<I: Iterator<Item = (Syntax, usize)>> {
+    builder: TreeBuilder<Syntax>,
     iter: Peekable<I>,
 }
 
-impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
-    fn peek(&mut self) -> Option<SyntaxKind> {
+impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
+    fn peek(&mut self) -> Option<Syntax> {
         while self
             .iter
             .peek()
@@ -61,7 +61,7 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
 
     fn handle_operation(
         &mut self,
-        tokens: &[SyntaxKind],
+        tokens: &[Syntax],
         next: fn(&mut Self) -> Result<(), TreeError>,
     ) -> Result<(), TreeError> {
         let c = self.builder.checkpoint();
@@ -84,7 +84,7 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<SyntaxKind>, TreeError> {
+    fn parse(mut self) -> Result<Tree<Syntax>, TreeError> {
         self.builder.open(ROOT);
         self.parse_add()?;
         self.builder.close()?;
@@ -92,7 +92,7 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
     }
 }
 
-fn lexer(source: &str) -> impl Iterator<Item = (SyntaxKind, usize)> + '_ {
+fn lexer(source: &str) -> impl Iterator<Item = (Syntax, usize)> + '_ {
     let mut it = source.char_indices().peekable();
     let len = source.len();
 
