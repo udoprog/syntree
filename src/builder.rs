@@ -150,7 +150,6 @@ pub struct TreeBuilder<T> {
     cursor: usize,
 }
 
-/// Build a new syntax tree.
 impl<T> TreeBuilder<T> {
     /// Construct a new tree.
     ///
@@ -275,9 +274,9 @@ impl<T> TreeBuilder<T> {
         Ok(())
     }
 
-    /// Declare a token with the specified `data` and a corresponding `span`.
+    /// Declare a token with the specified `value` and a corresponding `len`.
     ///
-    /// A token is always a terminating node that has no children.
+    /// A token is always a terminating element without children.
     ///
     /// # Examples
     ///
@@ -293,10 +292,10 @@ impl<T> TreeBuilder<T> {
     ///
     /// # Ok(()) }
     /// ```
-    pub fn token(&mut self, data: T, len: usize) -> Id {
+    pub fn token(&mut self, value: T, len: usize) -> Id {
         let start = self.cursor;
         self.cursor = self.cursor.checked_add(len).expect("cursor out of bounds");
-        let id = self.insert(data, Kind::Token, Span::new(start, self.cursor));
+        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor));
         self.sibling = Some(id);
         Id(id)
     }
@@ -306,7 +305,7 @@ impl<T> TreeBuilder<T> {
     /// # Panics
     ///
     /// This panics if the number of nodes are too many to fit in a vector on
-    /// your architecture. This corresponds to [usize::max_value()].
+    /// your architecture. This corresponds to [usize::MAX].
     ///
     /// # Examples
     ///
@@ -314,30 +313,25 @@ impl<T> TreeBuilder<T> {
     /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut b = TreeBuilder::new();
+    /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = b.checkpoint();
+    /// let c = tree.checkpoint();
+    /// tree.open("child");
+    /// tree.token("lit", 3);
+    /// tree.close()?;
+    /// tree.close_at(c, "root")?;
     ///
-    /// b.open("number");
-    /// b.token("lit", 1);
-    /// b.close()?;
+    /// let tree = tree.build()?;
     ///
-    /// b.token("whitespace", 3);
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         "child" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     }
+    /// };
     ///
-    /// b.open("number");
-    /// b.token("lit", 2);
-    /// b.token("lit", 2);
-    /// b.close()?;
-    ///
-    /// b.close_at(c, "root")?;
-    ///
-    /// let tree = b.build()?;
-    ///
-    /// let root = tree.first().ok_or("missing root")?;
-    ///
-    /// assert_eq!(*root.value(), "root");
-    /// assert_eq!(root.children().count(), 3);
-    /// assert_eq!(root.children().without_tokens().count(), 2);
+    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
     pub fn checkpoint(&self) -> Id {
@@ -355,13 +349,13 @@ impl<T> TreeBuilder<T> {
     /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut b = TreeBuilder::new();
+    /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = b.checkpoint();
-    /// b.token("lit", 3);
-    /// b.close_at(c, "root")?;
+    /// let c = tree.checkpoint();
+    /// tree.token("lit", 3);
+    /// tree.close_at(c, "root")?;
     ///
-    /// let tree = b.build()?;
+    /// let tree = tree.build()?;
     ///
     /// let expected = syntree::tree! {
     ///     "root" => {
@@ -379,23 +373,23 @@ impl<T> TreeBuilder<T> {
     /// use syntree::TreeBuilder;
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut b = TreeBuilder::new();
+    /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = b.checkpoint();
+    /// let c = tree.checkpoint();
     ///
-    /// b.open("number");
-    /// b.token("lit", 3);
-    /// b.close()?;
+    /// tree.open("number");
+    /// tree.token("lit", 3);
+    /// tree.close()?;
     ///
-    /// b.token("whitespace", 1);
+    /// tree.token("whitespace", 1);
     ///
-    /// b.open("number");
-    /// b.token("lit", 2);
-    /// b.close()?;
+    /// tree.open("number");
+    /// tree.token("lit", 2);
+    /// tree.close()?;
     ///
-    /// b.close_at(c, "root")?;
+    /// tree.close_at(c, "root")?;
     ///
-    /// let tree = b.build()?;
+    /// let tree = tree.build()?;
     ///
     /// let expected = syntree::tree! {
     ///     "root" => {
