@@ -1,5 +1,3 @@
-use crate::links::Links;
-use crate::non_max::NonMaxUsize;
 use crate::{Event, Node, WalkEvents, WithoutTokens};
 
 /// An iterator that walks over the entire tree, visiting every node exactly
@@ -46,9 +44,10 @@ pub struct Walk<'a, T> {
 }
 
 impl<'a, T> Walk<'a, T> {
-    pub(crate) fn new(tree: &'a [Links<T>], start: Option<NonMaxUsize>) -> Self {
+    /// Construct a new walk.
+    pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
         Self {
-            iter: WalkEvents::new(tree, start),
+            iter: WalkEvents::new(node),
         }
     }
 

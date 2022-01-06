@@ -103,7 +103,7 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [Children] for documentation.
     pub fn children(&self) -> Children<'a, T> {
-        Children::new(self.tree, self.links.first)
+        Children::new(self.first())
     }
 
     /// Walk the subtree forward starting with the first child of the current
@@ -111,15 +111,15 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'a, T> {
-        Walk::new(self.tree, self.links.first)
+        Walk::new(self.first())
     }
 
     /// Walk the node forwards in a depth-first fashion emitting events
     /// indicating how the rest of the tree is being traversed.
     ///
     /// See [WalkEvents] for documentation.
-    pub fn walk_events(&self) -> WalkEvents<'_, T> {
-        WalkEvents::new(self.tree, self.links.first)
+    pub fn walk_events(&self) -> WalkEvents<'a, T> {
+        WalkEvents::new(self.first())
     }
 
     /// Get the first child node.
@@ -184,8 +184,8 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.next)
     }
 
-    fn node_at(&self, index: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
-        let cur = self.tree.get(index?.get())?;
+    fn node_at(&self, id: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
+        let cur = self.tree.get(id?.get())?;
 
         Some(Self {
             links: cur,

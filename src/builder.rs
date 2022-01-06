@@ -477,7 +477,7 @@ impl<T> TreeBuilder<T> {
             if let Some(node) = self.tree.get_mut(id) {
                 node.span = span;
             }
-        } else if !sibling.is_same_as_links(&removed) {
+        } else if !sibling.is_same_as_links(removed) {
             return Err(TreeBuilderError::CloseAtError);
         }
 

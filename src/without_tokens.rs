@@ -58,7 +58,7 @@ pub struct WithoutTokens<I> {
 }
 
 impl<I> WithoutTokens<I> {
-    pub(crate) fn new(iter: I) -> Self {
+    pub(crate) const fn new(iter: I) -> Self {
         Self { iter }
     }
 }

@@ -1,5 +1,3 @@
-use crate::links::Links;
-use crate::non_max::NonMaxUsize;
 use crate::{Kind, Node, WithoutTokens};
 
 /// Iterator over the children of a node or tree.
@@ -36,21 +34,20 @@ use crate::{Kind, Node, WithoutTokens};
 /// # Ok(()) }
 /// ```
 pub struct Children<'a, T> {
-    tree: &'a [Links<T>],
-    node: Option<NonMaxUsize>,
+    node: Option<Node<'a, T>>,
 }
 
 impl<'a, T> Children<'a, T> {
     /// Construct a new child iterator.
-    pub(crate) fn new(tree: &'a [Links<T>], node: Option<NonMaxUsize>) -> Self {
-        Self { tree, node }
+    pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
+        Self { node }
     }
 
     /// Construct a [WithoutTokens] iterator from the remainder of this
     /// iterator. This filters out [Kind::Token] elements.
     ///
     /// See [WithoutTokens] for documentation.
-    pub fn without_tokens(self) -> WithoutTokens<Self> {
+    pub const fn without_tokens(self) -> WithoutTokens<Self> {
         WithoutTokens::new(self)
     }
 
@@ -78,11 +75,10 @@ impl<'a, T> Children<'a, T> {
     /// ```
     pub fn next_node(&mut self) -> Option<Node<'a, T>> {
         loop {
-            let node = self.tree.get(self.node?.get())?;
-            self.node = node.next;
+            let node = self.next()?;
 
-            if matches!(node.kind, Kind::Node) {
-                return Some(Node::new(node, self.tree));
+            if matches!(node.kind(), Kind::Node) {
+                return Some(node);
             }
         }
     }
@@ -92,9 +88,9 @@ impl<'a, T> Iterator for Children<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let node = self.tree.get(self.node?.get())?;
-        self.node = node.next;
-        Some(Node::new(node, self.tree))
+        let node = self.node.take()?;
+        self.node = node.next();
+        Some(node)
     }
 }
 

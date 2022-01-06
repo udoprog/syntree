@@ -48,14 +48,14 @@ impl<T> Tree<T> {
     ///
     /// See [Children] for documentation.
     pub fn children(&self) -> Children<'_, T> {
-        Children::new(self.tree.as_ref(), NonMaxUsize::new(0))
+        Children::new(self.first())
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
     /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'_, T> {
-        Walk::new(self.tree.as_ref(), NonMaxUsize::new(0))
+        Walk::new(self.first())
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -63,7 +63,7 @@ impl<T> Tree<T> {
     ///
     /// See [WalkEvents] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T> {
-        WalkEvents::new(self.tree.as_ref(), NonMaxUsize::new(0))
+        WalkEvents::new(self.first())
     }
 
     /// Get the first child node in the tree.

@@ -1,5 +1,3 @@
-use crate::links::Links;
-use crate::non_max::NonMaxUsize;
 use crate::Node;
 
 /// An event indicating how a tree is being walked with [WalkEvents].
@@ -79,18 +77,20 @@ pub enum Event {
 /// # Ok(()) }
 /// ```
 pub struct WalkEvents<'a, T> {
-    tree: &'a [Links<T>],
     // The current node.
-    start: Option<(NonMaxUsize, Event)>,
+    start: Option<(Node<'a, T>, Event)>,
     // Parent nodes.
-    parents: Vec<NonMaxUsize>,
+    parents: Vec<Node<'a, T>>,
 }
 
 impl<'a, T> WalkEvents<'a, T> {
-    pub(crate) fn new(tree: &'a [Links<T>], start: Option<NonMaxUsize>) -> Self {
+    /// Construct a new events walker.
+    pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
         Self {
-            tree,
-            start: start.map(|id| (id, Event::Next)),
+            start: match node {
+                Some(n) => Some((n, Event::Next)),
+                None => None,
+            },
             parents: Vec::new(),
         }
     }
@@ -143,23 +143,18 @@ impl<'a, T> WalkEvents<'a, T> {
         self.parents.len()
     }
 
-    fn step(
-        &mut self,
-        id: NonMaxUsize,
-        links: &Links<T>,
-        event: Event,
-    ) -> Option<(NonMaxUsize, Event)> {
+    fn step(&mut self, node: Node<'a, T>, event: Event) -> Option<(Node<'a, T>, Event)> {
         if matches!(event, Event::Up) {
-            if let Some(next) = self.tree.get(id.get()).and_then(|links| links.next) {
+            if let Some(next) = node.next() {
                 return Some((next, Event::Next));
             }
         } else {
-            if let Some(first) = links.first {
-                self.parents.push(id);
+            if let Some(first) = node.first() {
+                self.parents.push(node);
                 return Some((first, Event::Down));
             }
 
-            if let Some(next) = links.next {
+            if let Some(next) = node.next() {
                 return Some((next, Event::Next));
             }
         }
@@ -176,13 +171,12 @@ impl<'a, T> Iterator for WalkEvents<'a, T> {
     type Item = (Event, Node<'a, T>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (id, event) = self.start.take()?;
-        let links = self.tree.get(id.get())?;
+        let (node, event) = self.start.take()?;
 
-        if let Some(id) = self.step(id, links, event) {
+        if let Some(id) = self.step(node, event) {
             self.start = Some(id);
         }
 
-        Some((event, Node::new(links, self.tree)))
+        Some((event, node))
     }
 }
