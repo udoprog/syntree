@@ -268,37 +268,27 @@
 
 #[macro_use]
 mod macros;
-
-mod non_max;
-
 mod builder;
+mod change_set;
+mod error;
+mod links;
+mod node;
+mod nodes;
+mod non_max;
+pub mod print;
+mod skip_tokens;
+mod span;
+mod tree;
+mod walk;
+mod walk_events;
 
 pub use self::builder::{Id, TreeBuilder};
-
-mod error;
+pub use self::change_set::ChangeSet;
 pub use self::error::TreeError;
-
-mod nodes;
-pub use self::nodes::Nodes;
-
-pub mod print;
-
-mod node;
 pub use self::node::Node;
-
-mod span;
-pub use self::span::Span;
-
-mod tree;
-pub use self::tree::{Kind, Tree};
-
-mod walk;
-pub use self::walk::{Walk, WithDepths};
-
-mod walk_events;
-pub use self::walk_events::{Event, WalkEvents};
-
-mod skip_tokens;
+pub use self::nodes::Nodes;
 pub use self::skip_tokens::SkipTokens;
-
-mod links;
+pub use self::span::Span;
+pub use self::tree::{Kind, Tree};
+pub use self::walk::{Walk, WithDepths};
+pub use self::walk_events::{Event, WalkEvents};

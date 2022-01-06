@@ -1,11 +1,12 @@
 use std::fmt;
+use std::mem::size_of;
 use std::ops::Range;
 use std::ptr;
 
 use crate::links::Links;
-use crate::non_max::NonMaxUsize;
+use crate::non_max::NonMax;
 use crate::tree::Kind;
-use crate::{Nodes, Span, Walk, WalkEvents};
+use crate::{Id, Nodes, Span, Walk, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -16,6 +17,42 @@ pub struct Node<'a, T> {
 impl<'a, T> Node<'a, T> {
     pub(crate) const fn new(node: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
         Self { links: node, tree }
+    }
+
+    /// Get the identifier of the current node.
+    ///
+    /// This can be used to register a change in a [ChangeSet] later.
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    /// let root_id = tree.open("root");
+    /// let child_id = tree.open("child");
+    /// tree.close()?;
+    ///
+    /// let child2_id = tree.open("child2");
+    /// tree.close()?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    /// let root = tree.first().ok_or("missing root")?;
+    /// let child = root.first().ok_or("missing child")?;
+    /// let child2 = child.next().ok_or("missing child2")?;
+    ///
+    /// assert_eq!(root.id(), root_id);
+    /// assert_eq!(child.id(), child_id);
+    /// assert_eq!(child2.id(), child2_id);
+    /// # Ok(()) }
+    /// ```
+    pub fn id(&self) -> Id {
+        let current = self.links as *const _ as usize;
+        let base = self.tree.as_ptr() as usize;
+        let id = (current - base) / size_of::<Links<T>>();
+        // It's impossible to construct a node with an offset which is not a
+        // legal `NonMax`.
+        unsafe { Id::new(NonMax::new_unchecked(id)) }
     }
 
     /// Test if this node is the same as another node.
@@ -269,7 +306,7 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.next)
     }
 
-    fn node_at(&self, id: Option<NonMaxUsize>) -> Option<Node<'a, T>> {
+    fn node_at(&self, id: Option<NonMax>) -> Option<Node<'a, T>> {
         let cur = self.tree.get(id?.get())?;
 
         Some(Self {

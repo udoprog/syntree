@@ -1,7 +1,8 @@
 use std::mem;
 
 use crate::links::Links;
-use crate::non_max::NonMaxUsize;
+use crate::non_max::NonMax;
+use crate::span::Index;
 use crate::{Kind, Span, Tree, TreeError};
 
 /// The identifier of a node as returned by functions such as
@@ -11,7 +12,13 @@ use crate::{Kind, Span, Tree, TreeError};
 /// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Id(NonMaxUsize);
+pub struct Id(pub(crate) NonMax);
+
+impl Id {
+    pub(crate) const fn new(id: NonMax) -> Self {
+        Self(id)
+    }
+}
 
 /// A builder for a [Tree].
 ///
@@ -50,11 +57,11 @@ pub struct TreeBuilder<T> {
     /// Data in the tree being built.
     tree: Tree<T>,
     /// References to parent nodes of the current node being constructed.
-    parents: Vec<NonMaxUsize>,
+    parents: Vec<NonMax>,
     /// Reference to last sibling inserted.
-    sibling: Option<NonMaxUsize>,
+    sibling: Option<NonMax>,
     /// The current cursor.
-    cursor: usize,
+    cursor: Index,
 }
 
 impl<T> TreeBuilder<T> {
@@ -193,7 +200,7 @@ impl<T> TreeBuilder<T> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("child");
-    /// tree.token("lit", 3);
+    /// tree.token("lit", 4);
     /// tree.close()?;
     ///
     /// # Ok(()) }
@@ -202,8 +209,11 @@ impl<T> TreeBuilder<T> {
         let start = self.cursor;
 
         if len > 0 {
-            self.cursor = self.cursor.checked_add(len).expect("cursor out of bounds");
-            self.tree.span.end = self.cursor;
+            self.cursor = Index::try_from(len)
+                .ok()
+                .and_then(|len| self.cursor.checked_add(len))
+                .expect("cursor out of bounds");
+            self.tree.span_mut().end = self.cursor;
         }
 
         let id = self.insert(value, Kind::Token, Span::new(start, self.cursor));
@@ -246,7 +256,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn checkpoint(&self) -> Id {
-        Id(NonMaxUsize::new(self.tree.len()).expect("ran out of ids"))
+        Id(NonMax::new(self.tree.len()).expect("ran out of ids"))
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -348,7 +358,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
-        let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
+        let child = NonMax::new(self.tree.len()).expect("ran out of ids");
 
         let links = match self.tree.get_mut(id.0) {
             Some(links) => links,
@@ -395,8 +405,8 @@ impl<T> TreeBuilder<T> {
     // sibling of the replaced node.
     fn restructure_close_at(
         &mut self,
-        id: NonMaxUsize,
-        start: usize,
+        id: NonMax,
+        start: Index,
         removed: &Links<T>,
     ) -> Result<(), TreeError> {
         let sibling = self
@@ -485,8 +495,8 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: Span) -> NonMaxUsize {
-        let new = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
+    fn insert(&mut self, data: T, kind: Kind, span: Span) -> NonMax {
+        let new = NonMax::new(self.tree.len()).expect("ran out of ids");
 
         let prev = std::mem::replace(&mut self.sibling, None);
         let parent = self.parents.last().copied();

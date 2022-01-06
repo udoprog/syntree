@@ -1,13 +1,24 @@
-use std::{fmt, ops};
+use std::fmt;
+use std::mem::size_of;
+use std::ops;
+
+/// The index used in a span.
+#[cfg(feature = "u32")]
+pub(crate) type Index = u32;
+#[cfg(not(feature = "u32"))]
+pub(crate) type Index = usize;
+
+/// Ensure that the specified index is smaller or equal to [usize].
+const _: () = assert!(size_of::<Index>() <= size_of::<usize>());
 
 /// A span in the source code.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub struct Span {
     /// The start of the span.
-    pub start: usize,
+    pub start: Index,
     /// The end of the span.
-    pub end: usize,
+    pub end: Index,
 }
 
 impl Span {
@@ -33,7 +44,7 @@ impl Span {
     /// assert_eq!(span.start, 4);
     /// assert_eq!(span.end, 8);
     /// ```
-    pub const fn new(start: usize, end: usize) -> Self {
+    pub const fn new(start: Index, end: Index) -> Self {
         assert!(start <= end, "start of the span must come before end");
         Self { start, end }
     }
@@ -47,7 +58,7 @@ impl Span {
     ///
     /// assert_eq!(Span::point(4), Span::new(4, 4));
     /// ```
-    pub const fn point(at: usize) -> Self {
+    pub const fn point(at: Index) -> Self {
         Self { start: at, end: at }
     }
 
@@ -94,7 +105,12 @@ impl Span {
     /// assert_eq!(a.range(), 4..8);
     /// ```
     pub const fn range(self) -> ops::Range<usize> {
-        self.start..self.end
+        (self.start as usize)..(self.end as usize)
+    }
+
+    /// The length of the span.
+    pub const fn len(self) -> Index {
+        self.end.saturating_sub(self.start)
     }
 }
 
