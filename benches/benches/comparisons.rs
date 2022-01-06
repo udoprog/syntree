@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand::{Rng, RngCore};
+use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
 use syntree::{Tree, TreeBuilder, TreeBuilderError};
 
@@ -154,7 +154,7 @@ criterion_group!(benches, setup);
 criterion_main!(benches);
 
 fn generate_random(count: usize, min: usize, max: usize) -> Vec<Box<str>> {
-    let mut rng = rand::thread_rng();
+    let mut rng = StdRng::seed_from_u64(0x12345678);
     let mut s = String::with_capacity(16);
 
     let mut output = Vec::with_capacity(count);
