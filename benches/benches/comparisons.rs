@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{Tree, TreeBuilder, TreeBuilderError};
+use syntree::{Tree, TreeBuilder, TreeError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -36,7 +36,7 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<SyntaxKind>, TreeBuilderError> {
+fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<SyntaxKind>, TreeError> {
     let mut builder = TreeBuilder::new();
 
     let c = builder.checkpoint();
@@ -80,7 +80,7 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
     SyntaxNode::new_root(builder.finish())
 }
 
-fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<SyntaxKind>, TreeBuilderError> {
+fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<SyntaxKind>, TreeError> {
     let mut builder = TreeBuilder::new();
 
     let c = builder.checkpoint();
@@ -139,7 +139,7 @@ fn setup(c: &mut Criterion) {
             group.bench_with_input(BenchmarkId::new("syntree", size), &size, |b, size| {
                 let syntree = syntree_tree(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
-                b.iter(|| root.children().without_tokens().count())
+                b.iter(|| root.children().skip_tokens().count())
             });
 
             group.bench_with_input(BenchmarkId::new("rowan", size), &size, |b, size| {

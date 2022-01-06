@@ -1,4 +1,6 @@
-use crate::{Kind, Node, WithoutTokens};
+use std::iter::FusedIterator;
+
+use crate::{Kind, Node, SkipTokens};
 
 /// An iterator that iterates over the [Node::next] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -70,12 +72,12 @@ impl<'a, T> Nodes<'a, T> {
         Self { node }
     }
 
-    /// Construct a [WithoutTokens] iterator from the remainder of this
+    /// Construct a [SkipTokens] iterator from the remainder of this
     /// iterator. This filters out [Kind::Token] elements.
     ///
-    /// See [WithoutTokens] for documentation.
-    pub const fn without_tokens(self) -> WithoutTokens<Self> {
-        WithoutTokens::new(self)
+    /// See [SkipTokens] for documentation.
+    pub const fn skip_tokens(self) -> SkipTokens<Self> {
+        SkipTokens::new(self)
     }
 
     /// Get the next node from the iterator. This advances past all non-node
@@ -120,6 +122,8 @@ impl<'a, T> Iterator for Nodes<'a, T> {
         Some(node)
     }
 }
+
+impl<'a, T> FusedIterator for Nodes<'a, T> {}
 
 impl<'a, T> Clone for Nodes<'a, T> {
     fn clone(&self) -> Self {

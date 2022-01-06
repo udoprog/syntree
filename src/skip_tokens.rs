@@ -1,8 +1,10 @@
+use std::iter::FusedIterator;
+
 use crate::{Kind, Node};
 
 /// Wrapped around an iterator that excludes [Kind::Token] nodes.
 ///
-/// See [Nodes::without_tokens][crate::Nodes::without_tokens] or [Walk::without_tokens][crate::Walk::without_tokens].
+/// See [Nodes::skip_tokens][crate::Nodes::skip_tokens] or [Walk::skip_tokens][crate::Walk::skip_tokens].
 ///
 /// # Examples
 ///
@@ -21,7 +23,7 @@ use crate::{Kind, Node};
 ///     ("token4", 1)
 /// };
 ///
-/// let mut it = tree.children().without_tokens();
+/// let mut it = tree.children().skip_tokens();
 ///
 /// assert_eq!(
 ///     it.map(|n| *n.value()).collect::<Vec<_>>(),
@@ -45,7 +47,7 @@ use crate::{Kind, Node};
 ///     }
 /// };
 ///
-/// let mut it = tree.walk().without_tokens();
+/// let mut it = tree.walk().skip_tokens();
 ///
 /// assert_eq!(
 ///     it.map(|n| *n.value()).collect::<Vec<_>>(),
@@ -53,17 +55,17 @@ use crate::{Kind, Node};
 /// );
 /// # Ok(()) }
 /// ```
-pub struct WithoutTokens<I> {
+pub struct SkipTokens<I> {
     iter: I,
 }
 
-impl<I> WithoutTokens<I> {
+impl<I> SkipTokens<I> {
     pub(crate) const fn new(iter: I) -> Self {
         Self { iter }
     }
 }
 
-impl<'a, I, T: 'a> Iterator for WithoutTokens<I>
+impl<'a, I, T: 'a> Iterator for SkipTokens<I>
 where
     I: Iterator<Item = Node<'a, T>>,
 {
@@ -80,7 +82,7 @@ where
     }
 }
 
-impl<'a, I, T: 'a> DoubleEndedIterator for WithoutTokens<I>
+impl<'a, I, T: 'a> DoubleEndedIterator for SkipTokens<I>
 where
     I: DoubleEndedIterator<Item = Node<'a, T>>,
 {
@@ -95,7 +97,9 @@ where
     }
 }
 
-impl<I> Clone for WithoutTokens<I>
+impl<'a, I, T: 'a> FusedIterator for SkipTokens<I> where I: FusedIterator<Item = Node<'a, T>> {}
+
+impl<I> Clone for SkipTokens<I>
 where
     I: Clone,
 {
@@ -106,9 +110,9 @@ where
     }
 }
 
-impl<I> Copy for WithoutTokens<I> where I: Copy {}
+impl<I> Copy for SkipTokens<I> where I: Copy {}
 
-impl<I> Default for WithoutTokens<I>
+impl<I> Default for SkipTokens<I>
 where
     I: Default,
 {

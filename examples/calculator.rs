@@ -54,8 +54,8 @@ enum Syntax {
 mod parsing {
     use crate::Syntax;
     use anyhow::Result;
-    use std::collections::VecDeque;
-    use syntree::{TreeBuilder, TreeBuilderError};
+    use syntree::{TreeBuilder, TreeError};
+    use Syntax::*;
 
     #[derive(Debug, Clone, Copy)]
     pub(crate) struct Token {
@@ -65,38 +65,30 @@ mod parsing {
 
     struct Lexer<'a> {
         source: &'a str,
-        pos: usize,
+        cursor: usize,
     }
 
     impl<'a> Lexer<'a> {
         fn new(source: &'a str) -> Self {
-            Self { source, pos: 0 }
-        }
-
-        /// Step to the next character.
-        fn step(&mut self) {
-            if let Some(c) = self.source[self.pos..].chars().next() {
-                self.pos += c.len_utf8();
-            }
+            Self { source, cursor: 0 }
         }
 
         /// Peek the next character of input.
-        fn peek(&self) -> Option<(char, usize)> {
-            let c = self.source[self.pos..].chars().next()?;
-            Some((c, self.pos))
+        fn peek(&self) -> Option<char> {
+            self.source.get(self.cursor..)?.chars().next()
         }
 
-        /// Consume input until we hit non-numerics.
-        fn consume_number(&mut self) {
-            while let Some(('0'..='9', _)) = self.peek() {
-                self.step();
+        /// Step over the next character.
+        fn step(&mut self) {
+            if let Some(c) = self.peek() {
+                self.cursor += c.len_utf8();
             }
         }
 
         /// Consume input until we hit non-numerics.
-        fn consume_whitespace(&mut self) {
-            while let Some((c, _)) = self.peek() {
-                if !c.is_whitespace() {
+        fn consume_while(&mut self, cond: fn(char) -> bool) {
+            while let Some(c) = self.peek() {
+                if !cond(c) {
                     break;
                 }
 
@@ -106,38 +98,36 @@ mod parsing {
 
         /// Get the next token.
         fn next(&mut self) -> Option<Token> {
-            while let Some((c, start)) = self.peek() {
-                let syntax = if c.is_whitespace() {
-                    self.consume_whitespace();
-                    Syntax::WHITESPACE
-                } else {
-                    match c {
-                        '+' => {
-                            self.step();
-                            Syntax::PLUS
-                        }
-                        '-' => {
-                            self.step();
-                            Syntax::MINUS
-                        }
-                        '0'..='9' => {
-                            self.step();
-                            self.consume_number();
-                            Syntax::NUMBER
-                        }
-                        _ => {
-                            self.step();
-                            Syntax::ERROR
-                        }
-                    }
-                };
+            let c = self.peek()?;
+            let start = self.cursor;
 
-                let len = self.pos.saturating_sub(start);
+            let syntax = match c {
+                c if c.is_whitespace() => {
+                    self.step();
+                    self.consume_while(char::is_whitespace);
+                    WHITESPACE
+                }
+                '+' => {
+                    self.step();
+                    PLUS
+                }
+                '-' => {
+                    self.step();
+                    MINUS
+                }
+                '0'..='9' => {
+                    self.step();
+                    self.consume_while(|c| matches!(c, '0'..='9'));
+                    NUMBER
+                }
+                _ => {
+                    self.consume_while(|c| !c.is_whitespace());
+                    ERROR
+                }
+            };
 
-                return Some(Token { len, syntax });
-            }
-
-            None
+            let len = self.cursor.saturating_sub(start);
+            Some(Token { len, syntax })
         }
     }
 
@@ -145,7 +135,8 @@ mod parsing {
     pub(crate) struct Parser<'a> {
         lexer: Lexer<'a>,
         pub(crate) tree: TreeBuilder<Syntax>,
-        buf: VecDeque<Token>,
+        // One token of lookahead.
+        buf: Option<Token>,
     }
 
     impl<'a> Parser<'a> {
@@ -153,109 +144,91 @@ mod parsing {
             Self {
                 lexer: Lexer::new(source),
                 tree: TreeBuilder::new(),
-                buf: VecDeque::new(),
+                buf: None,
+            }
+        }
+
+        /// Peek the next token.
+        pub fn peek(&mut self) -> Token {
+            loop {
+                // Fill up buffer.
+                self.fill();
+
+                if let Some(tok) = self.buf {
+                    return tok;
+                }
+
+                return Token {
+                    len: 0,
+                    syntax: EOF,
+                };
             }
         }
 
         /// Test if the parser is currently at EOF.
         pub(crate) fn is_eof(&mut self) -> bool {
-            self.nth(0).syntax == Syntax::EOF
-        }
-
-        /// Peek the next token.
-        pub(crate) fn peek(&mut self) -> Token {
-            self.nth(0)
+            self.peek().syntax == EOF
         }
 
         /// Try to eat the given sequence of syntax as the given node `what`.
-        pub(crate) fn eat(
-            &mut self,
-            what: Syntax,
-            expected: &[Syntax],
-        ) -> Result<bool, TreeBuilderError> {
-            // Ensure we consume leading whitespace before we take the checkpoint.
-            self.fill(0);
-
-            let c = self.tree.checkpoint();
-
-            for (n, syntax) in expected.iter().copied().enumerate() {
-                if self.nth(n).syntax != syntax {
-                    return Ok(false);
-                }
+        pub(crate) fn eat(&mut self, what: Syntax) -> Result<bool, TreeError> {
+            if self.peek().syntax != what {
+                return Ok(false);
             }
 
-            for _ in 0..expected.len() {
-                let tok = self.nth(0);
-                self.tree.token(tok.syntax, tok.len);
-                self.step();
-            }
-
-            self.tree.close_at(c, what)?;
+            let tok = self.step();
+            self.tree.open(what);
+            self.tree.token(tok.syntax, tok.len);
+            self.tree.close()?;
             Ok(true)
         }
 
         /// Bump the current input as the given syntax.
-        pub(crate) fn bump_node(&mut self, what: Syntax) -> Result<()> {
+        pub(crate) fn bump(&mut self, what: Syntax) -> Result<()> {
+            let tok = self.step();
             self.tree.open(what);
-            let tok = self.nth(0);
-            self.step();
             self.tree.token(tok.syntax, tok.len);
             self.tree.close()?;
             Ok(())
         }
 
-        pub(crate) fn advance_until(&mut self, what: &[Syntax]) {
-            // Consume until we see another Number (or EOF) for some primitive error
-            // recovery.
+        /// Advance until one of `any` matches.
+        pub(crate) fn advance_until(&mut self, any: &[Syntax]) {
+            // Consume until we see another Number (or EOF) for some primitive
+            // error recovery.
             loop {
-                let tok = self.nth(0);
+                let t = self.peek();
 
-                if tok.syntax == Syntax::EOF || what.iter().any(|s| *s == tok.syntax) {
+                if t.syntax == EOF || any.iter().any(|s| *s == t.syntax) {
                     break;
                 }
 
-                self.tree.token(tok.syntax, tok.len);
+                self.tree.token(t.syntax, t.len);
                 self.step();
             }
         }
 
         /// Consume the head token.
-        fn step(&mut self) {
-            self.fill(0);
-            self.buf.pop_front();
+        fn step(&mut self) -> Token {
+            let tok = self.peek();
+            self.buf.take();
+            tok
         }
 
-        /// Access the token at the nth position.
-        fn nth(&mut self, pos: usize) -> Token {
-            loop {
-                // Fill up buffer.
-                self.fill(pos);
-
-                if let Some(tok) = self.buf.get(pos) {
-                    return *tok;
-                }
-
-                return Token {
-                    len: 0,
-                    syntax: Syntax::EOF,
-                };
-            }
-        }
-
-        fn fill(&mut self, pos: usize) {
-            while self.buf.len() <= pos {
+        fn fill(&mut self) {
+            while self.buf.is_none() {
                 let tok = match self.lexer.next() {
                     Some(tok) => tok,
                     None => break,
                 };
 
                 // Consume whitespace transparently.
-                if matches!(tok.syntax, Syntax::WHITESPACE) {
+                if matches!(tok.syntax, WHITESPACE) {
                     self.tree.token(tok.syntax, tok.len);
                     continue;
                 }
 
-                self.buf.push_back(tok);
+                self.buf = Some(tok);
             }
         }
     }
@@ -271,8 +244,8 @@ mod grammar {
     pub(crate) fn root(p: &mut Parser<'_>) -> Result<()> {
         while !p.is_eof() {
             // Consume first number.
-            if !p.eat(NUMBER, &[NUMBER])? {
-                p.bump_node(ERROR)?;
+            if !p.eat(NUMBER)? {
+                p.bump(ERROR)?;
                 continue;
             }
 
@@ -282,10 +255,10 @@ mod grammar {
 
                 match tok.syntax {
                     PLUS => {
-                        p.bump_node(OPERATOR)?;
+                        p.bump(OPERATOR)?;
                     }
                     MINUS => {
-                        p.bump_node(OPERATOR)?;
+                        p.bump(OPERATOR)?;
                     }
                     _ => {
                         // Simple error recovery where we consume until we find
@@ -297,8 +270,8 @@ mod grammar {
                     }
                 }
 
-                if !p.eat(NUMBER, &[NUMBER])? {
-                    p.bump_node(ERROR)?;
+                if !p.eat(NUMBER)? {
+                    p.bump(ERROR)?;
                     continue;
                 }
             }
@@ -323,7 +296,7 @@ mod eval {
     }
 
     impl EvalError {
-        fn new(span: Span, kind: EvalErrorKind) -> Self {
+        const fn new(span: Span, kind: EvalErrorKind) -> Self {
             Self { span, kind }
         }
     }
@@ -347,9 +320,9 @@ mod eval {
     }
 
     macro_rules! expect {
-        ($span:expr, $item:expr, $expect:expr, $pat:pat) => {
+        ($span:expr, $item:expr, $expect:expr) => {
             if let Some(n) = $item {
-                if !matches!(n.value(), $pat) {
+                if *n.value() != $expect {
                     return Err(EvalError::new(n.span(), Expected($expect, *n.value())));
                 }
 
@@ -363,34 +336,40 @@ mod eval {
     pub(crate) fn eval(tree: &Tree<Syntax>, source: &str) -> Result<i64, EvalError> {
         use EvalErrorKind::*;
 
-        let mut it = tree.children().without_tokens();
-        let root_span = Span::new(0, source.len());
+        let mut it = tree.children().skip_tokens();
+        let full_span = Span::new(0, source.len());
 
-        let initial = expect!(root_span, it.next(), NUMBER, NUMBER);
-        let span = initial.span();
-        let mut n = source[span.range()]
+        let first = expect!(full_span, it.next(), NUMBER);
+
+        let mut n = source[first.span().range()]
             .parse::<i64>()
-            .map_err(|_| EvalError::new(span, BadNumber))?;
+            .map_err(|_| EvalError::new(first.span(), BadNumber))?;
 
         while let Some(node) = it.next() {
-            let span = node.span();
-
             if *node.value() != OPERATOR {
-                return Err(EvalError::new(span, Expected(OPERATOR, *node.value())));
+                return Err(EvalError::new(
+                    node.span(),
+                    Expected(OPERATOR, *node.value()),
+                ));
             }
 
-            let op: fn(i64, i64) -> i64 = match node.first().map(|n| *n.value()) {
-                Some(PLUS) => i64::wrapping_add,
-                Some(MINUS) => i64::wrapping_sub,
-                Some(what) => return Err(EvalError::new(node.span(), UnexpectedOperator(what))),
-                None => return Err(EvalError::new(span, ExpectedOperator)),
+            let op = node
+                .first()
+                .ok_or(EvalError::new(node.span(), ExpectedOperator))?;
+
+            let op: fn(i64, i64) -> i64 = match *op.value() {
+                PLUS => i64::wrapping_add,
+                MINUS => i64::wrapping_sub,
+                what => return Err(EvalError::new(node.span(), UnexpectedOperator(what))),
             };
 
-            let arg = expect!(root_span, it.next(), NUMBER, NUMBER);
-            let span = arg.span();
+            let rem = Span::new(node.span().end, source.len());
+
+            let arg = expect!(rem, it.next(), NUMBER);
+
             let arg = source[arg.span().range()]
                 .parse::<i64>()
-                .map_err(|_| EvalError::new(span, BadNumber))?;
+                .map_err(|_| EvalError::new(arg.span(), BadNumber))?;
 
             n = op(n, arg);
         }

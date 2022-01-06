@@ -1,12 +1,8 @@
-use std::error::Error;
-use std::fmt;
 use std::mem;
 
 use crate::links::Links;
 use crate::non_max::NonMaxUsize;
-use crate::Kind;
-use crate::Span;
-use crate::Tree;
+use crate::{Kind, Span, Tree, TreeError};
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
@@ -16,95 +12,6 @@ use crate::Tree;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Id(NonMaxUsize);
-
-/// Errors raised while building a tree.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum TreeBuilderError {
-    /// Error raised by [TreeBuilder::close] if there currently is no node being
-    /// built.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{TreeBuilder, TreeBuilderError};
-    ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("root");
-    /// tree.close()?;
-    ///
-    /// // Syntax::Root and Syntax::Child is left open.
-    /// assert_eq!(tree.close(), Err(TreeBuilderError::CloseError));
-    /// # Ok(()) }
-    /// ```
-    CloseError,
-    /// Error raised by [TreeBuilder::build] if the tree isn't correctly
-    /// balanced.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{TreeBuilder, TreeBuilderError};
-    ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// tree.open("number");
-    /// tree.token("lit", 3);
-    /// tree.close()?;
-    ///
-    /// tree.open("number");
-    ///
-    /// // Syntax::Number is left open.
-    /// assert_eq!(tree.build(), Err(TreeBuilderError::BuildError));
-    /// # Ok(()) }
-    /// ```
-    BuildError,
-    /// Error raised by [TreeBuilder::close_at] if we're not trying to close at
-    /// a sibling node.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::{TreeBuilder, TreeBuilderError};
-    ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut tree = TreeBuilder::new();
-    ///
-    /// let c = tree.checkpoint();
-    ///
-    /// tree.open("child");
-    /// tree.token("token", 3);
-    ///
-    /// let result = tree.close_at(c, "operation");
-    /// assert_eq!(result, Err(TreeBuilderError::CloseAtError));
-    /// # Ok(()) }
-    /// ```
-    CloseAtError,
-}
-
-impl Error for TreeBuilderError {}
-
-impl fmt::Display for TreeBuilderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TreeBuilderError::CloseError => {
-                write!(f, "no node being built")
-            }
-            TreeBuilderError::BuildError => {
-                write!(f, "tree is currently being built")
-            }
-            TreeBuilderError::CloseAtError => {
-                write!(
-                    f,
-                    "trying to close a node which is not a sibling of the checkpoint being closed"
-                )
-            }
-        }
-    }
-}
 
 /// A builder for a [Tree].
 ///
@@ -194,7 +101,6 @@ impl<T> TreeBuilder<T> {
             cursor: 0,
         }
     }
-
     /// Start a node with the given `data`.
     ///
     /// This pushes a new link with the given type onto the stack which links
@@ -229,7 +135,7 @@ impl<T> TreeBuilder<T> {
     /// End a node being built.
     ///
     /// This call must be balanced with a prior call to [TreeBuilder::open]. If
-    /// not this will result in an [TreeBuilderError::CloseError] being raised.
+    /// not this will result in an [TreeError::CloseError] being raised.
     ///
     /// This will pop a value of the stack, and set that value as the next
     /// sibling which will be used with [TreeBuilder::open].
@@ -253,10 +159,10 @@ impl<T> TreeBuilder<T> {
     /// tree.close()?;
     /// # Ok(()) }
     /// ```
-    pub fn close(&mut self) -> Result<(), TreeBuilderError> {
+    pub fn close(&mut self) -> Result<(), TreeError> {
         let head = match self.parents.pop() {
             Some(head) => head,
-            None => return Err(TreeBuilderError::CloseError),
+            None => return Err(TreeError::CloseError),
         };
 
         self.sibling = Some(head);
@@ -341,7 +247,7 @@ impl<T> TreeBuilder<T> {
     /// Insert a node that wraps from the given checkpointed location.
     ///
     /// The checkpoint being closed *must* be a sibling. Otherwise a
-    /// [TreeBuilderError::CloseAtError] will be raised.
+    /// [TreeError::CloseAtError] will be raised.
     ///
     /// # Examples
     ///
@@ -406,7 +312,7 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeBuilderError> {
+    pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
         let child = NonMaxUsize::new(self.tree.len()).expect("ran out of ids");
 
         let links = match self.tree.get_mut(id.0) {
@@ -457,11 +363,11 @@ impl<T> TreeBuilder<T> {
         id: NonMaxUsize,
         start: usize,
         removed: &Links<T>,
-    ) -> Result<(), TreeBuilderError> {
+    ) -> Result<(), TreeError> {
         let sibling = self
             .tree
             .node_at(self.sibling)
-            .ok_or(TreeBuilderError::CloseAtError)?;
+            .ok_or(TreeError::CloseAtError)?;
 
         let node = self
             .tree
@@ -472,14 +378,14 @@ impl<T> TreeBuilder<T> {
             let span = Span::new(start, node.span().end);
 
             if !sibling.is_same(&node) {
-                return Err(TreeBuilderError::CloseAtError);
+                return Err(TreeError::CloseAtError);
             }
 
             if let Some(node) = self.tree.get_mut(id) {
                 node.span = span;
             }
         } else if !sibling.is_same_as_links(removed) {
-            return Err(TreeBuilderError::CloseAtError);
+            return Err(TreeError::CloseAtError);
         }
 
         Ok(())
@@ -488,7 +394,7 @@ impl<T> TreeBuilder<T> {
     /// Build a [Tree] from the current state of the builder.
     ///
     /// This requires the stack in the builder to be empty. Otherwise a
-    /// [TreeBuilderError::BuildError] will be raised.
+    /// [TreeError::BuildError] will be raised.
     ///
     /// # Examples
     ///
@@ -520,7 +426,7 @@ impl<T> TreeBuilder<T> {
     /// If a tree is unbalanced during construction, building will fail with an error:
     ///
     /// ```
-    /// use syntree::{TreeBuilderError, Span, TreeBuilder};
+    /// use syntree::{TreeError, Span, TreeBuilder};
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
@@ -532,12 +438,12 @@ impl<T> TreeBuilder<T> {
     /// tree.open("number");
     ///
     /// // "number" is left open.
-    /// assert!(matches!(tree.build(), Err(TreeBuilderError::BuildError)));
+    /// assert!(matches!(tree.build(), Err(TreeError::BuildError)));
     /// # Ok(()) }
     /// ```
-    pub fn build(self) -> Result<Tree<T>, TreeBuilderError> {
+    pub fn build(self) -> Result<Tree<T>, TreeError> {
         if !self.parents.is_empty() {
-            return Err(TreeBuilderError::BuildError);
+            return Err(TreeError::BuildError);
         }
 
         Ok(self.tree)

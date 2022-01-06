@@ -210,7 +210,10 @@ mod non_max;
 
 mod builder;
 
-pub use self::builder::{Id, TreeBuilder, TreeBuilderError};
+pub use self::builder::{Id, TreeBuilder};
+
+mod error;
+pub use self::error::TreeError;
 
 mod nodes;
 pub use self::nodes::Nodes;
@@ -232,7 +235,7 @@ pub use self::walk::{Walk, WithDepths};
 mod walk_events;
 pub use self::walk_events::{Event, WalkEvents};
 
-mod without_tokens;
-pub use self::without_tokens::WithoutTokens;
+mod skip_tokens;
+pub use self::skip_tokens::SkipTokens;
 
 mod links;

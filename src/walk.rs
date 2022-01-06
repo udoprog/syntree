@@ -1,4 +1,4 @@
-use crate::{Event, Node, WalkEvents, WithoutTokens};
+use crate::{Event, Node, SkipTokens, WalkEvents};
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
@@ -58,12 +58,12 @@ impl<'a, T> Walk<'a, T> {
         WithDepths { iter: self }
     }
 
-    /// Construct a [WithoutTokens] iterator from the remainder of this
+    /// Construct a [SkipTokens] iterator from the remainder of this
     /// iterator. This filters out [Kind::Token][crate::Kind::Token] elements.
     ///
-    /// See [WithoutTokens] for documentation.
-    pub fn without_tokens(self) -> WithoutTokens<Self> {
-        WithoutTokens::new(self)
+    /// See [SkipTokens] for documentation.
+    pub fn skip_tokens(self) -> SkipTokens<Self> {
+        SkipTokens::new(self)
     }
 
     /// Get the next node including the depth which it is located at. This

@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use std::iter::Peekable;
-use syntree::{print, Tree, TreeBuilder, TreeBuilderError};
+use syntree::{print, Tree, TreeBuilder, TreeError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
@@ -46,7 +46,7 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
         }
     }
 
-    fn parse_val(&mut self) -> Result<(), TreeBuilderError> {
+    fn parse_val(&mut self) -> Result<(), TreeError> {
         match self.peek() {
             Some(NUMBER) => self.bump(),
             _ => {
@@ -62,8 +62,8 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
     fn handle_operation(
         &mut self,
         tokens: &[SyntaxKind],
-        next: fn(&mut Self) -> Result<(), TreeBuilderError>,
-    ) -> Result<(), TreeBuilderError> {
+        next: fn(&mut Self) -> Result<(), TreeError>,
+    ) -> Result<(), TreeError> {
         let c = self.builder.checkpoint();
         next(self)?;
 
@@ -76,15 +76,15 @@ impl<I: Iterator<Item = (SyntaxKind, usize)>> Parser<I> {
         Ok(())
     }
 
-    fn parse_mul(&mut self) -> Result<(), TreeBuilderError> {
+    fn parse_mul(&mut self) -> Result<(), TreeError> {
         self.handle_operation(&[MUL, DIV], Self::parse_val)
     }
 
-    fn parse_add(&mut self) -> Result<(), TreeBuilderError> {
+    fn parse_add(&mut self) -> Result<(), TreeError> {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<SyntaxKind>, TreeBuilderError> {
+    fn parse(mut self) -> Result<Tree<SyntaxKind>, TreeError> {
         self.builder.open(ROOT);
         self.parse_add()?;
         self.builder.close()?;
