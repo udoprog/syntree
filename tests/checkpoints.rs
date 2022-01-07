@@ -2,11 +2,13 @@ use syntree::TreeBuilder;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
-    Root,
-    Number,
-    Lit,
-    Whitespace,
+    ROOT,
+    NUMBER,
+    LIT,
+    WHITESPACE,
 }
+
+use Syntax::*;
 
 #[test]
 fn balanced_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,30 +16,30 @@ fn balanced_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
 
     let c = tree.checkpoint()?;
 
-    tree.open(Syntax::Number)?;
-    tree.token(Syntax::Lit, 2)?;
+    tree.open(NUMBER)?;
+    tree.token(LIT, 2)?;
     tree.close()?;
 
-    tree.token(Syntax::Whitespace, 3)?;
+    tree.token(WHITESPACE, 3)?;
 
-    tree.open(Syntax::Number)?;
-    tree.token(Syntax::Lit, 2)?;
-    tree.token(Syntax::Lit, 2)?;
+    tree.open(NUMBER)?;
+    tree.token(LIT, 2)?;
+    tree.token(LIT, 2)?;
     tree.close()?;
 
-    tree.close_at(c, Syntax::Root)?;
+    tree.close_at(c, ROOT)?;
 
     let tree = tree.build()?;
 
     let expected = syntree::tree! {
-        Syntax::Root => {
-            Syntax::Number => {
-                (Syntax::Lit, 2)
+        ROOT => {
+            NUMBER => {
+                (LIT, 2)
             },
-            (Syntax::Whitespace, 3),
-            Syntax::Number => {
-                (Syntax::Lit, 2),
-                (Syntax::Lit, 2)
+            (WHITESPACE, 3),
+            NUMBER => {
+                (LIT, 2),
+                (LIT, 2)
             }
         }
     };

@@ -1,9 +1,12 @@
-use std::mem;
-
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::Index;
+use crate::span::{usize_to_index, Index};
 use crate::{Kind, Span, Tree, TreeError};
+
+#[derive(Debug, Clone, Copy)]
+struct Parent {
+    id: NonMax,
+}
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
@@ -57,7 +60,7 @@ pub struct TreeBuilder<T> {
     /// Data in the tree being built.
     tree: Tree<T>,
     /// References to parent nodes of the current node being constructed.
-    parents: Vec<NonMax>,
+    parents: Vec<Parent>,
     /// Reference to last sibling inserted.
     sibling: Option<NonMax>,
     /// The current cursor.
@@ -135,7 +138,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
         let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
-        self.parents.push(id);
+        self.parents.push(Parent { id });
         Ok(Id(id))
     }
 
@@ -172,13 +175,13 @@ impl<T> TreeBuilder<T> {
             None => return Err(TreeError::CloseError),
         };
 
-        self.sibling = Some(head);
+        self.sibling = Some(head.id);
 
         if let Some(parent) = self.parents.last().copied() {
-            if let Some(node) = self.tree.get_mut(head) {
+            if let Some(node) = self.tree.get_mut(head.id) {
                 let end = node.span.end;
 
-                if let Some(parent) = self.tree.get_mut(parent) {
+                if let Some(parent) = self.tree.get_mut(parent.id) {
                     parent.span.end = end;
                 }
             }
@@ -209,20 +212,19 @@ impl<T> TreeBuilder<T> {
         let start = self.cursor;
 
         if len > 0 {
-            self.cursor = Index::try_from(len)
-                .ok()
+            self.cursor = usize_to_index(len)
                 .and_then(|len| self.cursor.checked_add(len))
                 .ok_or(TreeError::IdOverflow)?;
             self.tree.span_mut().end = self.cursor;
         }
 
         let id = self.insert(value, Kind::Token, Span::new(start, self.cursor))?;
+        self.sibling = Some(id);
 
         if len > 0 {
             self.tree.push_index(self.cursor, id);
         }
 
-        self.sibling = Some(id);
         Ok(Id(id))
     }
 
@@ -365,7 +367,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
-        let child = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
+        let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
 
         let links = match self.tree.get_mut(id.0) {
             Some(links) => links,
@@ -376,6 +378,8 @@ impl<T> TreeBuilder<T> {
             }
         };
 
+        links.parent = Some(next_id);
+
         // We attempt to restructure the current node, unless it is an immediate
         // and sole sibling - which it is if it was just inserted into
         // next.sibling.
@@ -384,27 +388,36 @@ impl<T> TreeBuilder<T> {
         // range of nodes we are wrapping.
         let needs_restructuring = self.sibling != Some(id.0);
 
-        let removed = mem::replace(
-            links,
-            Links {
-                data,
-                kind: Kind::Node,
-                next: None,
-                first: Some(child),
-                span: links.span,
-            },
-        );
+        let added = Links {
+            data,
+            kind: Kind::Node,
+            span: links.span,
+            parent: links.parent,
+            next: None,
+            first: Some(id.0),
+        };
+
+        let start = links.span.start;
+        let links_next = links.next;
+
+        self.tree.push(added);
 
         if needs_restructuring {
-            let start = links.span.start;
-            self.restructure_close_at(id.0, start, &removed)?;
+            self.restructure_close_at(next_id, start, links_next)?;
         }
 
-        self.tree.push(removed);
-
         // The current sibling is the newly replaced node in the tree.
-        self.sibling = Some(id.0);
-        Ok(Id(id.0))
+        self.sibling = Some(next_id);
+
+        // If we're replacing the first node of the tree, the newly inserted
+        // node should be set as the first node.
+        let first = self.tree.first_mut();
+
+        if Some(id.0) == *first {
+            *first = Some(next_id);
+        }
+
+        Ok(Id(next_id))
     }
 
     // Adjust span to encapsulate all children and check that we just inserted
@@ -414,30 +427,28 @@ impl<T> TreeBuilder<T> {
         &mut self,
         id: NonMax,
         start: Index,
-        removed: &Links<T>,
+        mut removed_next: Option<NonMax>,
     ) -> Result<(), TreeError> {
-        let sibling = self
-            .tree
-            .node_at(self.sibling)
-            .ok_or(TreeError::CloseAtError)?;
+        let mut last = None;
 
-        let node = self
-            .tree
-            .node_at(removed.next)
-            .and_then(|n| n.siblings().last());
+        while let Some((next, next_id)) =
+            removed_next.and_then(|id| Some((self.tree.get_mut(id)?, id)))
+        {
+            next.parent = Some(id);
+            last = Some((next.span.end, next_id));
+            removed_next = next.next;
+        }
 
-        if let Some(node) = node {
-            let span = Span::new(start, node.span().end);
+        let (end, end_id) = last.ok_or(TreeError::CloseAtError)?;
 
-            if !sibling.is_same(&node) {
-                return Err(TreeError::CloseAtError);
-            }
+        let sibling = self.sibling.ok_or(TreeError::CloseAtError)?;
 
-            if let Some(node) = self.tree.get_mut(id) {
-                node.span = span;
-            }
-        } else if !sibling.is_same_as_links(removed) {
+        if sibling != end_id {
             return Err(TreeError::CloseAtError);
+        }
+
+        if let Some(node) = self.tree.get_mut(id) {
+            node.span = Span::new(start, end);
         }
 
         Ok(())
@@ -506,21 +517,22 @@ impl<T> TreeBuilder<T> {
         let new = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
 
         let prev = std::mem::replace(&mut self.sibling, None);
-        let parent = self.parents.last().copied();
+        let parent = self.parents.last();
 
         self.tree.push(Links {
             data,
             kind,
+            span,
+            parent: parent.map(|p| p.id),
             next: None,
             first: None,
-            span,
         });
 
-        if let Some(node) = self.tree.links_at_mut(prev) {
+        if let Some(node) = prev.and_then(|id| self.tree.links_at_mut(id)) {
             node.next = Some(new);
         }
 
-        if let Some(node) = self.tree.links_at_mut(parent) {
+        if let Some(node) = parent.and_then(|p| self.tree.links_at_mut(p.id)) {
             if node.first.is_none() {
                 node.first = Some(new);
             }

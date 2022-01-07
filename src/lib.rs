@@ -265,6 +265,7 @@
 //! [synthetic_strings]: https://github.com/udoprog/syntree/blob/main/examples/synthetic_strings.rs
 
 #![deny(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[macro_use]
 mod macros;

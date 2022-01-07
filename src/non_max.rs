@@ -46,6 +46,7 @@ mod imp {
 #[cfg(feature = "u32")]
 mod imp {
     use std::fmt;
+    use std::mem::size_of;
     use std::num::NonZeroU32;
 
     /// Helper struct which behaves exactly like `NonZeroU32` except that it rejects
@@ -64,6 +65,16 @@ mod imp {
 
         #[inline]
         pub(crate) const fn new(value: usize) -> Option<Self> {
+            let value = if size_of::<usize>() <= size_of::<u32>() {
+                value as u32
+            } else {
+                if value > u32::MAX as usize {
+                    return None;
+                }
+
+                value as u32
+            };
+
             match NonZeroU32::new((value as u32) ^ u32::MAX) {
                 None => None,
                 Some(value) => Some(Self(value)),

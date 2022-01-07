@@ -27,3 +27,27 @@ jobs:
           key: build-${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}
       - name: Run tests
         run: cargo test --all
+
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        id: toolchain
+        with:
+          toolchain: nightly
+          profile: minimal
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            target
+          key: build-${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}
+      - name: Run tests
+        run: cargo +nightly doc
+        env:
+          RUSTFLAGS: --cfg docsrs
+          RUSTDOCFLAGS: --cfg docsrs -Dwarnings

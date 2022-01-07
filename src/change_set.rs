@@ -73,10 +73,7 @@ pub struct ChangeSet<T> {
 impl<T> ChangeSet<T> {
     /// Construct a new empty [ChangeSet].
     pub fn new() -> Self {
-        Self {
-            changes: HashMap::new(),
-            trees: Vec::new(),
-        }
+        Self::default()
     }
 
     /// Register a node removal in the changeset. Only one kind of modification
@@ -189,10 +186,8 @@ impl<T> ChangeSet<T> {
                 if let Some(parent) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
                     parent.first = Some(node_id);
                 }
-            } else {
-                if let Some(prev) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
-                    prev.next = Some(node_id);
-                }
+            } else if let Some(prev) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
+                prev.next = Some(node_id);
             }
 
             let span = match node.kind() {
@@ -201,6 +196,7 @@ impl<T> ChangeSet<T> {
                     let len = node.span().len();
 
                     if len > 0 {
+                        #[cfg(feature = "range")]
                         output.push_index(cursor, node_id);
                         let start = cursor;
                         cursor = cursor
@@ -217,6 +213,7 @@ impl<T> ChangeSet<T> {
                 data: node.value().clone(),
                 kind: node.kind(),
                 span,
+                parent: refactor.parents.last().map(|n| n.1),
                 next: None,
                 first: None,
             });
@@ -226,6 +223,15 @@ impl<T> ChangeSet<T> {
 
         output.span_mut().end = cursor;
         Ok(output)
+    }
+}
+
+impl<T> Default for ChangeSet<T> {
+    fn default() -> Self {
+        Self {
+            changes: HashMap::new(),
+            trees: Vec::new(),
+        }
     }
 }
 

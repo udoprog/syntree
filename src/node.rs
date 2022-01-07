@@ -1,7 +1,6 @@
 use std::fmt;
 use std::mem::size_of;
 use std::ops::Range;
-use std::ptr;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
@@ -21,7 +20,8 @@ impl<'a, T> Node<'a, T> {
 
     /// Get the identifier of the current node.
     ///
-    /// This can be used to register a change in a [ChangeSet] later.
+    /// This can be used to register a change in a [ChangeSet][crate::ChangeSet]
+    /// later.
     ///
     /// ```
     /// use syntree::TreeBuilder;
@@ -53,20 +53,6 @@ impl<'a, T> Node<'a, T> {
         // It's impossible to construct a node with an offset which is not a
         // legal `NonMax`.
         unsafe { Id::new(NonMax::new_unchecked(id)) }
-    }
-
-    /// Test if this node is the same as another node.
-    ///
-    /// This is a cheap pointer comparison.
-    pub(crate) fn is_same(&self, other: &Node<'a, T>) -> bool {
-        ptr::eq(self.links, other.links)
-    }
-
-    /// Test if this node is the same as another set of links.
-    ///
-    /// This is a cheap pointer comparison.
-    pub(crate) fn is_same_as_links(&self, links: &Links<T>) -> bool {
-        ptr::eq(self.links, links)
     }
 
     /// Access the data associated with the node.
@@ -158,7 +144,7 @@ impl<'a, T> Node<'a, T> {
         self.links.span
     }
 
-    /// Access the [span] as a [Range][ops::Range].
+    /// Access the [Span] of the node as a [Range].
     ///
     /// # Examples
     ///
@@ -244,7 +230,7 @@ impl<'a, T> Node<'a, T> {
         WalkEvents::new(self.first())
     }
 
-    /// Get the first child node.
+    /// Get immediate parent to this node.
     ///
     /// # Examples
     ///
@@ -266,13 +252,17 @@ impl<'a, T> Node<'a, T> {
     ///
     /// let root = tree.first().ok_or("missing root")?;
     /// assert_eq!(*root.value(), "root");
+    /// assert!(root.parent().is_none());
     ///
     /// let number = root.first().ok_or("missing number")?;
     /// assert_eq!(*number.value(), "number");
+    ///
+    /// let root = number.parent().ok_or("missing parent")?;
+    /// assert_eq!(*root.value(), "root");
     /// # Ok(()) }
     /// ```
-    pub fn first(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.links.first)
+    pub fn parent(&self) -> Option<Node<'a, T>> {
+        self.node_at(self.links.parent)
     }
 
     /// Get the next sibling.
@@ -306,6 +296,36 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.next)
     }
 
+    /// Get the first child node.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(*root.value(), "root");
+    ///
+    /// let number = root.first().ok_or("missing number")?;
+    /// assert_eq!(*number.value(), "number");
+    /// # Ok(()) }
+    /// ```
+    pub fn first(&self) -> Option<Node<'a, T>> {
+        self.node_at(self.links.first)
+    }
     fn node_at(&self, id: Option<NonMax>) -> Option<Node<'a, T>> {
         let cur = self.tree.get(id?.get())?;
 

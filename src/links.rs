@@ -4,13 +4,15 @@ use crate::non_max::NonMax;
 use crate::{Kind, Span};
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Links<T> {
+pub struct Links<T> {
     /// The data in the node.
     pub(crate) data: T,
     /// The kind of the node.
     pub(crate) kind: Kind,
     /// Span of the node.
     pub(crate) span: Span,
+    /// Parent node.
+    pub(crate) parent: Option<NonMax>,
     /// Next sibling node.
     pub(crate) next: Option<NonMax>,
     /// First child node.

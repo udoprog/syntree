@@ -1,7 +1,6 @@
-use anyhow::Result;
 use syntree::{print, TreeBuilder};
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tree = TreeBuilder::new();
 
     let c = tree.checkpoint()?;
@@ -14,5 +13,8 @@ fn main() -> Result<()> {
     let tree = tree.build()?;
 
     print::print(std::io::stdout(), &tree)?;
+
+    let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
+    assert_eq!(*child.value(), "child");
     Ok(())
 }

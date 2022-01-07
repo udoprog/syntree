@@ -5,8 +5,21 @@ use std::ops;
 /// The index used in a span.
 #[cfg(feature = "u32")]
 pub(crate) type Index = u32;
+
+#[cfg(feature = "u32")]
+#[inline]
+pub(crate) fn usize_to_index(value: usize) -> Option<u32> {
+    u32::try_from(value).ok()
+}
+
 #[cfg(not(feature = "u32"))]
 pub(crate) type Index = usize;
+
+#[cfg(not(feature = "u32"))]
+#[inline]
+pub(crate) fn usize_to_index(value: usize) -> Option<Index> {
+    Some(value)
+}
 
 /// Ensure that the specified index is smaller or equal to [usize].
 const _: () = assert!(size_of::<Index>() <= size_of::<usize>());
@@ -109,8 +122,30 @@ impl Span {
     }
 
     /// The length of the span.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert_eq!(Span::new(0, 0).len(), 0);
+    /// assert_eq!(Span::new(0, 10).len(), 10);
+    /// ```
     pub const fn len(self) -> Index {
         self.end.saturating_sub(self.start)
+    }
+
+    /// Test if the span is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert!(Span::new(0, 0).is_empty());
+    /// ```
+    pub const fn is_empty(self) -> bool {
+        self.end == self.start
     }
 }
 

@@ -5,8 +5,8 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TreeError {
-    /// Error raised by [TreeBuilder::close] if there currently is no node being
-    /// built.
+    /// Error raised by [TreeBuilder::close][crate::TreeBuilder::close] if there
+    /// currently is no node being built.
     ///
     /// # Examples
     ///
@@ -24,8 +24,8 @@ pub enum TreeError {
     /// # Ok(()) }
     /// ```
     CloseError,
-    /// Error raised by [TreeBuilder::build] if the tree isn't correctly
-    /// balanced.
+    /// Error raised by [TreeBuilder::build][crate::TreeBuilder::build] if the
+    /// tree isn't correctly balanced.
     ///
     /// # Examples
     ///
@@ -46,8 +46,8 @@ pub enum TreeError {
     /// # Ok(()) }
     /// ```
     BuildError,
-    /// Error raised by [TreeBuilder::close_at] if we're not trying to close at
-    /// a sibling node.
+    /// Error raised by [TreeBuilder::close_at][crate::TreeBuilder::close_at] if
+    /// we're not trying to close at a sibling node.
     ///
     /// # Examples
     ///
