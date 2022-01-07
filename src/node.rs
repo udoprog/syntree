@@ -28,11 +28,11 @@ impl<'a, T> Node<'a, T> {
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
-    /// let root_id = tree.open("root");
-    /// let child_id = tree.open("child");
+    /// let root_id = tree.open("root")?;
+    /// let child_id = tree.open("child")?;
     /// tree.close()?;
     ///
-    /// let child2_id = tree.open("child2");
+    /// let child2_id = tree.open("child2")?;
     /// tree.close()?;
     /// tree.close()?;
     ///

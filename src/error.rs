@@ -16,7 +16,7 @@ pub enum TreeError {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("root");
+    /// tree.open("root")?;
     /// tree.close()?;
     ///
     /// // Syntax::Root and Syntax::Child is left open.
@@ -35,11 +35,11 @@ pub enum TreeError {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("number");
-    /// tree.token("lit", 3);
+    /// tree.open("number")?;
+    /// tree.token("lit", 3)?;
     /// tree.close()?;
     ///
-    /// tree.open("number");
+    /// tree.open("number")?;
     ///
     /// // Syntax::Number is left open.
     /// assert_eq!(tree.build(), Err(TreeError::BuildError));
@@ -57,16 +57,28 @@ pub enum TreeError {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = tree.checkpoint();
+    /// let c = tree.checkpoint()?;
     ///
-    /// tree.open("child");
-    /// tree.token("token", 3);
+    /// tree.open("child")?;
+    /// tree.token("token", 3)?;
     ///
     /// let result = tree.close_at(c, "operation");
     /// assert_eq!(result, Err(TreeError::CloseAtError));
     /// # Ok(()) }
     /// ```
     CloseAtError,
+    /// Cursor overflowed.
+    ///
+    /// This only happens under extreme circumstances or if a feature is enabled
+    /// which narrows the width of an identifier to the degree that this error
+    /// is easier to accomplish.
+    CursorOverflow,
+    /// Identifier overflowed.
+    ///
+    /// This only happens under extreme circumstances or if a feature is enabled
+    /// which narrows the width of an identifier to the degree that this error
+    /// is easier to accomplish.
+    IdOverflow,
 }
 
 impl Error for TreeError {}
@@ -85,6 +97,12 @@ impl fmt::Display for TreeError {
                     f,
                     "trying to close a node which is not a sibling of the checkpoint being closed"
                 )
+            }
+            TreeError::CursorOverflow => {
+                write!(f, "index cursor overflow")
+            }
+            TreeError::IdOverflow => {
+                write!(f, "identifier overflow")
             }
         }
     }

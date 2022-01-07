@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     change_set.remove(child.id());
 
-    let tree = change_set.modify(&tree);
+    let tree = change_set.modify(&tree)?;
 
     print::print(std::io::stdout(), &tree)?;
     Ok(())

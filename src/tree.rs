@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
+use crate::span::Index;
 use crate::{Node, Nodes, Span, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
@@ -18,8 +19,14 @@ pub enum Kind {
 /// A syntax tree.
 #[derive(Clone)]
 pub struct Tree<T> {
+    /// Links in the tree.
     tree: Vec<Links<T>>,
+    /// The span of the whole tree.
     span: Span,
+    /// Token indexes for range searches. This contains the value of the token
+    /// cursor each time it is modified and allow for binary searching for
+    /// sequences of nodes which corresponds to the given index.
+    indexes: Vec<(Index, NonMax)>,
 }
 
 impl<T> Tree<T> {
@@ -28,6 +35,7 @@ impl<T> Tree<T> {
         Self {
             tree: Vec::new(),
             span: Span::point(0),
+            indexes: Vec::new(),
         }
     }
 
@@ -36,6 +44,7 @@ impl<T> Tree<T> {
         Self {
             tree: Vec::with_capacity(capacity),
             span: Span::point(0),
+            indexes: Vec::new(),
         }
     }
 
@@ -180,6 +189,11 @@ impl<T> Tree<T> {
     /// Push a new element onto the tree.
     pub(crate) fn push(&mut self, links: Links<T>) {
         self.tree.push(links);
+    }
+
+    /// Push the given index.
+    pub(crate) fn push_index(&mut self, index: Index, id: NonMax) {
+        self.indexes.push((index, id));
     }
 
     /// Optionally get the links at the given location.

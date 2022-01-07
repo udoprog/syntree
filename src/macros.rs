@@ -14,24 +14,24 @@
 /// }
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut b = TreeBuilder::new();
+/// let mut tree = TreeBuilder::new();
 ///
-/// b.open(Syntax::Root);
+/// tree.open(Syntax::Root)?;
 ///
-/// b.open(Syntax::Number);
-/// b.token(Syntax::Lit, 1);
-/// b.close()?;
+/// tree.open(Syntax::Number)?;
+/// tree.token(Syntax::Lit, 1)?;
+/// tree.close()?;
 ///
-/// b.token(Syntax::Whitespace, 3);
+/// tree.token(Syntax::Whitespace, 3)?;
 ///
-/// b.open(Syntax::Number);
-/// b.token(Syntax::Lit, 2);
-/// b.token(Syntax::Lit, 2);
-/// b.close()?;
+/// tree.open(Syntax::Number)?;
+/// tree.token(Syntax::Lit, 2)?;
+/// tree.token(Syntax::Lit, 2)?;
+/// tree.close()?;
 ///
-/// b.close()?;
+/// tree.close()?;
 ///
-/// let tree = b.build()?;
+/// let tree = tree.build()?;
 ///
 /// let expected = syntree::tree! {
 ///     Syntax::Root => {
@@ -54,33 +54,33 @@ macro_rules! tree {
     (@o $b:ident,) => {};
 
     (@o $b:ident, ($expr:expr, $len:expr) $(,)?) => {{
-        $b.token($expr, $len);
+        $b.token($expr, $len)?;
     }};
 
     (@o $b:ident, ($expr:expr, $len:expr), $($rest:tt)*) => {{
-        $b.token($expr, $len);
+        $b.token($expr, $len)?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 
     (@o $b:ident, $expr:expr $(,)?) => {{
-        $b.open($expr);
+        $b.open($expr)?;
         $b.close()?;
     }};
 
     (@o $b:ident, $expr:expr, $($rest:tt)*) => {{
-        $b.open($expr);
+        $b.open($expr)?;
         $b.close()?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* } $(,)?) => {{
-        $b.open($expr);
+        $b.open($expr)?;
         $crate::tree!(@o $b, $($tt)*);
         $b.close()?;
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* }, $($rest:tt)*) => {{
-        $b.open($expr);
+        $b.open($expr)?;
         $crate::tree!(@o $b, $($tt)*);
         $b.close()?;
         $crate::tree!(@o $b, $($rest)*);

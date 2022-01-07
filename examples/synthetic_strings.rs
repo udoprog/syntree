@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tree = TreeBuilder::new();
 
     for (syntax, len) in lexer {
-        tree.token(syntax, len);
+        tree.token(syntax, len)?;
     }
 
     let tree = tree.build()?;

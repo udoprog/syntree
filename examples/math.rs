@@ -28,30 +28,34 @@ struct Parser<I: Iterator<Item = (Syntax, usize)>> {
 }
 
 impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
-    fn peek(&mut self) -> Option<Syntax> {
+    fn peek(&mut self) -> Result<Option<Syntax>, TreeError> {
         while self
             .iter
             .peek()
             .map(|&(t, _)| t == WHITESPACE)
             .unwrap_or(false)
         {
-            self.bump();
+            self.bump()?;
         }
-        self.iter.peek().map(|&(t, _)| t)
+        Ok(self.iter.peek().map(|&(t, _)| t))
     }
 
-    fn bump(&mut self) {
+    fn bump(&mut self) -> Result<(), TreeError> {
         if let Some((token, len)) = self.iter.next() {
-            self.builder.token(token.into(), len);
+            self.builder.token(token.into(), len)?;
         }
+
+        Ok(())
     }
 
     fn parse_val(&mut self) -> Result<(), TreeError> {
-        match self.peek() {
-            Some(NUMBER) => self.bump(),
+        match self.peek()? {
+            Some(NUMBER) => {
+                self.bump()?;
+            }
             _ => {
-                self.builder.open(ERROR);
-                self.bump();
+                self.builder.open(ERROR)?;
+                self.bump()?;
                 self.builder.close()?;
             }
         }
@@ -64,11 +68,11 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         tokens: &[Syntax],
         next: fn(&mut Self) -> Result<(), TreeError>,
     ) -> Result<(), TreeError> {
-        let c = self.builder.checkpoint();
+        let c = self.builder.checkpoint()?;
         next(self)?;
 
-        while self.peek().map(|t| tokens.contains(&t)).unwrap_or(false) {
-            self.bump();
+        while self.peek()?.map(|t| tokens.contains(&t)).unwrap_or(false) {
+            self.bump()?;
             next(self)?;
             self.builder.close_at(c, OPERATION)?;
         }
@@ -85,7 +89,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
     }
 
     fn parse(mut self) -> Result<Tree<Syntax>, TreeError> {
-        self.builder.open(ROOT);
+        self.builder.open(ROOT)?;
         self.parse_add()?;
         self.builder.close()?;
         Ok(self.builder.build()?)

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::span::Index;
-use crate::{Id, Kind, Node, Span, Tree};
+use crate::{Id, Kind, Node, Span, Tree, TreeError};
 
 #[derive(Debug)]
 pub(crate) enum Change {
@@ -38,7 +38,7 @@ pub(crate) enum Change {
 /// change_set.remove(child.id());
 ///
 /// assert_eq!(
-///     change_set.modify(&tree),
+///     change_set.modify(&tree)?,
 ///     syntree::tree! {
 ///         "root" => {
 ///             ("whitespace", 3)
@@ -52,7 +52,7 @@ pub(crate) enum Change {
 /// change_set.remove(lit.id());
 ///
 /// assert_eq!(
-///     change_set.modify(&tree),
+///     change_set.modify(&tree)?,
 ///     syntree::tree! {
 ///         "root" => {
 ///             "child" => {
@@ -104,7 +104,7 @@ impl<T> ChangeSet<T> {
     /// change_set.remove(child.id());
     ///
     /// assert_eq!(
-    ///     change_set.modify(&tree),
+    ///     change_set.modify(&tree)?,
     ///     syntree::tree! {
     ///         "root" => {
     ///             ("whitespace", 3)
@@ -141,7 +141,7 @@ impl<T> ChangeSet<T> {
     /// change_set.remove(child.id());
     ///
     /// assert_eq!(
-    ///     change_set.modify(&tree),
+    ///     change_set.modify(&tree)?,
     ///     syntree::tree! {
     ///         "root" => {
     ///             ("whitespace", 3)
@@ -150,7 +150,7 @@ impl<T> ChangeSet<T> {
     /// );
     /// # Ok(()) }
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T>) -> Tree<T>
+    pub fn modify(&mut self, tree: &Tree<T>) -> Result<Tree<T>, TreeError>
     where
         T: Clone,
     {
@@ -167,7 +167,7 @@ impl<T> ChangeSet<T> {
         let mut current = tree.first().map(|node| (node, false));
 
         while let Some((mut node, mut first)) = current.take() {
-            let node_id = NonMax::new(output.len()).expect("ran out of ids");
+            let node_id = NonMax::new(output.len()).ok_or(TreeError::IdOverflow)?;
 
             if let Some(change) = self.changes.get(&node_id) {
                 match change {
@@ -198,9 +198,18 @@ impl<T> ChangeSet<T> {
             let span = match node.kind() {
                 Kind::Node => Span::point(cursor),
                 Kind::Token => {
-                    let start = cursor;
-                    cursor += node.span().len();
-                    Span::new(start, cursor)
+                    let len = node.span().len();
+
+                    if len > 0 {
+                        output.push_index(cursor, node_id);
+                        let start = cursor;
+                        cursor = cursor
+                            .checked_add(node.span().len())
+                            .ok_or(TreeError::CursorOverflow)?;
+                        Span::new(start, cursor)
+                    } else {
+                        Span::point(cursor)
+                    }
                 }
             };
 
@@ -216,7 +225,7 @@ impl<T> ChangeSet<T> {
         }
 
         output.span_mut().end = cursor;
-        output
+        Ok(output)
     }
 }
 

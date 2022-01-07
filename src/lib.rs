@@ -95,19 +95,19 @@
 //! use Syntax::*;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let mut b = TreeBuilder::new();
+//! let mut tree = TreeBuilder::new();
 //!
-//! b.open(NUMBER);
-//! b.token(LIT, 1);
-//! b.token(LIT, 3);
+//! tree.open(NUMBER)?;
+//! tree.token(LIT, 1)?;
+//! tree.token(LIT, 3)?;
 //!
-//! b.open(NESTED);
-//! b.token(LIT, 1);
-//! b.close()?;
+//! tree.open(NESTED)?;
+//! tree.token(LIT, 1)?;
+//! tree.close()?;
 //!
-//! b.close()?;
+//! tree.close()?;
 //!
-//! let tree = b.build()?;
+//! let tree = tree.build()?;
 //!
 //! let expected = syntree::tree! {
 //!     NUMBER => {

@@ -10,24 +10,24 @@ enum Syntax {
 
 #[test]
 fn balanced_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
-    let mut b = TreeBuilder::new();
+    let mut tree = TreeBuilder::new();
 
-    let c = b.checkpoint();
+    let c = tree.checkpoint()?;
 
-    b.open(Syntax::Number);
-    b.token(Syntax::Lit, 2);
-    b.close()?;
+    tree.open(Syntax::Number)?;
+    tree.token(Syntax::Lit, 2)?;
+    tree.close()?;
 
-    b.token(Syntax::Whitespace, 3);
+    tree.token(Syntax::Whitespace, 3)?;
 
-    b.open(Syntax::Number);
-    b.token(Syntax::Lit, 2);
-    b.token(Syntax::Lit, 2);
-    b.close()?;
+    tree.open(Syntax::Number)?;
+    tree.token(Syntax::Lit, 2)?;
+    tree.token(Syntax::Lit, 2)?;
+    tree.close()?;
 
-    b.close_at(c, Syntax::Root)?;
+    tree.close_at(c, Syntax::Root)?;
 
-    let tree = b.build()?;
+    let tree = tree.build()?;
 
     let expected = syntree::tree! {
         Syntax::Root => {

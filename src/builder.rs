@@ -33,10 +33,10 @@ impl Id {
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
-/// tree.open("root");
-/// tree.open("child");
+/// tree.open("root")?;
+/// tree.open("child")?;
 /// tree.close()?;
-/// tree.open("child");
+/// tree.open("child")?;
 /// tree.close()?;
 /// tree.close()?;
 ///
@@ -75,13 +75,13 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("root");
+    /// tree.open("root")?;
     ///
-    /// tree.open("child");
-    /// tree.token("token", 5);
+    /// tree.open("child")?;
+    /// tree.token("token", 5)?;
     /// tree.close()?;
     ///
-    /// tree.open("child2");
+    /// tree.open("child2")?;
     /// tree.close()?;
     ///
     /// tree.close()?;
@@ -122,21 +122,21 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("root");
+    /// tree.open("root")?;
     ///
-    /// tree.open("child");
+    /// tree.open("child")?;
     /// tree.close()?;
     ///
-    /// tree.open("child");
+    /// tree.open("child")?;
     /// tree.close()?;
     ///
     /// tree.close()?;
     /// # Ok(()) }
     /// ```
-    pub fn open(&mut self, data: T) -> Id {
-        let id = self.insert(data, Kind::Node, Span::point(self.cursor));
+    pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
+        let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
         self.parents.push(id);
-        Id(id)
+        Ok(Id(id))
     }
 
     /// End a node being built.
@@ -155,12 +155,12 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("root");
+    /// tree.open("root")?;
     ///
-    /// tree.open("child");
+    /// tree.open("child")?;
     /// tree.close()?;
     ///
-    /// tree.open("child");
+    /// tree.open("child")?;
     /// tree.close()?;
     ///
     /// tree.close()?;
@@ -199,26 +199,31 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("child");
-    /// tree.token("lit", 4);
+    /// tree.open("child")?;
+    /// tree.token("lit", 4)?;
     /// tree.close()?;
     ///
     /// # Ok(()) }
     /// ```
-    pub fn token(&mut self, value: T, len: usize) -> Id {
+    pub fn token(&mut self, value: T, len: usize) -> Result<Id, TreeError> {
         let start = self.cursor;
 
         if len > 0 {
             self.cursor = Index::try_from(len)
                 .ok()
                 .and_then(|len| self.cursor.checked_add(len))
-                .expect("cursor out of bounds");
+                .ok_or(TreeError::IdOverflow)?;
             self.tree.span_mut().end = self.cursor;
         }
 
-        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor));
+        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor))?;
+
+        if len > 0 {
+            self.tree.push_index(self.cursor, id);
+        }
+
         self.sibling = Some(id);
-        Id(id)
+        Ok(Id(id))
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
@@ -236,9 +241,9 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = tree.checkpoint();
-    /// tree.open("child");
-    /// tree.token("lit", 3);
+    /// let c = tree.checkpoint()?;
+    /// tree.open("child")?;
+    /// tree.token("lit", 3)?;
     /// tree.close()?;
     /// tree.close_at(c, "root")?;
     ///
@@ -255,8 +260,10 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn checkpoint(&self) -> Id {
-        Id(NonMax::new(self.tree.len()).expect("ran out of ids"))
+    pub fn checkpoint(&self) -> Result<Id, TreeError> {
+        Ok(Id(
+            NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?
+        ))
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -272,8 +279,8 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = tree.checkpoint();
-    /// tree.token("lit", 3);
+    /// let c = tree.checkpoint()?;
+    /// tree.token("lit", 3)?;
     /// tree.close_at(c, "root")?;
     ///
     /// let tree = tree.build()?;
@@ -296,16 +303,16 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = tree.checkpoint();
+    /// let c = tree.checkpoint()?;
     ///
-    /// tree.open("number");
-    /// tree.token("lit", 3);
+    /// tree.open("number")?;
+    /// tree.token("lit", 3)?;
     /// tree.close()?;
     ///
-    /// tree.token("whitespace", 1);
+    /// tree.token("whitespace", 1)?;
     ///
-    /// tree.open("number");
-    /// tree.token("lit", 2);
+    /// tree.open("number")?;
+    /// tree.token("lit", 2)?;
     /// tree.close()?;
     ///
     /// tree.close_at(c, "root")?;
@@ -336,12 +343,12 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// let c = tree.checkpoint();
-    /// tree.open("child");
-    /// tree.token("lit", 3);
+    /// let c = tree.checkpoint()?;
+    /// tree.open("child")?;
+    /// tree.token("lit", 3)?;
     /// tree.close()?;
     /// tree.close_at(c, "root")?;
-    /// tree.token("sibling", 3);
+    /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -358,12 +365,12 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
-        let child = NonMax::new(self.tree.len()).expect("ran out of ids");
+        let child = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
 
         let links = match self.tree.get_mut(id.0) {
             Some(links) => links,
             None => {
-                let id = self.insert(data, Kind::Node, Span::point(self.cursor));
+                let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
                 self.sibling = Some(id);
                 return Ok(Id(id));
             }
@@ -449,10 +456,10 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("child");
-    /// tree.token("number", 3);
+    /// tree.open("child")?;
+    /// tree.token("number", 3)?;
     /// tree.close()?;
-    /// tree.open("child");
+    /// tree.open("child")?;
     /// tree.close()?;
     ///
     /// let tree = tree.build()?;
@@ -476,11 +483,11 @@ impl<T> TreeBuilder<T> {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
-    /// tree.open("number");
-    /// tree.token("lit", 3);
+    /// tree.open("number")?;
+    /// tree.token("lit", 3)?;
     /// tree.close()?;
     ///
-    /// tree.open("number");
+    /// tree.open("number")?;
     ///
     /// // "number" is left open.
     /// assert!(matches!(tree.build(), Err(TreeError::BuildError)));
@@ -495,8 +502,8 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: Span) -> NonMax {
-        let new = NonMax::new(self.tree.len()).expect("ran out of ids");
+    fn insert(&mut self, data: T, kind: Kind, span: Span) -> Result<NonMax, TreeError> {
+        let new = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
 
         let prev = std::mem::replace(&mut self.sibling, None);
         let parent = self.parents.last().copied();
@@ -521,7 +528,7 @@ impl<T> TreeBuilder<T> {
             node.span.end = span.end;
         }
 
-        new
+        Ok(new)
     }
 }
 

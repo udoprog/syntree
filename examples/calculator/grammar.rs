@@ -18,15 +18,15 @@ fn op(syntax: Syntax) -> Option<(u8, u8)> {
 
 fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), TreeError> {
     // Eat all available whitespace before getting a checkpoint.
-    let tok = p.peek();
+    let tok = p.peek()?;
 
-    let c = p.tree.checkpoint();
+    let c = p.tree.checkpoint()?;
 
     match tok.syntax {
         OPEN_PAREN => {
-            p.token();
+            p.token()?;
 
-            let c = p.tree.checkpoint();
+            let c = p.tree.checkpoint()?;
             expr(p, 0)?;
             p.tree.close_at(c, GROUP)?;
 
@@ -47,7 +47,7 @@ fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), TreeError> {
     let mut operation = false;
 
     loop {
-        let tok = p.peek();
+        let tok = p.peek()?;
 
         let min = match op(tok.syntax) {
             Some((left, right)) if left >= min => right,
@@ -71,14 +71,14 @@ pub(crate) fn root(p: &mut Parser<'_>) -> Result<()> {
     loop {
         expr(p, 0)?;
 
-        if p.is_eof() {
+        if p.is_eof()? {
             break;
         }
 
         // Simple error recovery where we consume until we find an operator
         // which will be consumed as an expression next.
-        let c = p.tree.checkpoint();
-        p.advance_until(&[NUMBER]);
+        let c = p.tree.checkpoint()?;
+        p.advance_until(&[NUMBER])?;
         p.tree.close_at(c, ERROR)?;
     }
 

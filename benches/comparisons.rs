@@ -39,10 +39,10 @@ impl rowan::Language for Lang {
 fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax>, TreeError> {
     let mut builder = TreeBuilder::new();
 
-    let c = builder.checkpoint();
+    let c = builder.checkpoint()?;
 
     for s in strings.iter().cycle().take(count) {
-        builder.token(STRING, s.len());
+        builder.token(STRING, s.len())?;
     }
 
     builder.close_at(c, ROOT)?;
@@ -83,13 +83,13 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
 fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax>, TreeError> {
     let mut builder = TreeBuilder::new();
 
-    let c = builder.checkpoint();
+    let c = builder.checkpoint()?;
 
     for (_, s) in (0..n).zip(strings.iter().cycle()) {
-        builder.open(ENTRY);
-        builder.token(STRING.into(), s.len());
+        builder.open(ENTRY)?;
+        builder.token(STRING.into(), s.len())?;
         builder.close()?;
-        builder.token(WHITESPACE.into(), 1);
+        builder.token(WHITESPACE.into(), 1)?;
     }
 
     builder.close_at(c, ROOT)?;
