@@ -20,4 +20,6 @@ pub struct Links<T> {
     pub(crate) next: Option<NonMax>,
     /// First child node.
     pub(crate) first: Option<NonMax>,
+    /// Last child node.
+    pub(crate) last: Option<NonMax>,
 }

@@ -155,7 +155,7 @@ impl<T> ChangeSet<T> {
 
         let mut refactor = RefactorWalk {
             parents: Vec::new(),
-            last_node_id: None,
+            prev: None,
         };
 
         let mut cursor = Index::default();
@@ -182,15 +182,14 @@ impl<T> ChangeSet<T> {
 
             // Since we are the first node in the sequence we're obligated to
             // set the first child of the parent.
-            let prev = if first {
-                if let Some(parent) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
-                    parent.first = Some(node_id);
+            let prev = if !first {
+                let prev = refactor.prev.take();
+
+                if let Some(prev) = prev.and_then(|id| output.get_mut(id)) {
+                    prev.next = Some(node_id);
                 }
 
-                None
-            } else if let Some(prev) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
-                prev.next = Some(node_id);
-                refactor.last_node_id
+                prev
             } else {
                 None
             };
@@ -201,7 +200,6 @@ impl<T> ChangeSet<T> {
                     let len = node.span().len();
 
                     if len > 0 {
-                        #[cfg(feature = "range")]
                         output.push_index(cursor, node_id);
                         let start = cursor;
                         cursor = cursor
@@ -214,14 +212,25 @@ impl<T> ChangeSet<T> {
                 }
             };
 
+            let parent = refactor.parents.last().map(|n| n.1);
+
+            if let Some(parent) = parent.and_then(|id| output.get_mut(id)) {
+                if parent.first.is_none() {
+                    parent.first = Some(node_id);
+                }
+
+                parent.last = Some(node_id);
+            }
+
             output.push(Links {
                 data: node.value().clone(),
                 kind: node.kind(),
                 span,
-                parent: refactor.parents.last().map(|n| n.1),
+                parent,
                 prev,
                 next: None,
                 first: None,
+                last: None,
             });
 
             current = refactor.step(node, node_id);
@@ -249,20 +258,17 @@ struct Skipped<'a, T> {
 
 struct RefactorWalk<'a, T> {
     parents: Vec<(Node<'a, T>, NonMax)>,
-    last_node_id: Option<NonMax>,
+    prev: Option<NonMax>,
 }
 
 impl<'a, T> RefactorWalk<'a, T> {
-    fn skip_subtree(&mut self, node: Node<'a, T>, down: bool) -> Option<Skipped<'a, T>> {
+    fn skip_subtree(&mut self, node: Node<'a, T>, first: bool) -> Option<Skipped<'a, T>> {
         if let Some(next) = node.next() {
-            return Some(Skipped {
-                node: next,
-                first: down,
-            });
+            return Some(Skipped { node: next, first });
         }
 
         let (node, parent_id) = self.parents.pop()?;
-        self.last_node_id = Some(parent_id);
+        self.prev = Some(parent_id);
         Some(Skipped { node, first: false })
     }
 
@@ -270,18 +276,17 @@ impl<'a, T> RefactorWalk<'a, T> {
     fn step(&mut self, node: Node<'a, T>, node_id: NonMax) -> Option<(Node<'a, T>, bool)> {
         if let Some(next) = node.first() {
             self.parents.push((node, node_id));
-            self.last_node_id = Some(node_id);
             return Some((next, true));
         }
 
         if let Some(next) = node.next() {
-            self.last_node_id = Some(node_id);
+            self.prev = Some(node_id);
             return Some((next, false));
         }
 
-        while let Some((parent, parent_node_id)) = self.parents.pop() {
+        while let Some((parent, prev_id)) = self.parents.pop() {
             if let Some(next) = parent.next() {
-                self.last_node_id = Some(parent_node_id);
+                self.prev = Some(prev_id);
                 return Some((next, false));
             }
         }

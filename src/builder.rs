@@ -414,31 +414,39 @@ impl<T> TreeBuilder<T> {
             }
         };
 
-        let added = Links {
-            data,
-            kind: Kind::Node,
-            span: links.span,
-            prev: links.prev,
-            parent: links.parent,
-            next: None,
-            first: Some(id),
-        };
-
+        let span = links.span;
         let parent = replace(&mut links.parent, Some(next_id));
         let prev = replace(&mut links.prev, None);
 
         // Restructuring is necessary to calculate the full span of the newly
         // inserted node and update parent references to point to the newly
         // inserted node.
-        if self.sibling != Some(id) {
+        let last = if self.sibling != Some(id) {
             let start = links.span.start;
             let next = links.next;
-            self.restructure_close_at(next_id, start, next)?;
-        }
+            Some(self.restructure_close_at(next_id, start, next)?)
+        } else {
+            None
+        };
+
+        let added = Links {
+            data,
+            kind: Kind::Node,
+            span,
+            prev,
+            parent,
+            next: None,
+            first: Some(id),
+            last,
+        };
 
         if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
             if parent.first == Some(id) {
                 parent.first = Some(next_id);
+            }
+
+            if parent.last == Some(id) {
+                parent.last = Some(next_id);
             }
         }
 
@@ -471,7 +479,7 @@ impl<T> TreeBuilder<T> {
         id: NonMax,
         start: Index,
         mut next: Option<NonMax>,
-    ) -> Result<(), TreeError> {
+    ) -> Result<NonMax, TreeError> {
         let mut last = None;
 
         while let Some((node, next_id)) = next.and_then(|id| Some((self.tree.get_mut(id)?, id))) {
@@ -492,7 +500,7 @@ impl<T> TreeBuilder<T> {
             node.span = Span::new(start, end);
         }
 
-        Ok(())
+        Ok(end_id)
     }
 
     /// Build a [Tree] from the current state of the builder.
@@ -569,6 +577,7 @@ impl<T> TreeBuilder<T> {
             prev,
             next: None,
             first: None,
+            last: None,
         });
 
         if let Some(node) = prev.and_then(|id| self.tree.links_at_mut(id)) {
@@ -580,6 +589,7 @@ impl<T> TreeBuilder<T> {
                 node.first = Some(new);
             }
 
+            node.last = Some(new);
             node.span.end = span.end;
         }
 
