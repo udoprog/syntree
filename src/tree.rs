@@ -310,11 +310,29 @@ impl<T> Tree<T> {
     /// tree.token("lit", 3)?;
     /// tree.close()?;
     /// tree.close_at(c, "root")?;
+    /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
     /// assert_eq!(*child.value(), "child");
+    ///
+    /// let lit = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).ok_or("expected lit")?;
+    /// assert_eq!(*lit.value(), "lit");
+    ///
+    /// let root = lit.parent().and_then(|n| n.parent()).ok_or("missing root")?;
+    /// assert_eq!(*root.value(), "root");
+    ///
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         "child" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     ("sibling", 3)
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
     pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T>> {
