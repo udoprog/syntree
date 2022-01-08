@@ -226,7 +226,7 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'a, T> {
-        Walk::new(self.first())
+        Walk::new(self.tree, self.links.first)
     }
 
     /// Walk the node forwards in a depth-first fashion emitting events
@@ -234,7 +234,7 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [WalkEvents] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'a, T> {
-        WalkEvents::new(self.first())
+        WalkEvents::new(self.tree, self.links.first)
     }
 
     /// Get immediate parent to this node.

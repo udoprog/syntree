@@ -1,3 +1,5 @@
+use crate::links::Links;
+use crate::non_max::NonMax;
 use crate::Node;
 
 /// An event indicating how a tree is being walked with [WalkEvents].
@@ -77,17 +79,20 @@ pub enum Event {
 /// # Ok(()) }
 /// ```
 pub struct WalkEvents<'a, T> {
+    /// The tree being iterated over.
+    tree: &'a [Links<T>],
     // The current node.
-    start: Option<(Node<'a, T>, Event)>,
+    node: Option<(NonMax, Event)>,
     // Parent nodes.
-    parents: Vec<Node<'a, T>>,
+    parents: Vec<NonMax>,
 }
 
 impl<'a, T> WalkEvents<'a, T> {
     /// Construct a new events walker.
-    pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
+    pub(crate) const fn new(tree: &'a [Links<T>], node: Option<NonMax>) -> Self {
         Self {
-            start: match node {
+            tree,
+            node: match node {
                 Some(n) => Some((n, Event::Next)),
                 None => None,
             },
@@ -143,18 +148,18 @@ impl<'a, T> WalkEvents<'a, T> {
         self.parents.len()
     }
 
-    fn step(&mut self, node: Node<'a, T>, event: Event) -> Option<(Node<'a, T>, Event)> {
+    fn step(&mut self, node: NonMax, links: &'a Links<T>, event: Event) -> Option<(NonMax, Event)> {
         if matches!(event, Event::Up) {
-            if let Some(next) = node.next() {
+            if let Some(next) = links.next {
                 return Some((next, Event::Next));
             }
         } else {
-            if let Some(first) = node.first() {
+            if let Some(first) = links.first {
                 self.parents.push(node);
                 return Some((first, Event::Down));
             }
 
-            if let Some(next) = node.next() {
+            if let Some(next) = links.next {
                 return Some((next, Event::Next));
             }
         }
@@ -171,12 +176,14 @@ impl<'a, T> Iterator for WalkEvents<'a, T> {
     type Item = (Event, Node<'a, T>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (node, event) = self.start.take()?;
+        let (node, event) = self.node.take()?;
+        let links = self.tree.get(node.get())?;
 
-        if let Some(id) = self.step(node, event) {
-            self.start = Some(id);
+        if let Some(id) = self.step(node, links, event) {
+            self.node = Some(id);
         }
 
+        let node = Node::new(links, self.tree);
         Some((event, node))
     }
 }

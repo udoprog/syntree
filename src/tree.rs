@@ -213,7 +213,7 @@ impl<T> Tree<T> {
     ///
     /// See [Walk] for documentation.
     pub fn walk(&self) -> Walk<'_, T> {
-        Walk::new(self.first())
+        Walk::new(self.tree.as_slice(), self.first)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -221,7 +221,7 @@ impl<T> Tree<T> {
     ///
     /// See [WalkEvents] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T> {
-        WalkEvents::new(self.first())
+        WalkEvents::new(self.tree.as_slice(), self.first)
     }
 
     /// Get the first child node in the tree.
