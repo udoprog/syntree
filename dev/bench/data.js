@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1641655330986,
+  "lastUpdate": 1641655395016,
   "repoUrl": "https://github.com/udoprog/syntree",
   "entries": {
     "Benchmark": [
@@ -3875,6 +3875,210 @@ window.BENCHMARK_DATA = {
             "name": "children_nodes_only/rowan/16384",
             "value": 411057,
             "range": "± 882",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "udoprog@tedro.se",
+            "name": "John-John Tedro",
+            "username": "udoprog"
+          },
+          "committer": {
+            "email": "udoprog@tedro.se",
+            "name": "John-John Tedro",
+            "username": "udoprog"
+          },
+          "distinct": true,
+          "id": "2f8659a0cde2f2b26981ed032f1797cc217c15e7",
+          "message": "Fix checkpointing",
+          "timestamp": "2022-01-08T16:13:46+01:00",
+          "tree_id": "9dd05690e58c4c3256973f3c6669e79d1dedcb3c",
+          "url": "https://github.com/udoprog/syntree/commit/2f8659a0cde2f2b26981ed032f1797cc217c15e7"
+        },
+        "date": 1641655394607,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "building/syntree/1024",
+            "value": 26970,
+            "range": "± 1371",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/1024",
+            "value": 41502,
+            "range": "± 2271",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree/2048",
+            "value": 56455,
+            "range": "± 5282",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/2048",
+            "value": 82739,
+            "range": "± 6531",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree/4096",
+            "value": 97163,
+            "range": "± 5674",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/4096",
+            "value": 159957,
+            "range": "± 6590",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree/8192",
+            "value": 239619,
+            "range": "± 14191",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/8192",
+            "value": 327492,
+            "range": "± 18964",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree/16384",
+            "value": 420864,
+            "range": "± 29923",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/16384",
+            "value": 645661,
+            "range": "± 62873",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree/1024",
+            "value": 11809,
+            "range": "± 593",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/1024",
+            "value": 60695,
+            "range": "± 3114",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree/2048",
+            "value": 25598,
+            "range": "± 1944",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/2048",
+            "value": 121148,
+            "range": "± 7674",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree/4096",
+            "value": 50855,
+            "range": "± 2580",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/4096",
+            "value": 241326,
+            "range": "± 12559",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree/8192",
+            "value": 98597,
+            "range": "± 5595",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/8192",
+            "value": 495039,
+            "range": "± 27623",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree/16384",
+            "value": 195875,
+            "range": "± 12273",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/16384",
+            "value": 961562,
+            "range": "± 44457",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree/1024",
+            "value": 7842,
+            "range": "± 419",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/1024",
+            "value": 32609,
+            "range": "± 2255",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree/2048",
+            "value": 17097,
+            "range": "± 993",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/2048",
+            "value": 63883,
+            "range": "± 3026",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree/4096",
+            "value": 35335,
+            "range": "± 1438",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/4096",
+            "value": 129980,
+            "range": "± 6813",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree/8192",
+            "value": 70225,
+            "range": "± 3657",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/8192",
+            "value": 256283,
+            "range": "± 12200",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree/16384",
+            "value": 137073,
+            "range": "± 6362",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/16384",
+            "value": 506065,
+            "range": "± 24773",
             "unit": "ns/iter"
           }
         ]
