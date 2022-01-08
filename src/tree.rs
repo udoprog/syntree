@@ -26,7 +26,7 @@ pub(crate) struct TreeIndex {
 #[derive(Clone)]
 pub struct Tree<T> {
     /// Links in the tree.
-    pub tree: Vec<Links<T>>,
+    tree: Vec<Links<T>>,
     /// The span of the whole tree.
     span: Span,
     /// Token indexes for range searches. This contains the value of the token
@@ -427,8 +427,13 @@ impl<T> Tree<T> {
         Some(node)
     }
 
+    /// The first id currently being set.
+    pub(crate) fn first_id(&self) -> Option<NonMax> {
+        self.first
+    }
+
     /// Get the first element so that it can be mutated.
-    pub(crate) fn first_mut(&mut self) -> &mut Option<NonMax> {
+    pub(crate) fn first_id_mut(&mut self) -> &mut Option<NonMax> {
         &mut self.first
     }
 

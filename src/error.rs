@@ -67,18 +67,14 @@ pub enum TreeError {
     /// # Ok(()) }
     /// ```
     CloseAtError,
-    /// Cursor overflowed.
+    /// Numerical overflow.
     ///
     /// This only happens under extreme circumstances or if a feature is enabled
     /// which narrows the width of an identifier to the degree that this error
     /// is easier to accomplish.
-    CursorOverflow,
-    /// Identifier overflowed.
-    ///
-    /// This only happens under extreme circumstances or if a feature is enabled
-    /// which narrows the width of an identifier to the degree that this error
-    /// is easier to accomplish.
-    IdOverflow,
+    Overflow,
+    /// The given checkpoint doesn't exist.
+    MissingCheckpoint,
 }
 
 impl Error for TreeError {}
@@ -98,11 +94,11 @@ impl fmt::Display for TreeError {
                     "trying to close a node which is not a sibling of the checkpoint being closed"
                 )
             }
-            TreeError::CursorOverflow => {
-                write!(f, "index cursor overflow")
+            TreeError::Overflow => {
+                write!(f, "numerical overflow")
             }
-            TreeError::IdOverflow => {
-                write!(f, "identifier overflow")
+            TreeError::MissingCheckpoint => {
+                write!(f, "missing checkpoint")
             }
         }
     }

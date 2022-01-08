@@ -11,8 +11,11 @@ pub struct Links<T> {
     pub(crate) kind: Kind,
     /// Span of the node.
     pub(crate) span: Span,
-    /// Parent node.
+    /// Parent node. These exists because they are needed when performing range
+    /// queries such as [Tree::node_with_range][crate::Tree::node_with_range].
     pub(crate) parent: Option<NonMax>,
+    /// The previous node.
+    pub(crate) prev: Option<NonMax>,
     /// Next sibling node.
     pub(crate) next: Option<NonMax>,
     /// First child node.

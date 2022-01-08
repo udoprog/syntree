@@ -22,7 +22,7 @@ syntree = "0.11.0"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
-the [calculator example].
+the [calculator example][calculator].
 
 <br>
 
@@ -30,14 +30,14 @@ the [calculator example].
 
 This crate provides a way to efficiently model [abstract syntax trees]. The
 nodes of the tree are typically represented by variants in an enum, but
-[could be whatever you want].
+[could be whatever you want][any-syntax].
 
-Each tree consists of *nodes* and *tokens*. Siblings are intermediary elements
-in the tree which encapsulate zero or more other nodes or tokens, while
-tokens are leaf elements representing exact source locations.
+Each tree consists of *nodes* and *tokens*. Siblings are intermediary
+elements in the tree which encapsulate zero or more other nodes or tokens,
+while tokens are leaf elements representing exact source locations.
 
-An example tree for the simple expression `256 / 2 + 64 * 2` could be represented
-like this:
+An example tree for the simple expression `256 / 2 + 64 * 2` could be
+represented like this:
 
 ```
 OPERATION@0..16
@@ -80,9 +80,9 @@ which provides streaming builder methods. Internally the builder is
 represented as a contiguous slab of memory. Once a tree is built the
 structure of the tree can be queried through the [`Tree`] type.
 
-Note that below, [`syntree::tree!`] is only a helper which simplifies
-building trees for examples. It corresponds exactly to performing the
-corresponding [`open`] and [`close`] calls on [`TreeBuilder`].
+Note that [`syntree::tree!`] is only a helper which simplifies building
+trees for examples. It corresponds exactly to performing [`open`],
+[`close`], and [`token`] calls on [`TreeBuilder`] as specified.
 
 ```rust
 use syntree::{Span, TreeBuilder};
@@ -130,8 +130,8 @@ Note how the resulting [`Span`] for `NUMBER` corresponds to the full span of
 its `LIT` children. Including the ones within `NESTED`.
 
 Trees are usually constructed by parsing an input. This library encourages
-the use of a [handwritten pratt parser]. See the [calculator example] for a
-complete use case.
+the use of a [handwritten pratt parser][pratt]. See the [calculator
+example][calculator] for a complete use case.
 
 <br>
 
@@ -171,9 +171,10 @@ some source location (as it should because it was expanded from one!). It
 also directly represents that it's *not* a literal string referencing a
 source location.
 
-In [Rune] this became apparent once we started [expanding macros]. Because
-macros expand to things which do not reference source locations so we need
-some other way to include what the tokens represent in the syntax trees.
+In [Rune] this became apparent once we started [expanding
+macros][rune-macros]. Because macros expand to things which do not reference
+source locations so we need some other way to include what the tokens
+represent in the syntax trees.
 
 You can try a *very* simple lex-time variable expander in the
 [`synthetic_strings` example][synthetic_strings]:
@@ -243,25 +244,26 @@ The one caveat is that it depends on how the original source is stored and
 queried. Something which `rowan` solves for you, but `syntree` leaves as an
 exercise to the reader.
 
-[syntree-math]: https://github.com/udoprog/syntree/blob/main/examples/math.rs
-[rowan-math]: https://github.com/rust-analyzer/rowan/blob/master/examples/math.rs
 [`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
 [`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
 [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 [`rowan`]: https://docs.rs/rowan/latest/rowan/
 [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
+[`token`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.token
 [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 [`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
 [`TreeError`]: https://docs.rs/syntree/latest/syntree/enum.TreeError.html
 [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-[calculator example]: https://github.com/udoprog/syntree/blob/main/examples/calculator/
-[could be whatever you want]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
-[expanding macros]: https://github.com/rune-rs/rune/blob/main/crates/rune-modules/src/core.rs#L36
-[handwritten pratt parser]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+[any-syntax]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
+[calculator]: https://github.com/udoprog/syntree/blob/main/examples/calculator
 [kind-str]: https://github.com/rune-rs/rune/blob/e97a32e/crates/rune/src/ast/generated.rs#L4359
-[Rune]: https://github.com/rune-rs/rune
 [OxidizeBot]: https://github.com/udoprog/OxidizeBot
+[pratt]: https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+[rowan-math]: https://github.com/rust-analyzer/rowan/blob/master/examples/math.rs
+[rune-macros]: https://github.com/rune-rs/rune/blob/main/crates/rune-modules/src/core.rs#L36
+[Rune]: https://github.com/rune-rs/rune
 [synthetic_strings]: https://github.com/udoprog/syntree/blob/main/examples/synthetic_strings.rs
+[syntree-math]: https://github.com/udoprog/syntree/blob/main/examples/math.rs
 
 License: MIT/Apache-2.0

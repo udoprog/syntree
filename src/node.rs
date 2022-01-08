@@ -272,6 +272,38 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.parent?)
     }
 
+    /// Get the previous sibling.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     }
+    /// };
+    ///
+    /// let number = tree.first().and_then(|n| n.first()).ok_or("missing number")?;
+    /// assert_eq!(*number.value(), "number");
+    /// assert!(number.prev().is_none());
+    ///
+    /// let ident = number.next().ok_or("missing ident")?;
+    /// assert_eq!(*ident.value(), "ident");
+    ///
+    /// let number = ident.prev().ok_or("missing number")?;
+    /// assert_eq!(*number.value(), "number");
+    /// # Ok(()) }
+    /// ```
+    pub fn prev(self) -> Option<Node<'a, T>> {
+        self.node_at(self.links.prev?)
+    }
+
     /// Get the next sibling.
     ///
     /// # Examples

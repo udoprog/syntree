@@ -1,3 +1,5 @@
+use std::mem::replace;
+
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::span::{usize_to_index, Index};
@@ -10,12 +12,18 @@ struct Parent {
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(transparent)]
+pub struct Id(pub(crate) NonMax);
+
+/// The identifier of a node as returned by functions such as
+/// [TreeBuilder::checkpoint].
 ///
 /// This can be used as a checkpoint in [TreeBuilder::close_at], and a
 /// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Id(pub(crate) NonMax);
+pub struct Checkpoint(pub(crate) NonMax);
 
 impl Id {
     pub(crate) const fn new(id: NonMax) -> Self {
@@ -61,6 +69,11 @@ pub struct TreeBuilder<T> {
     tree: Tree<T>,
     /// References to parent nodes of the current node being constructed.
     parents: Vec<Parent>,
+    /// What checkpoints in use refer to.
+    checkpoints: Vec<NonMax>,
+    /// The last checkpoint handed out. This will be invalidated once the tree
+    /// is modified.
+    checkpoint: Option<NonMax>,
     /// Reference to last sibling inserted.
     sibling: Option<NonMax>,
     /// The current cursor.
@@ -107,6 +120,8 @@ impl<T> TreeBuilder<T> {
         TreeBuilder {
             tree: Tree::new(),
             parents: Vec::new(),
+            checkpoints: Vec::new(),
+            checkpoint: None,
             sibling: None,
             cursor: 0,
         }
@@ -214,7 +229,7 @@ impl<T> TreeBuilder<T> {
         if len > 0 {
             self.cursor = usize_to_index(len)
                 .and_then(|len| self.cursor.checked_add(len))
-                .ok_or(TreeError::IdOverflow)?;
+                .ok_or(TreeError::Overflow)?;
             self.tree.span_mut().end = self.cursor;
         }
 
@@ -262,10 +277,16 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn checkpoint(&self) -> Result<Id, TreeError> {
-        Ok(Id(
-            NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?
-        ))
+    pub fn checkpoint(&mut self) -> Result<Checkpoint, TreeError> {
+        if let Some(c) = self.checkpoint {
+            return Ok(Checkpoint(c));
+        }
+
+        let id = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
+        let c = NonMax::new(self.checkpoints.len()).ok_or(TreeError::Overflow)?;
+        self.checkpoints.push(id);
+        self.checkpoint = Some(c);
+        Ok(Checkpoint(c))
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -376,10 +397,15 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn close_at(&mut self, id: Id, data: T) -> Result<Id, TreeError> {
-        let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
+    pub fn close_at(&mut self, Checkpoint(c): Checkpoint, data: T) -> Result<Id, TreeError> {
+        let id = *self
+            .checkpoints
+            .get(c.get())
+            .ok_or(TreeError::MissingCheckpoint)?;
 
-        let links = match self.tree.get_mut(id.0) {
+        let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
+
+        let links = match self.tree.get_mut(id) {
             Some(links) => links,
             None => {
                 let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
@@ -388,44 +414,52 @@ impl<T> TreeBuilder<T> {
             }
         };
 
-        // We attempt to restructure the current node, unless it is an immediate
-        // and sole sibling - which it is if it was just inserted into
-        // next.sibling.
-        //
-        // The primary purpose of restructuring is to calculate the span of the
-        // range of nodes we are wrapping.
-        let needs_restructuring = self.sibling != Some(id.0);
-
         let added = Links {
             data,
             kind: Kind::Node,
             span: links.span,
+            prev: links.prev,
             parent: links.parent,
             next: None,
-            first: Some(id.0),
+            first: Some(id),
         };
 
-        links.parent = Some(next_id);
-        let start = links.span.start;
-        let links_next = links.next;
+        let parent = replace(&mut links.parent, Some(next_id));
+        let prev = replace(&mut links.prev, None);
 
-        self.tree.push(added);
-
-        if needs_restructuring {
-            self.restructure_close_at(next_id, start, links_next)?;
+        // Restructuring is necessary to calculate the full span of the newly
+        // inserted node and update parent references to point to the newly
+        // inserted node.
+        if self.sibling != Some(id) {
+            let start = links.span.start;
+            let next = links.next;
+            self.restructure_close_at(next_id, start, next)?;
         }
 
-        // The current sibling is the newly replaced node in the tree.
-        self.sibling = Some(next_id);
+        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
+            if parent.first == Some(id) {
+                parent.first = Some(next_id);
+            }
+        }
+
+        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
+            prev.next = Some(next_id);
+        }
 
         // If we're replacing the first node of the tree, the newly inserted
         // node should be set as the first node.
-        let first = self.tree.first_mut();
-
-        if Some(id.0) == *first {
-            *first = Some(next_id);
+        if self.tree.first_id() == Some(id) {
+            *self.tree.first_id_mut() = Some(next_id);
         }
 
+        if let Some(id) = self.checkpoints.get_mut(c.get()) {
+            *id = next_id;
+        }
+
+        // Push and invalidate the last checkpoint.
+        self.tree.push(added);
+        self.checkpoint = None;
+        self.sibling = Some(next_id);
         Ok(Id(next_id))
     }
 
@@ -436,16 +470,14 @@ impl<T> TreeBuilder<T> {
         &mut self,
         id: NonMax,
         start: Index,
-        mut removed_next: Option<NonMax>,
+        mut next: Option<NonMax>,
     ) -> Result<(), TreeError> {
         let mut last = None;
 
-        while let Some((next, next_id)) =
-            removed_next.and_then(|id| Some((self.tree.get_mut(id)?, id)))
-        {
-            next.parent = Some(id);
-            last = Some((next.span.end, next_id));
-            removed_next = next.next;
+        while let Some((node, next_id)) = next.and_then(|id| Some((self.tree.get_mut(id)?, id))) {
+            node.parent = Some(id);
+            last = Some((node.span.end, next_id));
+            next = node.next;
         }
 
         let (end, end_id) = last.ok_or(TreeError::CloseAtError)?;
@@ -523,8 +555,9 @@ impl<T> TreeBuilder<T> {
 
     /// Insert a new node.
     fn insert(&mut self, data: T, kind: Kind, span: Span) -> Result<NonMax, TreeError> {
-        let new = NonMax::new(self.tree.len()).ok_or(TreeError::IdOverflow)?;
+        let new = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
 
+        self.checkpoint = None;
         let prev = std::mem::replace(&mut self.sibling, None);
         let parent = self.parents.last();
 
@@ -533,6 +566,7 @@ impl<T> TreeBuilder<T> {
             kind,
             span,
             parent: parent.map(|p| p.id),
+            prev,
             next: None,
             first: None,
         });

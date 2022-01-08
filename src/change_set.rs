@@ -164,7 +164,7 @@ impl<T> ChangeSet<T> {
         let mut current = tree.first().map(|node| (node, false));
 
         while let Some((mut node, mut first)) = current.take() {
-            let node_id = NonMax::new(output.len()).ok_or(TreeError::IdOverflow)?;
+            let node_id = NonMax::new(output.len()).ok_or(TreeError::Overflow)?;
 
             if let Some(change) = self.changes.get(&node_id) {
                 match change {
@@ -182,13 +182,18 @@ impl<T> ChangeSet<T> {
 
             // Since we are the first node in the sequence we're obligated to
             // set the first child of the parent.
-            if first {
+            let prev = if first {
                 if let Some(parent) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
                     parent.first = Some(node_id);
                 }
+
+                None
             } else if let Some(prev) = refactor.last_node_id.and_then(|id| output.get_mut(id)) {
                 prev.next = Some(node_id);
-            }
+                refactor.last_node_id
+            } else {
+                None
+            };
 
             let span = match node.kind() {
                 Kind::Node => Span::point(cursor),
@@ -201,7 +206,7 @@ impl<T> ChangeSet<T> {
                         let start = cursor;
                         cursor = cursor
                             .checked_add(node.span().len())
-                            .ok_or(TreeError::CursorOverflow)?;
+                            .ok_or(TreeError::Overflow)?;
                         Span::new(start, cursor)
                     } else {
                         Span::point(cursor)
@@ -214,6 +219,7 @@ impl<T> ChangeSet<T> {
                 kind: node.kind(),
                 span,
                 parent: refactor.parents.last().map(|n| n.1),
+                prev,
                 next: None,
                 first: None,
             });
