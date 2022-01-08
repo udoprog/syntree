@@ -4,11 +4,11 @@ use crate::{Kind, Node};
 
 /// Wrapped around an iterator that excludes [Kind::Token] nodes.
 ///
-/// See [Nodes::skip_tokens][crate::Nodes::skip_tokens] or [Walk::skip_tokens][crate::Walk::skip_tokens].
+/// See [Siblings::skip_tokens][crate::Siblings::skip_tokens] or [Walk::skip_tokens][crate::Walk::skip_tokens].
 ///
 /// # Examples
 ///
-/// Filtering [Kind::Token] elements from a [Nodes][crate::Nodes]
+/// Filtering [Kind::Token] elements from a [Siblings][crate::Siblings]
 /// iterator:
 ///
 /// ```

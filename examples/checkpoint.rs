@@ -24,11 +24,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("expected lit")?;
     assert_eq!(*lit.value(), "lit");
 
-    let root = lit
-        .parent()
-        .and_then(|n| n.parent())
-        .ok_or("missing root")?;
-    assert_eq!(*root.value(), "root");
+    let root = tree.first().ok_or("missing root")?;
+    assert_eq!(root.parent(), None);
 
+    let root = lit.ancestors().last().ok_or("missing root")?;
+    assert_eq!(*root.value(), "root");
     Ok(())
 }

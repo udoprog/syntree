@@ -4,7 +4,7 @@ use std::ops::Range;
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::span::{usize_to_index, Index};
-use crate::{Node, Nodes, Span, Walk, WalkEvents};
+use crate::{Node, Siblings, Span, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -200,9 +200,9 @@ impl<T> Tree<T> {
 
     /// Get all root nodes in the tree.
     ///
-    /// See [Nodes] for documentation.
-    pub fn children(&self) -> Nodes<'_, T> {
-        Nodes::new(self.first())
+    /// See [Siblings] for documentation.
+    pub fn children(&self) -> Siblings<'_, T> {
+        Siblings::new(self.first())
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
@@ -316,23 +316,6 @@ impl<T> Tree<T> {
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
     /// assert_eq!(*child.value(), "child");
-    ///
-    /// let lit = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).ok_or("expected lit")?;
-    /// assert_eq!(*lit.value(), "lit");
-    ///
-    /// let root = lit.parent().and_then(|n| n.parent()).ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
-    ///
-    /// let expected = syntree::tree! {
-    ///     "root" => {
-    ///         "child" => {
-    ///             ("lit", 3)
-    ///         }
-    ///     },
-    ///     ("sibling", 3)
-    /// };
-    ///
-    /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
     pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T>> {

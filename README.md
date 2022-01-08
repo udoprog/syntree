@@ -32,7 +32,7 @@ This crate provides a way to efficiently model [abstract syntax trees]. The
 nodes of the tree are typically represented by variants in an enum, but
 [could be whatever you want].
 
-Each tree consists of *nodes* and *tokens*. Nodes are intermediary elements
+Each tree consists of *nodes* and *tokens*. Siblings are intermediary elements
 in the tree which encapsulate zero or more other nodes or tokens, while
 tokens are leaf elements representing exact source locations.
 

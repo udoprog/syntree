@@ -62,11 +62,11 @@ use crate::{Kind, Node, SkipTokens};
 /// );
 /// # Ok(()) }
 /// ```
-pub struct Nodes<'a, T> {
+pub struct Siblings<'a, T> {
     node: Option<Node<'a, T>>,
 }
 
-impl<'a, T> Nodes<'a, T> {
+impl<'a, T> Siblings<'a, T> {
     /// Construct a new child iterator.
     pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
         Self { node }
@@ -98,8 +98,13 @@ impl<'a, T> Nodes<'a, T> {
     /// };
     ///
     /// let mut it = tree.children();
-    /// assert_eq!(it.next_node().map(|n| *n.value()), Some("child1"));
-    /// assert_eq!(it.next().map(|n| *n.value()), Some("t2"));
+    /// let mut out = Vec::new();
+    ///
+    /// while let Some(n) = it.next_node() {
+    ///     out.push(*n.value());
+    /// }
+    ///
+    /// assert_eq!(out, ["child1", "child2", "child3"]);
     /// # Ok(()) }
     /// ```
     pub fn next_node(&mut self) -> Option<Node<'a, T>> {
@@ -113,7 +118,7 @@ impl<'a, T> Nodes<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Nodes<'a, T> {
+impl<'a, T> Iterator for Siblings<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -123,17 +128,17 @@ impl<'a, T> Iterator for Nodes<'a, T> {
     }
 }
 
-impl<'a, T> FusedIterator for Nodes<'a, T> {}
+impl<'a, T> FusedIterator for Siblings<'a, T> {}
 
-impl<'a, T> Clone for Nodes<'a, T> {
+impl<'a, T> Clone for Siblings<'a, T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for Nodes<'a, T> {}
+impl<'a, T> Copy for Siblings<'a, T> {}
 
-impl<'a, T> Default for Nodes<'a, T> {
+impl<'a, T> Default for Siblings<'a, T> {
     fn default() -> Self {
         Self { node: None }
     }

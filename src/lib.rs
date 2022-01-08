@@ -30,7 +30,7 @@
 //! nodes of the tree are typically represented by variants in an enum, but
 //! [could be whatever you want].
 //!
-//! Each tree consists of *nodes* and *tokens*. Nodes are intermediary elements
+//! Each tree consists of *nodes* and *tokens*. Siblings are intermediary elements
 //! in the tree which encapsulate zero or more other nodes or tokens, while
 //! tokens are leaf elements representing exact source locations.
 //!
@@ -269,25 +269,27 @@
 
 #[macro_use]
 mod macros;
+mod ancestors;
 mod builder;
 mod change_set;
 mod error;
 mod links;
 mod node;
-mod nodes;
 mod non_max;
 pub mod print;
+mod siblings;
 mod skip_tokens;
 mod span;
 mod tree;
 mod walk;
 mod walk_events;
 
+pub use self::ancestors::Ancestors;
 pub use self::builder::{Id, TreeBuilder};
 pub use self::change_set::ChangeSet;
 pub use self::error::TreeError;
 pub use self::node::Node;
-pub use self::nodes::Nodes;
+pub use self::siblings::Siblings;
 pub use self::skip_tokens::SkipTokens;
 pub use self::span::Span;
 pub use self::tree::{Kind, Tree};

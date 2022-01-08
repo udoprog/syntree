@@ -5,7 +5,7 @@ use std::ops::Range;
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::tree::Kind;
-use crate::{Id, Nodes, Span, Walk, WalkEvents};
+use crate::{Ancestors, Id, Siblings, Span, Walk, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -200,18 +200,25 @@ impl<'a, T> Node<'a, T> {
         self.links.first.is_none()
     }
 
+    /// Get the ancestors of this node.
+    ///
+    /// See [Ancestors] for documentation.
+    pub fn ancestors(&self) -> Ancestors<'a, T> {
+        Ancestors::new(Some(*self))
+    }
+
     /// Get an iterator over the siblings of this node, including itself.
     ///
-    /// See [Nodes] for documentation.
-    pub fn siblings(&self) -> Nodes<'a, T> {
-        Nodes::new(Some(*self))
+    /// See [Siblings] for documentation.
+    pub fn siblings(&self) -> Siblings<'a, T> {
+        Siblings::new(Some(*self))
     }
 
     /// Get an iterator over the children of this node.
     ///
-    /// See [Nodes] for documentation.
-    pub fn children(&self) -> Nodes<'a, T> {
-        Nodes::new(self.first())
+    /// See [Siblings] for documentation.
+    pub fn children(&self) -> Siblings<'a, T> {
+        Siblings::new(self.first())
     }
 
     /// Walk the subtree forward starting with the first child of the current
@@ -262,7 +269,7 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn parent(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.links.parent)
+        self.node_at(self.links.parent?)
     }
 
     /// Get the next sibling.
@@ -292,8 +299,8 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*ident.value(), "ident");
     /// # Ok(()) }
     /// ```
-    pub fn next(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.links.next)
+    pub fn next(self) -> Option<Node<'a, T>> {
+        self.node_at(self.links.next?)
     }
 
     /// Get the first child node.
@@ -324,10 +331,11 @@ impl<'a, T> Node<'a, T> {
     /// # Ok(()) }
     /// ```
     pub fn first(&self) -> Option<Node<'a, T>> {
-        self.node_at(self.links.first)
+        self.node_at(self.links.first?)
     }
-    fn node_at(&self, id: Option<NonMax>) -> Option<Node<'a, T>> {
-        let cur = self.tree.get(id?.get())?;
+
+    fn node_at(&self, id: NonMax) -> Option<Node<'a, T>> {
+        let cur = self.tree.get(id.get())?;
 
         Some(Self {
             links: cur,
