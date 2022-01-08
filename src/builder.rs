@@ -5,11 +5,6 @@ use crate::non_max::NonMax;
 use crate::span::{usize_to_index, Index};
 use crate::{Kind, Span, Tree, TreeError};
 
-#[derive(Debug, Clone, Copy)]
-struct Parent {
-    id: NonMax,
-}
-
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -68,7 +63,7 @@ pub struct TreeBuilder<T> {
     /// Data in the tree being built.
     tree: Tree<T>,
     /// References to parent nodes of the current node being constructed.
-    parents: Vec<Parent>,
+    parents: Vec<NonMax>,
     /// What checkpoints in use refer to.
     checkpoints: Vec<NonMax>,
     /// The last checkpoint handed out. This will be invalidated once the tree
@@ -153,7 +148,7 @@ impl<T> TreeBuilder<T> {
     /// ```
     pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
         let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
-        self.parents.push(Parent { id });
+        self.parents.push(id);
         Ok(Id(id))
     }
 
@@ -190,13 +185,13 @@ impl<T> TreeBuilder<T> {
             None => return Err(TreeError::CloseError),
         };
 
-        self.sibling = Some(head.id);
+        self.sibling = Some(head);
 
-        if let Some(parent) = self.parents.last().copied() {
-            if let Some(node) = self.tree.get_mut(head.id) {
+        if let Some(&parent) = self.parents.last() {
+            if let Some(node) = self.tree.get_mut(head) {
                 let end = node.span.end;
 
-                if let Some(parent) = self.tree.get_mut(parent.id) {
+                if let Some(parent) = self.tree.get_mut(parent) {
                     parent.span.end = end;
                 }
             }
@@ -457,7 +452,8 @@ impl<T> TreeBuilder<T> {
         // If we're replacing the first node of the tree, the newly inserted
         // node should be set as the first node.
         if self.tree.first_id() == Some(id) {
-            *self.tree.first_id_mut() = Some(next_id);
+            let (first, _) = self.tree.links_mut();
+            *first = Some(next_id);
         }
 
         if let Some(id) = self.checkpoints.get_mut(c.get()) {
@@ -567,30 +563,40 @@ impl<T> TreeBuilder<T> {
 
         self.checkpoint = None;
         let prev = std::mem::replace(&mut self.sibling, None);
-        let parent = self.parents.last();
+        let parent = self.parents.last().copied();
 
         self.tree.push(Links {
             data,
             kind,
             span,
-            parent: parent.map(|p| p.id),
+            parent,
             prev,
             next: None,
             first: None,
             last: None,
         });
 
-        if let Some(node) = prev.and_then(|id| self.tree.links_at_mut(id)) {
-            node.next = Some(new);
-        }
+        if let Some(id) = parent {
+            if let Some(node) = self.tree.links_at_mut(id) {
+                if node.first.is_none() {
+                    node.first = Some(new);
+                }
 
-        if let Some(node) = parent.and_then(|p| self.tree.links_at_mut(p.id)) {
-            if node.first.is_none() {
-                node.first = Some(new);
+                node.last = Some(new);
+                node.span.end = span.end;
+            }
+        } else {
+            let (first, last) = self.tree.links_mut();
+
+            if first.is_none() {
+                *first = Some(new);
             }
 
-            node.last = Some(new);
-            node.span.end = span.end;
+            *last = Some(new);
+        }
+
+        if let Some(node) = prev.and_then(|id| self.tree.links_at_mut(id)) {
+            node.next = Some(new);
         }
 
         Ok(new)

@@ -35,6 +35,8 @@ pub struct Tree<T> {
     indexes: Vec<TreeIndex>,
     /// The first element in the tree.
     first: Option<NonMax>,
+    /// The last element in the tree.
+    last: Option<NonMax>,
 }
 
 impl<T> Tree<T> {
@@ -44,7 +46,8 @@ impl<T> Tree<T> {
             tree: Vec::new(),
             span: Span::point(0),
             indexes: Vec::new(),
-            first: NonMax::new(0),
+            first: None,
+            last: None,
         }
     }
 
@@ -54,7 +57,8 @@ impl<T> Tree<T> {
             tree: Vec::with_capacity(capacity),
             span: Span::point(0),
             indexes: Vec::new(),
-            first: NonMax::new(0),
+            first: None,
+            last: None,
         }
     }
 
@@ -225,8 +229,6 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::Span;
-    ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root",
@@ -239,6 +241,25 @@ impl<T> Tree<T> {
     /// ```
     pub fn first(&self) -> Option<Node<'_, T>> {
         self.node_at(self.first?)
+    }
+
+    /// Get the last child node in the tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root",
+    ///     "root2"
+    /// };
+    ///
+    /// let root = tree.last().ok_or("missing root")?;
+    /// assert_eq!(*root.value(), "root2");
+    /// # Ok(()) }
+    /// ```
+    pub fn last(&self) -> Option<Node<'_, T>> {
+        self.node_at(self.last?)
     }
 
     /// Query for the node that matches the given range.
@@ -432,9 +453,9 @@ impl<T> Tree<T> {
         self.first
     }
 
-    /// Get the first element so that it can be mutated.
-    pub(crate) fn first_id_mut(&mut self) -> &mut Option<NonMax> {
-        &mut self.first
+    /// Get the tree links mutably.
+    pub(crate) fn links_mut(&mut self) -> (&mut Option<NonMax>, &mut Option<NonMax>) {
+        (&mut self.first, &mut self.last)
     }
 
     /// Get a mutable reference to an element in the tree.
@@ -466,12 +487,7 @@ impl<T> Tree<T> {
 
 impl<T> Default for Tree<T> {
     fn default() -> Self {
-        Self {
-            tree: Default::default(),
-            span: Span::point(0),
-            indexes: Default::default(),
-            first: NonMax::new(0),
-        }
+        Self::new()
     }
 }
 

@@ -366,6 +366,37 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.first?)
     }
 
+    /// Get the last child node.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// let root2 = tree.last().ok_or("missing root2")?;
+    /// assert_eq!(*root2.value(), "root2");
+    ///
+    /// let whitespace = root2.last().ok_or("missing whitespace")?;
+    /// assert_eq!(*whitespace.value(), "whitespace");
+    /// # Ok(()) }
+    /// ```
+    pub fn last(&self) -> Option<Node<'a, T>> {
+        self.node_at(self.links.last?)
+    }
+
     fn node_at(&self, id: NonMax) -> Option<Node<'a, T>> {
         let cur = self.tree.get(id.get())?;
 

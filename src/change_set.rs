@@ -180,6 +180,16 @@ impl<T> ChangeSet<T> {
                 }
             }
 
+            if refactor.parents.is_empty() {
+                let (first, last) = output.links_mut();
+
+                if first.is_none() {
+                    *first = Some(node_id);
+                }
+
+                *last = Some(node_id);
+            }
+
             // Since we are the first node in the sequence we're obligated to
             // set the first child of the parent.
             let prev = if !first {
