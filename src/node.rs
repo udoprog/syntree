@@ -5,7 +5,7 @@ use std::ops::Range;
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::tree::Kind;
-use crate::{Ancestors, Id, Siblings, Span, Walk, WalkEvents};
+use crate::{Ancestors, Children, Id, Siblings, Span, Walk, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T> {
@@ -14,8 +14,8 @@ pub struct Node<'a, T> {
 }
 
 impl<'a, T> Node<'a, T> {
-    pub(crate) const fn new(node: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
-        Self { links: node, tree }
+    pub(crate) const fn new(links: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
+        Self { links, tree }
     }
 
     /// Get the identifier of the current node.
@@ -211,14 +211,14 @@ impl<'a, T> Node<'a, T> {
     ///
     /// See [Siblings] for documentation.
     pub fn siblings(&self) -> Siblings<'a, T> {
-        Siblings::new(Some(*self))
+        Siblings::new(self.tree, self.links)
     }
 
     /// Get an iterator over the children of this node.
     ///
-    /// See [Siblings] for documentation.
-    pub fn children(&self) -> Siblings<'a, T> {
-        Siblings::new(self.first())
+    /// See [Children] for documentation.
+    pub fn children(&self) -> Children<'a, T> {
+        Children::new(self.tree, self.links.first, self.links.last)
     }
 
     /// Walk the subtree forward starting with the first child of the current

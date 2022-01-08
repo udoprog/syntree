@@ -1,7 +1,6 @@
 use std::iter::FusedIterator;
 
-use crate::links::Links;
-use crate::{Kind, Node, SkipTokens};
+use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 
 /// An iterator that iterates over the [Node::next] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -21,12 +20,12 @@ use crate::{Kind, Node, SkipTokens};
 ///     }
 /// };
 ///
-/// let mut it = tree.first().and_then(|n| n.next()).map(|n| n.siblings()).unwrap_or_default();
+/// let mut it = tree.first().and_then(|n| n.last()).map(|n| n.children()).unwrap_or_default();
 /// assert_eq!(it.next().map(|n| *n.value()), None);
 /// # Ok(()) }
 /// ```
 ///
-/// See [Node::siblings].
+/// See [Tree::children][crate::Tree::children] or [Node::children].
 ///
 /// # Examples
 ///
@@ -44,26 +43,43 @@ use crate::{Kind, Node, SkipTokens};
 ///     }
 /// };
 ///
-/// let root = tree.first().ok_or("missing root")?;
+/// assert_eq!(
+///     tree.children().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root", "root2"]
+/// );
 ///
 /// assert_eq!(
-///     root.siblings().map(|n| *n.value()).collect::<Vec<_>>(),
-///     ["root", "root2"]
+///     tree.children().rev().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root2", "root"]
+/// );
+///
+/// let root = tree.first().ok_or("missing root node")?;
+///
+/// assert_eq!(
+///     root.children().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["child1", "child3"]
+/// );
+///
+/// assert_eq!(
+///     root.children().rev().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["child3", "child1"]
 /// );
 /// # Ok(()) }
 /// ```
-pub struct Siblings<'a, T> {
+pub struct Children<'a, T> {
     tree: &'a [Links<T>],
-    links: Option<&'a Links<T>>,
+    first: Option<NonMax>,
+    last: Option<NonMax>,
 }
 
-impl<'a, T> Siblings<'a, T> {
+impl<'a, T> Children<'a, T> {
     /// Construct a new child iterator.
-    pub(crate) const fn new(tree: &'a [Links<T>], links: &'a Links<T>) -> Self {
-        Self {
-            tree,
-            links: Some(links),
-        }
+    pub(crate) const fn new(
+        tree: &'a [Links<T>],
+        first: Option<NonMax>,
+        last: Option<NonMax>,
+    ) -> Self {
+        Self { tree, first, last }
     }
 
     /// Construct a [SkipTokens] iterator from the remainder of this
@@ -91,9 +107,7 @@ impl<'a, T> Siblings<'a, T> {
     ///     ("t4", 1)
     /// };
     ///
-    /// let first = tree.first().ok_or("missing first")?;
-    ///
-    /// let mut it = first.siblings();
+    /// let mut it = tree.children();
     /// let mut out = Vec::new();
     ///
     /// while let Some(n) = it.next_node() {
@@ -114,31 +128,50 @@ impl<'a, T> Siblings<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Siblings<'a, T> {
+impl<'a, T> Iterator for Children<'a, T> {
     type Item = Node<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let links = self.links.take()?;
-        self.links = links.next.and_then(|id| self.tree.get(id.get()));
-        Some(Node::new(links, self.tree))
+        let first = self.first.take()?;
+        let node = self.tree.get(first.get())?;
+
+        if first != self.last? {
+            self.first = node.next;
+        }
+
+        Some(Node::new(node, self.tree))
     }
 }
 
-impl<'a, T> FusedIterator for Siblings<'a, T> {}
+impl<'a, T> DoubleEndedIterator for Children<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let last = self.last.take()?;
+        let node = self.tree.get(last.get())?;
 
-impl<'a, T> Clone for Siblings<'a, T> {
+        if last != self.first? {
+            self.last = node.prev;
+        }
+
+        Some(Node::new(node, self.tree))
+    }
+}
+
+impl<'a, T> FusedIterator for Children<'a, T> {}
+
+impl<'a, T> Clone for Children<'a, T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for Siblings<'a, T> {}
+impl<'a, T> Copy for Children<'a, T> {}
 
-impl<'a, T> Default for Siblings<'a, T> {
+impl<'a, T> Default for Children<'a, T> {
     fn default() -> Self {
         Self {
             tree: &[],
-            links: None,
+            first: None,
+            last: None,
         }
     }
 }
