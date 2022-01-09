@@ -18,7 +18,7 @@ to be an efficient replacement for it (read more below).
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.11.0"
+syntree = "0.11.1"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
@@ -36,7 +36,7 @@ This can be enabled by setting `--cfg syntree_compact` while building and
 might improve performance due to allowing nodes to fit neatly on individual
 cache lines.
 
-```rust
+```sh
 RUSTFLAGS="--cfg syntree_compact" cargo build
 ```
 
