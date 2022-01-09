@@ -24,6 +24,20 @@
 //!
 //! <br>
 //!
+//! ## Enabling `syntree_compact`
+//!
+//! We support a configuration option to reduce the size of the tree in memory.
+//! It changes the tree from using `usize` as indexes to use `u32` which saves 4
+//! bytes per reference on 64-bit platforms.
+//!
+//! This can be enabled by setting `--cfg syntree_compact` while building.
+//!
+//! ```
+//! RUSTFLAGS="--cfg syntree_compact" cargo build
+//! ```
+//!
+//! <br>
+//!
 //! ## Syntax trees
 //!
 //! This crate provides a way to efficiently model [abstract syntax trees]. The

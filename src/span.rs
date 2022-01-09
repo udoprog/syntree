@@ -3,19 +3,19 @@ use std::mem::size_of;
 use std::ops;
 
 /// The index used in a span.
-#[cfg(feature = "u32")]
+#[cfg(syntree_compact)]
 pub(crate) type Index = u32;
 
-#[cfg(feature = "u32")]
+#[cfg(syntree_compact)]
 #[inline]
 pub(crate) fn usize_to_index(value: usize) -> Option<u32> {
     u32::try_from(value).ok()
 }
 
-#[cfg(not(feature = "u32"))]
+#[cfg(not(syntree_compact))]
 pub(crate) type Index = usize;
 
-#[cfg(not(feature = "u32"))]
+#[cfg(not(syntree_compact))]
 #[inline]
 pub(crate) fn usize_to_index(value: usize) -> Option<Index> {
     Some(value)

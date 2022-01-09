@@ -1,10 +1,10 @@
 /// Get the configured nonmax type.
-#[cfg(not(feature = "u32"))]
+#[cfg(not(syntree_compact))]
 pub(crate) type NonMax = self::imp::NonMaxUsize;
-#[cfg(feature = "u32")]
+#[cfg(syntree_compact)]
 pub(crate) type NonMax = self::imp::NonMaxU32;
 
-#[cfg(not(feature = "u32"))]
+#[cfg(not(syntree_compact))]
 mod imp {
     use std::fmt;
     use std::num::NonZeroUsize;
@@ -43,7 +43,7 @@ mod imp {
     }
 }
 
-#[cfg(feature = "u32")]
+#[cfg(syntree_compact)]
 mod imp {
     use std::fmt;
     use std::mem::size_of;
