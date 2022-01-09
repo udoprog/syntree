@@ -420,11 +420,10 @@ impl<T> TreeBuilder<T> {
         // inserted node and update parent references to point to the newly
         // inserted node.
         let (last, span) = if self.sibling != Some(id) {
+            let next = links.next.ok_or(TreeError::CloseAtError)?;
             let start = links.span.start;
-            let next = links.next;
-            let (last, span) =
-                restructure_close_at(&mut self.tree, self.sibling, next_id, start, next)?;
-            (Some(last), span)
+            let (end, last) = restructure_close_at(&mut self.tree, self.sibling, next_id, next)?;
+            (Some(last), Span::new(start, end))
         } else {
             (None, links.span)
         };
@@ -579,32 +578,30 @@ impl<T> Default for TreeBuilder<T> {
     }
 }
 
-// Adjust span to encapsulate all children and check that we just inserted
-// the checkpointed node in the right location which should be the tail
-// sibling of the replaced node.
+// Adjust span to encapsulate all children and check that we just inserted the
+// checkpointed node in the right location which should be the tail sibling of
+// the replaced node.
 fn restructure_close_at<T>(
     tree: &mut Tree<T>,
     sibling: Option<NonMax>,
     parent_id: NonMax,
-    start: Index,
-    mut next: Option<NonMax>,
-) -> Result<(NonMax, Span), TreeError> {
-    let mut last = None;
+    next: NonMax,
+) -> Result<(Index, NonMax), TreeError> {
+    let mut links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
+    let mut last = (links.span.end, next);
+    links.parent = Some(parent_id);
 
-    while let Some(id) = next.take() {
-        let node = tree.get_mut(id).ok_or(TreeError::MissingNode(Id(id)))?;
-        node.parent = Some(parent_id);
-        last = Some((node.span.end, id));
-        next = node.next;
+    while let Some(next) = links.next {
+        links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
+        last = (links.span.end, next);
+        links.parent = Some(parent_id);
     }
-
-    let (end, end_id) = last.ok_or(TreeError::CloseAtError)?;
 
     let sibling = sibling.ok_or(TreeError::CloseAtError)?;
 
-    if sibling != end_id {
+    if sibling != last.1 {
         return Err(TreeError::CloseAtError);
     }
 
-    Ok((end_id, Span::new(start, end)))
+    Ok(last)
 }
