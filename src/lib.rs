@@ -30,7 +30,9 @@
 //! It changes the tree from using `usize` as indexes to use `u32` which saves 4
 //! bytes per reference on 64-bit platforms.
 //!
-//! This can be enabled by setting `--cfg syntree_compact` while building.
+//! This can be enabled by setting `--cfg syntree_compact` while building and
+//! might improve performance due to allowing nodes to fit neatly on individual
+//! cache lines.
 //!
 //! ```
 //! RUSTFLAGS="--cfg syntree_compact" cargo build
