@@ -188,13 +188,16 @@ impl<T> TreeBuilder<T> {
         self.sibling = Some(head);
 
         if let Some(&parent) = self.parents.last() {
-            if let Some(node) = self.tree.get_mut(head) {
-                let end = node.span.end;
-
-                if let Some(parent) = self.tree.get_mut(parent) {
-                    parent.span.end = end;
-                }
-            }
+            let node = self
+                .tree
+                .get_mut(head)
+                .ok_or(TreeError::MissingNode(Id(head)))?;
+            let end = node.span.end;
+            let parent = self
+                .tree
+                .get_mut(parent)
+                .ok_or(TreeError::MissingNode(Id(parent)))?;
+            parent.span.end = end;
         }
 
         Ok(())
@@ -392,11 +395,12 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn close_at(&mut self, Checkpoint(c): Checkpoint, data: T) -> Result<Id, TreeError> {
-        let id = *self
+    pub fn close_at(&mut self, c: Checkpoint, data: T) -> Result<Id, TreeError> {
+        let checkpoint_id = self
             .checkpoints
-            .get(c.get())
-            .ok_or(TreeError::MissingCheckpoint)?;
+            .get_mut(c.0.get())
+            .ok_or(TreeError::MissingCheckpoint(c))?;
+        let id = *checkpoint_id;
 
         let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
 
@@ -409,19 +413,20 @@ impl<T> TreeBuilder<T> {
             }
         };
 
-        let span = links.span;
         let parent = replace(&mut links.parent, Some(next_id));
         let prev = replace(&mut links.prev, None);
 
         // Restructuring is necessary to calculate the full span of the newly
         // inserted node and update parent references to point to the newly
         // inserted node.
-        let last = if self.sibling != Some(id) {
+        let (last, span) = if self.sibling != Some(id) {
             let start = links.span.start;
             let next = links.next;
-            Some(self.restructure_close_at(next_id, start, next)?)
+            let (last, span) =
+                restructure_close_at(&mut self.tree, self.sibling, next_id, start, next)?;
+            (Some(last), span)
         } else {
-            None
+            (None, links.span)
         };
 
         let added = Links {
@@ -456,47 +461,12 @@ impl<T> TreeBuilder<T> {
             *first = Some(next_id);
         }
 
-        if let Some(id) = self.checkpoints.get_mut(c.get()) {
-            *id = next_id;
-        }
-
-        // Push and invalidate the last checkpoint.
+        // Accounting.
         self.tree.push(added);
         self.checkpoint = None;
         self.sibling = Some(next_id);
+        *checkpoint_id = next_id;
         Ok(Id(next_id))
-    }
-
-    // Adjust span to encapsulate all children and check that we just inserted
-    // the checkpointed node in the right location which should be the tail
-    // sibling of the replaced node.
-    fn restructure_close_at(
-        &mut self,
-        id: NonMax,
-        start: Index,
-        mut next: Option<NonMax>,
-    ) -> Result<NonMax, TreeError> {
-        let mut last = None;
-
-        while let Some((node, next_id)) = next.and_then(|id| Some((self.tree.get_mut(id)?, id))) {
-            node.parent = Some(id);
-            last = Some((node.span.end, next_id));
-            next = node.next;
-        }
-
-        let (end, end_id) = last.ok_or(TreeError::CloseAtError)?;
-
-        let sibling = self.sibling.ok_or(TreeError::CloseAtError)?;
-
-        if sibling != end_id {
-            return Err(TreeError::CloseAtError);
-        }
-
-        if let Some(node) = self.tree.get_mut(id) {
-            node.span = Span::new(start, end);
-        }
-
-        Ok(end_id)
     }
 
     /// Build a [Tree] from the current state of the builder.
@@ -607,4 +577,34 @@ impl<T> Default for TreeBuilder<T> {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// Adjust span to encapsulate all children and check that we just inserted
+// the checkpointed node in the right location which should be the tail
+// sibling of the replaced node.
+fn restructure_close_at<T>(
+    tree: &mut Tree<T>,
+    sibling: Option<NonMax>,
+    parent_id: NonMax,
+    start: Index,
+    mut next: Option<NonMax>,
+) -> Result<(NonMax, Span), TreeError> {
+    let mut last = None;
+
+    while let Some(id) = next.take() {
+        let node = tree.get_mut(id).ok_or(TreeError::MissingNode(Id(id)))?;
+        node.parent = Some(parent_id);
+        last = Some((node.span.end, id));
+        next = node.next;
+    }
+
+    let (end, end_id) = last.ok_or(TreeError::CloseAtError)?;
+
+    let sibling = sibling.ok_or(TreeError::CloseAtError)?;
+
+    if sibling != end_id {
+        return Err(TreeError::CloseAtError);
+    }
+
+    Ok((end_id, Span::new(start, end)))
 }

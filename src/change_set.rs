@@ -230,6 +230,7 @@ impl<T> ChangeSet<T> {
                 }
 
                 parent.last = Some(node_id);
+                parent.span.end = span.end;
             }
 
             output.push(Links {

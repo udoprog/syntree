@@ -34,7 +34,7 @@
 //! might improve performance due to allowing nodes to fit neatly on individual
 //! cache lines.
 //!
-//! ```
+//! ```sh
 //! RUSTFLAGS="--cfg syntree_compact" cargo build
 //! ```
 //!

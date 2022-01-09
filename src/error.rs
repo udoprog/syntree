@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fmt;
 
+use crate::{Checkpoint, Id};
+
 /// Errors raised while building a tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -74,7 +76,9 @@ pub enum TreeError {
     /// is easier to accomplish.
     Overflow,
     /// The given checkpoint doesn't exist.
-    MissingCheckpoint,
+    MissingCheckpoint(Checkpoint),
+    /// The node of the given id is missing.
+    MissingNode(Id),
 }
 
 impl Error for TreeError {}
@@ -97,8 +101,11 @@ impl fmt::Display for TreeError {
             TreeError::Overflow => {
                 write!(f, "numerical overflow")
             }
-            TreeError::MissingCheckpoint => {
-                write!(f, "missing checkpoint")
+            TreeError::MissingCheckpoint(c) => {
+                write!(f, "missing checkpoint with id `{}`", c.0.get())
+            }
+            TreeError::MissingNode(id) => {
+                write!(f, "missing node with id `{}`", id.0.get())
             }
         }
     }

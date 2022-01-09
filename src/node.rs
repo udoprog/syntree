@@ -415,6 +415,7 @@ where
         f.debug_struct("Node")
             .field("data", &self.links.data)
             .field("kind", &self.links.kind)
+            .field("span", &self.links.span)
             .finish()
     }
 }
@@ -432,7 +433,9 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.links.data == other.links.data && self.links.kind == other.links.kind
+        self.links.data == other.links.data
+            && self.links.kind == other.links.kind
+            && self.links.span == other.links.span
     }
 }
 

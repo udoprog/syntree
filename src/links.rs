@@ -3,7 +3,7 @@
 use crate::non_max::NonMax;
 use crate::{Kind, Span};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Links<T> {
     /// The data in the node.
     pub(crate) data: T,
