@@ -50,8 +50,8 @@ impl<'a, T> Node<'a, T> {
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
         let id = (current - base) / size_of::<Links<T>>();
-        // It's impossible to construct a node with an offset which is not a
-        // legal `NonMax`.
+        // SAFETY: It's impossible to construct a node with an offset which is
+        // not a legal `NonMax`.
         unsafe { Id::new(NonMax::new_unchecked(id)) }
     }
 

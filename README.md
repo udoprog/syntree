@@ -162,10 +162,10 @@ reconcile directly in `rowan`.
 but it precludes you from designing trees which contain anything else other
 than source references without having to perform some form of indirect
 lookup on the side. This is something I need in order to move [Rune] to
-lossless syntax trees like (see [the representation of `Kind::Str`
-enum][kind-str]).
+lossless syntax trees (see [the representation of `Kind::Str`
+variant][kind-str]).
 
-So consider the following tokens:
+To exemplify this scenario consider the following syntax:
 
 ```rust
 #[derive(Debug, Clone, Copy)]
