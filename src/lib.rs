@@ -11,7 +11,7 @@
 //!
 //! <br>
 //!
-//! # Usage
+//! ## Usage
 //!
 //! Add `syntree` to your crate:
 //!

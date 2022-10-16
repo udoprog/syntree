@@ -26,7 +26,7 @@ the [calculator example][calculator].
 
 <br>
 
-### Enabling `syntree_compact`
+## Enabling `syntree_compact`
 
 We support a configuration option to reduce the size of the tree in memory.
 It changes the tree from using `usize` as indexes to use `u32` which saves 4
@@ -42,7 +42,7 @@ RUSTFLAGS="--cfg syntree_compact" cargo build
 
 <br>
 
-### Syntax trees
+## Syntax trees
 
 This crate provides a way to efficiently model [abstract syntax trees]. The
 nodes of the tree are typically represented by variants in an enum, but
@@ -55,7 +55,7 @@ while tokens are leaf elements representing exact source locations.
 An example tree for the simple expression `256 / 2 + 64 * 2` could be
 represented like this:
 
-```
+```text
 OPERATION@0..16
   NUMBER@0..3
     NUMBER@0..3 "256"
@@ -151,7 +151,7 @@ example][calculator] for a complete use case.
 
 <br>
 
-### Why not `rowan`?
+## Why not `rowan`?
 
 I love [`rowan`]. It's the reason why I started this project. But this crate
 still exists for a few philosophical differences that would be hard to
@@ -201,7 +201,7 @@ cargo run --example synthetic_strings -- "Hello $world"
 
 Which would output:
 
-```
+```text
 Tree:
 LITERAL@0..5 "Hello"
 WHITESPACE@5..6 " "
@@ -217,7 +217,7 @@ be done on the side and encoded into the syntax tree as you wish.
 
 <br>
 
-#### Errors instead of panics
+### Errors instead of panics
 
 Another point where this crate differs is that we rely on propagating a
 [`TreeError`] during tree construction if the API is used incorrectly
@@ -245,7 +245,7 @@ software.
 
 <br>
 
-### Performance and memory use
+## Performance and memory use
 
 The only goal in terms of performance is to be as performant as `rowan`. And
 cursory testing shows `syntree` to be a bit faster on synthetic workloads
@@ -281,5 +281,3 @@ exercise to the reader.
 [Rune]: https://github.com/rune-rs/rune
 [synthetic_strings]: https://github.com/udoprog/syntree/blob/main/examples/synthetic_strings.rs
 [syntree-math]: https://github.com/udoprog/syntree/blob/main/examples/math.rs
-
-License: MIT/Apache-2.0
