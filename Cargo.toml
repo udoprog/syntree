@@ -1,17 +1,16 @@
 [package]
 name = "syntree"
 version = "0.11.1"
+authors = ["John-John Tedro <udoprog@tedro.se>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/udoprog/syntree"
-homepage = "https://github.com/udoprog/syntree"
+description = "A memory efficient syntax tree for language developers."
 documentation = "https://docs.rs/syntree"
+readme = "README.md"
+homepage = "https://github.com/udoprog/syntree"
+repository = "https://github.com/udoprog/syntree"
+license = "MIT/Apache-2.0"
 keywords = ["language", "syntax-tree"]
 categories = ["parsing"]
-description = """
-A memory efficient syntax tree for language developers.
-"""
 
 # Avoid loading benches from the benches directory so we can add more
 # dependencies in there which would otherwise hog down testing this crate.
