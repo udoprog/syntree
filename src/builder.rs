@@ -1,4 +1,6 @@
+use std::cell::Cell;
 use std::mem::replace;
+use std::rc::Rc;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
@@ -16,9 +18,9 @@ pub struct Id(pub(crate) NonMax);
 ///
 /// This can be used as a checkpoint in [TreeBuilder::close_at], and a
 /// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone)]
 #[repr(transparent)]
-pub struct Checkpoint(pub(crate) NonMax);
+pub struct Checkpoint(Rc<Cell<CheckpointData>>);
 
 impl Id {
     pub(crate) const fn new(id: NonMax) -> Self {
@@ -27,7 +29,7 @@ impl Id {
 }
 
 /// The parent of the checkpoint.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct CheckpointData {
     // The node being wrapped by the checkpoint.
     node: NonMax,
@@ -73,8 +75,8 @@ pub struct TreeBuilder<T> {
     tree: Tree<T>,
     /// References to parent nodes of the current node being constructed.
     parents: Vec<NonMax>,
-    /// What checkpoints in use refer to.
-    checkpoints: Vec<CheckpointData>,
+    /// The last checkpoint that was handed out.
+    checkpoint: Option<Checkpoint>,
     /// Reference to last sibling inserted.
     sibling: Option<NonMax>,
     /// The current cursor.
@@ -121,7 +123,7 @@ impl<T> TreeBuilder<T> {
         TreeBuilder {
             tree: Tree::new(),
             parents: Vec::new(),
-            checkpoints: Vec::new(),
+            checkpoint: None,
             sibling: None,
             cursor: 0,
         }
@@ -261,7 +263,7 @@ impl<T> TreeBuilder<T> {
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -279,24 +281,19 @@ impl<T> TreeBuilder<T> {
     pub fn checkpoint(&mut self) -> Result<Checkpoint, TreeError> {
         let node = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
 
-        let c = if self.checkpoints.last().map(|d| d.node) == Some(node) {
-            self.checkpoints
-                .len()
-                .checked_sub(1)
-                .and_then(NonMax::new)
-                .ok_or(TreeError::Overflow)?
-        } else {
-            let c = NonMax::new(self.checkpoints.len()).ok_or(TreeError::Overflow)?;
+        if let Some(c) = &self.checkpoint {
+            if c.0.get().node == node {
+                return Ok(c.clone());
+            }
+        }
 
-            self.checkpoints.push(CheckpointData {
-                node,
-                parent: self.parents.last().copied(),
-            });
+        let c = Checkpoint(Rc::new(Cell::new(CheckpointData {
+            node,
+            parent: self.parents.last().copied(),
+        })));
 
-            c
-        };
-
-        Ok(Checkpoint(c))
+        self.checkpoint = Some(c.clone());
+        Ok(c)
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -314,7 +311,7 @@ impl<T> TreeBuilder<T> {
     ///
     /// let c = tree.checkpoint()?;
     /// tree.token("lit", 3)?;
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -348,7 +345,7 @@ impl<T> TreeBuilder<T> {
     /// tree.token("lit", 2)?;
     /// tree.close()?;
     ///
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -380,7 +377,7 @@ impl<T> TreeBuilder<T> {
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
@@ -407,14 +404,11 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok(()) }
     /// ```
-    pub fn close_at(&mut self, c: Checkpoint, data: T) -> Result<Id, TreeError> {
-        let checkpoint_data = self
-            .checkpoints
-            .get_mut(c.0.get())
-            .ok_or(TreeError::MissingCheckpoint(c))?;
-        let id = checkpoint_data.node;
+    pub fn close_at(&mut self, c: &Checkpoint, data: T) -> Result<Id, TreeError> {
+        let c = &*c.0;
+        let id = c.get().node;
 
-        if checkpoint_data.parent.as_ref() != self.parents.last() {
+        if c.get().parent.as_ref() != self.parents.last() {
             return Err(TreeError::CloseAtError);
         }
 
@@ -476,8 +470,12 @@ impl<T> TreeBuilder<T> {
         // Do necessary accounting.
         self.tree.push(added);
         self.sibling = Some(next_id);
-        checkpoint_data.node = next_id;
-        checkpoint_data.parent = parent;
+
+        c.set(CheckpointData {
+            node: next_id,
+            parent,
+        });
+
         Ok(Id(next_id))
     }
 

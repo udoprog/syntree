@@ -74,7 +74,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         while self.peek()?.map(|t| tokens.contains(&t)).unwrap_or(false) {
             self.bump()?;
             next(self)?;
-            self.builder.close_at(c, OPERATION)?;
+            self.builder.close_at(&c, OPERATION)?;
         }
 
         Ok(())

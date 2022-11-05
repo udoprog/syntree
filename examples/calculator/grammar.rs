@@ -28,7 +28,7 @@ fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), TreeError> {
 
             let c = p.tree.checkpoint()?;
             expr(p, 0)?;
-            p.tree.close_at(c, GROUP)?;
+            p.tree.close_at(&c, GROUP)?;
 
             if !p.eat(CLOSE_PAREN)? {
                 p.bump(ERROR)?;
@@ -60,7 +60,7 @@ fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), TreeError> {
     }
 
     if operation {
-        p.tree.close_at(c, OPERATION)?;
+        p.tree.close_at(&c, OPERATION)?;
     }
 
     Ok(())
@@ -79,7 +79,7 @@ pub(crate) fn root(p: &mut Parser<'_>) -> Result<()> {
         // which will be consumed as an expression next.
         let c = p.tree.checkpoint()?;
         p.advance_until(&[NUMBER])?;
-        p.tree.close_at(c, ERROR)?;
+        p.tree.close_at(&c, ERROR)?;
     }
 
     Ok(())

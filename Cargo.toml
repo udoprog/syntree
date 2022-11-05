@@ -1,8 +1,9 @@
 [package]
 name = "syntree"
-version = "0.11.1"
+version = "0.12.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 edition = "2021"
+rust-version = "1.65.0"
 description = "A memory efficient syntax tree for language developers."
 documentation = "https://docs.rs/syntree"
 readme = "README.md"
@@ -17,8 +18,8 @@ categories = ["parsing"]
 autobenches = false
 
 [dev-dependencies]
-anyhow = "1.0"
-thiserror = "1.0"
+anyhow = "1.0.66"
+thiserror = "1.0.37"
 codespan-reporting = "0.11.1"
 
 [workspace] 

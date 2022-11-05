@@ -28,7 +28,7 @@ fn balanced_checkpoint() -> Result<()> {
     tree.token(LIT, 2)?;
     tree.close()?;
 
-    tree.close_at(c, ROOT)?;
+    tree.close_at(&c, ROOT)?;
 
     let tree = tree.build()?;
 
@@ -56,8 +56,8 @@ fn test_checkpoint_mutation() -> Result<()> {
     let outer = tree.checkpoint()?;
     let inner = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(inner, "operation")?;
-    tree.close_at(outer, "operation")?;
+    tree.close_at(&inner, "operation")?;
+    tree.close_at(&outer, "operation")?;
 
     let tree = tree.build()?;
 
@@ -81,8 +81,8 @@ fn test_nested_checkpoints() -> Result<()> {
     tree.token("a", 3)?;
     let b = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(b, "operation")?;
-    tree.close_at(a, "operation")?;
+    tree.close_at(&b, "operation")?;
+    tree.close_at(&a, "operation")?;
 
     let tree = tree.build()?;
 
@@ -106,9 +106,9 @@ fn test_nested_checkpoints2() -> Result<()> {
     let a = tree.checkpoint()?;
     let b = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(b, "operation")?;
+    tree.close_at(&b, "operation")?;
     tree.token("a", 3)?;
-    tree.close_at(a, "operation")?;
+    tree.close_at(&a, "operation")?;
 
     let tree = tree.build()?;
 

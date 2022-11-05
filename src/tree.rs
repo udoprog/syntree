@@ -330,7 +330,7 @@ impl<T> Tree<T> {
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
@@ -415,7 +415,7 @@ impl<T> Tree<T> {
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(c, "root")?;
+    /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
