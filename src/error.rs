@@ -79,6 +79,10 @@ pub enum TreeError {
     MissingCheckpoint(Checkpoint),
     /// The node of the given id is missing.
     MissingNode(Id),
+    /// Missing next.
+    MissingCloseAtLinksNext,
+    /// Missing sibling.
+    MissingCloseAtSibling,
 }
 
 impl Error for TreeError {}
@@ -106,6 +110,12 @@ impl fmt::Display for TreeError {
             }
             TreeError::MissingNode(id) => {
                 write!(f, "missing node with id `{}`", id.0.get())
+            }
+            TreeError::MissingCloseAtLinksNext => {
+                write!(f, "missing links next while closing checkpoint")
+            }
+            TreeError::MissingCloseAtSibling => {
+                write!(f, "missing current sibling while closing checkpoint")
             }
         }
     }
