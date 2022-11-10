@@ -412,15 +412,33 @@ impl<T> Tree<T> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
+    ///
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
+    ///
+    /// tree.open("child2")?;
+    /// tree.token("lit", 2)?;
+    /// tree.close()?;
+    ///
     /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
     /// let child = tree.node_with_span(Span::new(0, 3)).ok_or("missing at 0..3")?;
     /// assert_eq!(*child.value(), "child");
+    ///
+    /// let child = tree.node_with_span(Span::new(3, 5)).ok_or("missing at 3..5")?;
+    /// assert_eq!(*child.value(), "child2");
+    ///
+    /// let child = tree.node_with_span(Span::new(4, 5)).ok_or("missing at 4..5")?;
+    /// assert_eq!(*child.value(), "child2");
+    ///
+    /// let child = tree.node_with_span(Span::new(3, 4)).ok_or("missing at 3..4")?;
+    /// assert_eq!(*child.value(), "child2");
+    ///
+    /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
+    /// assert_eq!(*child.value(), "root");
     /// # Ok(()) }
     /// ```
     pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T>> {
