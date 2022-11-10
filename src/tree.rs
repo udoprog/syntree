@@ -413,7 +413,7 @@ impl<T> Tree<T> {
     ///
     /// let c = tree.checkpoint()?;
     ///
-    /// tree.open("child")?;
+    /// tree.open("child1")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
     ///
@@ -425,8 +425,11 @@ impl<T> Tree<T> {
     ///
     /// let tree = tree.build()?;
     ///
+    /// let child = tree.node_with_span(Span::point(0)).ok_or("missing at point 5")?;
+    /// assert_eq!(*child.value(), "child1");
+    ///
     /// let child = tree.node_with_span(Span::new(0, 3)).ok_or("missing at 0..3")?;
-    /// assert_eq!(*child.value(), "child");
+    /// assert_eq!(*child.value(), "child1");
     ///
     /// let child = tree.node_with_span(Span::new(3, 5)).ok_or("missing at 3..5")?;
     /// assert_eq!(*child.value(), "child2");
@@ -435,6 +438,9 @@ impl<T> Tree<T> {
     /// assert_eq!(*child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::new(3, 4)).ok_or("missing at 3..4")?;
+    /// assert_eq!(*child.value(), "child2");
+    ///
+    /// let child = tree.node_with_span(Span::point(3)).ok_or("missing at point 5")?;
     /// assert_eq!(*child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
