@@ -1,6 +1,6 @@
 [package]
 name = "syntree"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 edition = "2021"
 rust-version = "1.65.0"
