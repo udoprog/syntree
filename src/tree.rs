@@ -70,7 +70,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::Span;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -86,7 +85,7 @@ impl<T> Tree<T> {
     /// };
     ///
     /// assert_eq!(tree.span(), Span::new(0, 13));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn span(&self) -> Span {
         self.span
@@ -102,7 +101,6 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -118,7 +116,7 @@ impl<T> Tree<T> {
     /// };
     ///
     /// assert_eq!(tree.range(), 0..13);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn range(&self) -> Range<usize> {
         self.span.range()
@@ -131,7 +129,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::<()>::new();
     /// let tree = tree.build()?;
     ///
@@ -148,7 +145,7 @@ impl<T> Tree<T> {
     /// };
     ///
     /// assert_eq!(tree.len(), 5);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn len(&self) -> usize {
         self.tree.len()
@@ -162,11 +159,10 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::<()>::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn is_empty(&self) -> bool {
         self.tree.is_empty()
@@ -179,7 +175,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::<()>::new();
     /// let tree = tree.build()?;
     ///
@@ -196,7 +191,7 @@ impl<T> Tree<T> {
     /// };
     ///
     /// assert!(tree.capacity() >= 5);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn capacity(&self) -> usize {
         self.tree.capacity()
@@ -229,7 +224,6 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root",
     ///     "root2"
@@ -237,7 +231,7 @@ impl<T> Tree<T> {
     ///
     /// let root = tree.first().ok_or("missing root")?;
     /// assert_eq!(*root.value(), "root");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn first(&self) -> Option<Node<'_, T>> {
         self.node_at(self.first?)
@@ -248,7 +242,6 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root",
     ///     "root2"
@@ -256,7 +249,7 @@ impl<T> Tree<T> {
     ///
     /// let root = tree.last().ok_or("missing root")?;
     /// assert_eq!(*root.value(), "root2");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn last(&self) -> Option<Node<'_, T>> {
         self.node_at(self.last?)
@@ -270,7 +263,6 @@ impl<T> Tree<T> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child1" => {
@@ -315,7 +307,7 @@ impl<T> Tree<T> {
     ///
     /// let node = tree.node_with_range(2..4).ok_or("missing 2..4")?;
     /// assert_eq!(*node.value(), "root");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// Range queries work as expected with checkpoints:
@@ -323,7 +315,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -337,7 +328,7 @@ impl<T> Tree<T> {
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
     /// assert_eq!(*child.value(), "child");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T>> {
         let start = usize_to_index(span.start)?;
@@ -355,7 +346,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::Span;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child1" => {
@@ -400,7 +390,7 @@ impl<T> Tree<T> {
     ///
     /// let node = tree.node_with_span(Span::new(2, 4)).ok_or("missing 2..4")?;
     /// assert_eq!(*node.value(), "root");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// Range queries work as expected with checkpoints:
@@ -408,7 +398,6 @@ impl<T> Tree<T> {
     /// ```
     /// use syntree::{Span, TreeBuilder};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -445,7 +434,7 @@ impl<T> Tree<T> {
     ///
     /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
     /// assert_eq!(*child.value(), "root");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T>> {
         self.node_with_span_internal(span.start, span.end)

@@ -397,6 +397,79 @@ impl<'a, T> Node<'a, T> {
         self.node_at(self.links.last?)
     }
 
+    /// Find a preceeding node which matches the given predicate.
+    ///
+    /// A "preceeding node" is one which constitutes tokens the immediately
+    /// preceedes the ones of the current node, so this function scans first the
+    /// parents of the current node for a matching [Node::prev] sibling, and
+    /// then traverses that matches [Node::last].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Kind;
+    ///
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "child1" => {
+    ///             ("token2", 1),
+    ///             "child2" => {
+    ///                 ("token1", 2)
+    ///             }
+    ///         },
+    ///         "child3" => {
+    ///             "child4" => {
+    ///                 ("token1", 4),
+    ///             }
+    ///         }
+    ///     }
+    /// };
+    ///
+    /// let node = tree.node_with_range(3..3).ok_or("missing 0")?;
+    /// assert_eq!(*node.value(), "child4");
+    ///
+    /// let found = node.find_preceding(|n| n.span().end == 3 && matches!(n.kind(), Kind::Node));
+    /// let found = found.expect("expected preceeding node");
+    /// assert_eq!(*found.value(), "child2");
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T>>
+    where
+        P: FnMut(Node<'a, T>) -> bool,
+        T: std::fmt::Debug,
+    {
+        // Step 1: Scan upwards until we find a previous s
+        let mut n = *self;
+
+        let mut n = loop {
+            let Some(prev) = n.prev() else {
+                n = n.parent()?;
+                continue;
+            };
+
+            if predicate(prev) {
+                break prev;
+            }
+
+            n = n.parent()?;
+        };
+
+        dbg!(n.value(), n.span());
+
+        // Step 2: Scan last node while it matches the predicate.
+        loop {
+            let Some(last) = n.last() else {
+                return Some(n);
+            };
+
+            if !predicate(last) {
+                return Some(n);
+            }
+
+            n = last;
+        }
+    }
+
     fn node_at(&self, id: NonMax) -> Option<Node<'a, T>> {
         let cur = self.tree.get(id.get())?;
 
