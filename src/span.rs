@@ -24,7 +24,8 @@ pub(crate) fn usize_to_index(value: usize) -> Option<Index> {
 /// Ensure that the specified index is smaller or equal to [usize].
 const _: () = assert!(size_of::<Index>() <= size_of::<usize>());
 
-/// A span in the source code.
+/// A span in the source code, akin to `start..end` so the end of the span is
+/// exclusive.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub struct Span {
@@ -146,6 +147,21 @@ impl Span {
     /// ```
     pub const fn is_empty(self) -> bool {
         self.end == self.start
+    }
+
+    /// Test if span contains the given index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert!(!Span::new(2, 2).contains(2));
+    /// assert!(Span::new(2, 3).contains(2));
+    /// assert!(!Span::new(2, 3).contains(3));
+    /// ```
+    pub const fn contains(self, index: Index) -> bool {
+        self.start <= index && index < self.end
     }
 }
 
