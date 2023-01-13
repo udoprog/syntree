@@ -66,16 +66,16 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 /// );
 /// # Ok(()) }
 /// ```
-pub struct Children<'a, T> {
-    tree: &'a [Links<T>],
+pub struct Children<'a, T, S> {
+    tree: &'a [Links<T, S>],
     first: Option<NonMax>,
     last: Option<NonMax>,
 }
 
-impl<'a, T> Children<'a, T> {
+impl<'a, T, S> Children<'a, T, S> {
     /// Construct a new child iterator.
     pub(crate) const fn new(
-        tree: &'a [Links<T>],
+        tree: &'a [Links<T, S>],
         first: Option<NonMax>,
         last: Option<NonMax>,
     ) -> Self {
@@ -117,7 +117,7 @@ impl<'a, T> Children<'a, T> {
     /// assert_eq!(out, ["child1", "child2", "child3"]);
     /// # Ok(()) }
     /// ```
-    pub fn next_node(&mut self) -> Option<Node<'a, T>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
         loop {
             let node = self.next()?;
 
@@ -128,8 +128,8 @@ impl<'a, T> Children<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Children<'a, T> {
-    type Item = Node<'a, T>;
+impl<'a, T, S> Iterator for Children<'a, T, S> {
+    type Item = Node<'a, T, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.first.take()?;
@@ -143,7 +143,7 @@ impl<'a, T> Iterator for Children<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for Children<'a, T> {
+impl<'a, T, S> DoubleEndedIterator for Children<'a, T, S> {
     fn next_back(&mut self) -> Option<Self::Item> {
         let last = self.last.take()?;
         let node = self.tree.get(last.get())?;
@@ -156,17 +156,20 @@ impl<'a, T> DoubleEndedIterator for Children<'a, T> {
     }
 }
 
-impl<'a, T> FusedIterator for Children<'a, T> {}
+impl<'a, T, S> FusedIterator for Children<'a, T, S> {}
 
-impl<'a, T> Clone for Children<'a, T> {
+impl<'a, T, S> Clone for Children<'a, T, S> {
+    #[inline]
     fn clone(&self) -> Self {
-        *self
+        Self {
+            tree: self.tree,
+            first: self.first,
+            last: self.last,
+        }
     }
 }
 
-impl<'a, T> Copy for Children<'a, T> {}
-
-impl<'a, T> Default for Children<'a, T> {
+impl<'a, T, S> Default for Children<'a, T, S> {
     fn default() -> Self {
         Self {
             tree: &[],

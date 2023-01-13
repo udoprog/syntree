@@ -1,6 +1,6 @@
-use std::fmt;
-use std::mem::size_of;
-use std::ops::Range;
+use core::fmt;
+use core::mem::size_of;
+use core::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
@@ -8,13 +8,13 @@ use crate::tree::Kind;
 use crate::{Ancestors, Children, Id, Siblings, Span, Walk, WalkEvents};
 
 /// A node in the tree.
-pub struct Node<'a, T> {
-    links: &'a Links<T>,
-    tree: &'a [Links<T>],
+pub struct Node<'a, T, S> {
+    links: &'a Links<T, S>,
+    tree: &'a [Links<T, S>],
 }
 
-impl<'a, T> Node<'a, T> {
-    pub(crate) const fn new(links: &'a Links<T>, tree: &'a [Links<T>]) -> Self {
+impl<'a, T, S> Node<'a, T, S> {
+    pub(crate) const fn new(links: &'a Links<T, S>, tree: &'a [Links<T, S>]) -> Self {
         Self { links, tree }
     }
 
@@ -140,7 +140,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(root2.span(), Span::new(8, 13));
     /// # Ok(()) }
     /// ```
-    pub const fn span(&self) -> Span {
+    pub const fn span(&self) -> &S {
         self.links.span
     }
 
@@ -203,21 +203,21 @@ impl<'a, T> Node<'a, T> {
     /// Get the ancestors of this node.
     ///
     /// See [Ancestors] for documentation.
-    pub fn ancestors(&self) -> Ancestors<'a, T> {
+    pub fn ancestors(&self) -> Ancestors<'a, T, S> {
         Ancestors::new(Some(*self))
     }
 
     /// Get an iterator over the siblings of this node, including itself.
     ///
     /// See [Siblings] for documentation.
-    pub fn siblings(&self) -> Siblings<'a, T> {
+    pub fn siblings(&self) -> Siblings<'a, T, S> {
         Siblings::new(self.tree, self.links)
     }
 
     /// Get an iterator over the children of this node.
     ///
     /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'a, T> {
+    pub fn children(&self) -> Children<'a, T, S> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
@@ -225,7 +225,7 @@ impl<'a, T> Node<'a, T> {
     /// node.
     ///
     /// See [Walk] for documentation.
-    pub fn walk(&self) -> Walk<'a, T> {
+    pub fn walk(&self) -> Walk<'a, T, S> {
         Walk::new(self.tree, self.links.first)
     }
 
@@ -233,7 +233,7 @@ impl<'a, T> Node<'a, T> {
     /// indicating how the rest of the tree is being traversed.
     ///
     /// See [WalkEvents] for documentation.
-    pub fn walk_events(&self) -> WalkEvents<'a, T> {
+    pub fn walk_events(&self) -> WalkEvents<'a, T, S> {
         WalkEvents::new(self.tree, self.links.first)
     }
 
@@ -268,7 +268,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*root.value(), "root");
     /// # Ok(()) }
     /// ```
-    pub fn parent(&self) -> Option<Node<'a, T>> {
+    pub fn parent(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.parent?)
     }
 
@@ -300,7 +300,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*number.value(), "number");
     /// # Ok(()) }
     /// ```
-    pub fn prev(self) -> Option<Node<'a, T>> {
+    pub fn prev(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.prev?)
     }
 
@@ -331,7 +331,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*ident.value(), "ident");
     /// # Ok(()) }
     /// ```
-    pub fn next(self) -> Option<Node<'a, T>> {
+    pub fn next(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.next?)
     }
 
@@ -362,7 +362,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*number.value(), "number");
     /// # Ok(()) }
     /// ```
-    pub fn first(&self) -> Option<Node<'a, T>> {
+    pub fn first(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.first?)
     }
 
@@ -393,7 +393,7 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*whitespace.value(), "whitespace");
     /// # Ok(()) }
     /// ```
-    pub fn last(&self) -> Option<Node<'a, T>> {
+    pub fn last(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.last?)
     }
 
@@ -433,10 +433,9 @@ impl<'a, T> Node<'a, T> {
     /// assert_eq!(*found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T>>
+    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T, S>>
     where
-        P: FnMut(Node<'a, T>) -> bool,
-        T: std::fmt::Debug,
+        P: FnMut(Node<'a, T, S>) -> bool,
     {
         // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
@@ -454,8 +453,6 @@ impl<'a, T> Node<'a, T> {
             n = n.parent()?;
         };
 
-        dbg!(n.value(), n.span());
-
         // Step 2: Scan last node while it matches the predicate.
         loop {
             let Some(last) = n.last() else {
@@ -470,7 +467,7 @@ impl<'a, T> Node<'a, T> {
         }
     }
 
-    fn node_at(&self, id: NonMax) -> Option<Node<'a, T>> {
+    fn node_at(&self, id: NonMax) -> Option<Node<'a, T, S>> {
         let cur = self.tree.get(id.get())?;
 
         Some(Self {
@@ -480,7 +477,7 @@ impl<'a, T> Node<'a, T> {
     }
 }
 
-impl<'a, T> fmt::Debug for Node<'a, T>
+impl<'a, T> fmt::Debug for Node<'a, T, S>
 where
     T: fmt::Debug,
 {
@@ -493,15 +490,15 @@ where
     }
 }
 
-impl<'a, T> Clone for Node<'a, T> {
+impl<'a, T> Clone for Node<'a, T, S> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for Node<'a, T> {}
+impl<'a, T> Copy for Node<'a, T, S> {}
 
-impl<'a, T> PartialEq for Node<'a, T>
+impl<'a, T> PartialEq for Node<'a, T, S>
 where
     T: PartialEq,
 {
@@ -512,4 +509,4 @@ where
     }
 }
 
-impl<'a, T> Eq for Node<'a, T> where T: Eq {}
+impl<'a, T> Eq for Node<'a, T, S> where T: Eq {}

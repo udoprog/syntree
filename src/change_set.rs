@@ -64,13 +64,13 @@ pub(crate) enum Change {
 /// );
 /// # Ok(()) }
 /// ```
-pub struct ChangeSet<T> {
+pub struct ChangeSet<T, S> {
     changes: HashMap<NonMax, Change>,
     #[allow(unused)]
-    trees: Vec<Tree<T>>,
+    trees: Vec<Tree<T, S>>,
 }
 
-impl<T> ChangeSet<T> {
+impl<T, S> ChangeSet<T, S> {
     /// Construct a new empty [ChangeSet].
     pub fn new() -> Self {
         Self::default()
@@ -147,7 +147,7 @@ impl<T> ChangeSet<T> {
     /// );
     /// # Ok(()) }
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T>) -> Result<Tree<T>, TreeError>
+    pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, TreeError>
     where
         T: Clone,
     {
@@ -252,7 +252,8 @@ impl<T> ChangeSet<T> {
     }
 }
 
-impl<T> Default for ChangeSet<T> {
+impl<T, S> Default for ChangeSet<T, S> {
+    #[inline]
     fn default() -> Self {
         Self {
             changes: HashMap::new(),
@@ -263,17 +264,17 @@ impl<T> Default for ChangeSet<T> {
 
 /// The state of the skipped subtree.
 struct Skipped<'a, T> {
-    node: Node<'a, T>,
+    node: Node<'a, T, S>,
     first: bool,
 }
 
-struct RefactorWalk<'a, T> {
-    parents: Vec<(Node<'a, T>, NonMax)>,
+struct RefactorWalk<'a, T, S> {
+    parents: Vec<(Node<'a, T, S>, NonMax)>,
     prev: Option<NonMax>,
 }
 
-impl<'a, T> RefactorWalk<'a, T> {
-    fn skip_subtree(&mut self, node: Node<'a, T>, first: bool) -> Option<Skipped<'a, T>> {
+impl<'a, T, S> RefactorWalk<'a, T, S> {
+    fn skip_subtree(&mut self, node: Node<'a, T, S>, first: bool) -> Option<Skipped<'a, T>> {
         if let Some(next) = node.next() {
             return Some(Skipped { node: next, first });
         }
@@ -284,7 +285,7 @@ impl<'a, T> RefactorWalk<'a, T> {
     }
 
     /// Advance the iteration.
-    fn step(&mut self, node: Node<'a, T>, node_id: NonMax) -> Option<(Node<'a, T>, bool)> {
+    fn step(&mut self, node: Node<'a, T, S>, node_id: NonMax) -> Option<(Node<'a, T, S>, bool)> {
         if let Some(next) = node.first() {
             self.parents.push((node, node_id));
             return Some((next, true));

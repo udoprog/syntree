@@ -1,16 +1,16 @@
 //! Central struct to keep track of all internal linking of a tree.
 
 use crate::non_max::NonMax;
-use crate::{Kind, Span};
+use crate::Kind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Links<T> {
+pub struct Links<T, S> {
     /// The data in the node.
     pub(crate) data: T,
     /// The kind of the node.
     pub(crate) kind: Kind,
     /// Span of the node.
-    pub(crate) span: Span,
+    pub(crate) span: S,
     /// Parent node. These exists because they are needed when performing range
     /// queries such as [Tree::node_with_range][crate::Tree::node_with_range].
     pub(crate) parent: Option<NonMax>,

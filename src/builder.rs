@@ -72,7 +72,7 @@ struct CheckpointData {
 #[derive(Debug, Clone)]
 pub struct TreeBuilder<T> {
     /// Data in the tree being built.
-    tree: Tree<T>,
+    tree: Tree<T, S>,
     /// References to parent nodes of the current node being constructed.
     parents: Vec<NonMax>,
     /// The last checkpoint that was handed out.
@@ -529,7 +529,7 @@ impl<T> TreeBuilder<T> {
     /// assert!(matches!(tree.build(), Err(TreeError::BuildError)));
     /// # Ok(()) }
     /// ```
-    pub fn build(self) -> Result<Tree<T>, TreeError> {
+    pub fn build(self) -> Result<Tree<T, S>, TreeError> {
         if !self.parents.is_empty() {
             return Err(TreeError::BuildError);
         }
@@ -592,7 +592,7 @@ impl<T> Default for TreeBuilder<T> {
 // checkpointed node in the right location which should be the tail sibling of
 // the replaced node.
 fn restructure_close_at<T>(
-    tree: &mut Tree<T>,
+    tree: &mut Tree<T, S>,
     parent_id: NonMax,
     next: NonMax,
 ) -> Result<(NonMax, Index), TreeError> {

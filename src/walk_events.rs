@@ -78,18 +78,18 @@ pub enum Event {
 /// );
 /// # Ok(()) }
 /// ```
-pub struct WalkEvents<'a, T> {
+pub struct WalkEvents<'a, T, S> {
     /// The tree being iterated over.
-    tree: &'a [Links<T>],
+    tree: &'a [Links<T, S>],
     // The current node.
     node: Option<(NonMax, Event)>,
     // Parent nodes.
     parents: Vec<NonMax>,
 }
 
-impl<'a, T> WalkEvents<'a, T> {
+impl<'a, T, S> WalkEvents<'a, T, S> {
     /// Construct a new events walker.
-    pub(crate) const fn new(tree: &'a [Links<T>], node: Option<NonMax>) -> Self {
+    pub(crate) const fn new(tree: &'a [Links<T, S>], node: Option<NonMax>) -> Self {
         Self {
             tree,
             node: match node {
@@ -148,7 +148,12 @@ impl<'a, T> WalkEvents<'a, T> {
         self.parents.len()
     }
 
-    fn step(&mut self, node: NonMax, links: &'a Links<T>, event: Event) -> Option<(NonMax, Event)> {
+    fn step(
+        &mut self,
+        node: NonMax,
+        links: &'a Links<T, S>,
+        event: Event,
+    ) -> Option<(NonMax, Event)> {
         if matches!(event, Event::Up) {
             if let Some(next) = links.next {
                 return Some((next, Event::Next));
@@ -172,8 +177,8 @@ impl<'a, T> WalkEvents<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for WalkEvents<'a, T> {
-    type Item = (Event, Node<'a, T>);
+impl<'a, T, S> Iterator for WalkEvents<'a, T, S> {
+    type Item = (Event, Node<'a, T, S>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (node, event) = self.node.take()?;

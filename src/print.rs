@@ -57,10 +57,11 @@ use crate::{Kind, Span, Tree};
 /// NUMBER@6..8
 ///   NUMBER@6..8 +
 /// ```
-pub fn print<O, T>(o: O, tree: &Tree<T>) -> Result<(), Error>
+pub fn print<O, T, S>(o: O, tree: &Tree<T, S>) -> Result<(), Error>
 where
     O: Write,
     T: Debug,
+    S: Debug,
 {
     print_with_lookup(o, tree, |_| None)
 }
@@ -116,22 +117,24 @@ where
 /// NUMBER@6..8
 ///   NUMBER@6..8 "64"
 /// ```
-pub fn print_with_source<O, T>(o: O, tree: &Tree<T>, source: &str) -> Result<(), Error>
+pub fn print_with_source<O, T, S>(o: O, tree: &Tree<T, S>, source: &str) -> Result<(), Error>
 where
     O: Write,
     T: Debug,
+    S: Debug,
 {
     print_with_lookup(o, tree, |span| source.get(span.range()))
 }
 
-fn print_with_lookup<'a, O, T>(
+fn print_with_lookup<'a, O, T, S>(
     mut o: O,
-    tree: &Tree<T>,
+    tree: &Tree<T, S>,
     source: impl Fn(Span) -> Option<&'a str>,
 ) -> Result<(), Error>
 where
     O: Write,
     T: Debug,
+    S: Debug,
 {
     let mut it = tree.walk();
 

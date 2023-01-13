@@ -41,13 +41,13 @@ use crate::{Event, Node, SkipTokens, WalkEvents};
 /// assert_eq!(c5.walk().map(|n| *n.value()).collect::<Vec<_>>(), Vec::<&str>::new());
 /// # Ok(()) }
 /// ```
-pub struct Walk<'a, T> {
-    iter: WalkEvents<'a, T>,
+pub struct Walk<'a, T, S> {
+    iter: WalkEvents<'a, T, S>,
 }
 
-impl<'a, T> Walk<'a, T> {
+impl<'a, T, S> Walk<'a, T, S> {
     /// Construct a new walk.
-    pub(crate) const fn new(tree: &'a [Links<T>], node: Option<NonMax>) -> Self {
+    pub(crate) const fn new(tree: &'a [Links<T, S>], node: Option<NonMax>) -> Self {
         Self {
             iter: WalkEvents::new(tree, node),
         }
@@ -56,7 +56,7 @@ impl<'a, T> Walk<'a, T> {
     /// Convert this iterator into one which includes depths.
     ///
     /// See [WithDepths] for documentation.
-    pub fn with_depths(self) -> WithDepths<'a, T> {
+    pub fn with_depths(self) -> WithDepths<'a, T, S> {
         WithDepths { iter: self }
     }
 
@@ -93,7 +93,7 @@ impl<'a, T> Walk<'a, T> {
     /// assert_eq!(it.next(), None);
     /// # Ok(()) }
     /// ```
-    pub fn next_with_depth(&mut self) -> Option<(usize, Node<'a, T>)> {
+    pub fn next_with_depth(&mut self) -> Option<(usize, Node<'a, T, S>)> {
         loop {
             let depth = self.iter.depth();
             let (e, node) = self.iter.next()?;
@@ -105,8 +105,8 @@ impl<'a, T> Walk<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Walk<'a, T> {
-    type Item = Node<'a, T>;
+impl<'a, T, S> Iterator for Walk<'a, T, S> {
+    type Item = Node<'a, T, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -151,13 +151,14 @@ impl<'a, T> Iterator for Walk<'a, T> {
 /// );
 /// # Ok(()) }
 /// ```
-pub struct WithDepths<'a, T> {
-    iter: Walk<'a, T>,
+pub struct WithDepths<'a, T, S> {
+    iter: Walk<'a, T, S>,
 }
 
-impl<'a, T> Iterator for WithDepths<'a, T> {
-    type Item = (usize, Node<'a, T>);
+impl<'a, T, S> Iterator for WithDepths<'a, T, S> {
+    type Item = (usize, Node<'a, T, S>);
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next_with_depth()
     }

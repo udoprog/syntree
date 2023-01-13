@@ -65,9 +65,9 @@ impl<I> SkipTokens<I> {
     }
 }
 
-impl<'a, I, T: 'a> Iterator for SkipTokens<I>
+impl<'a, I, T: 'a, S: 'a> Iterator for SkipTokens<I>
 where
-    I: Iterator<Item = Node<'a, T>>,
+    I: Iterator<Item = Node<'a, T, S>>,
 {
     type Item = I::Item;
 
@@ -82,9 +82,9 @@ where
     }
 }
 
-impl<'a, I, T: 'a> DoubleEndedIterator for SkipTokens<I>
+impl<'a, I, T: 'a, S: 'a> DoubleEndedIterator for SkipTokens<I>
 where
-    I: DoubleEndedIterator<Item = Node<'a, T>>,
+    I: DoubleEndedIterator<Item = Node<'a, T, S>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
@@ -97,7 +97,10 @@ where
     }
 }
 
-impl<'a, I, T: 'a> FusedIterator for SkipTokens<I> where I: FusedIterator<Item = Node<'a, T>> {}
+impl<'a, I, T: 'a, S: 'a> FusedIterator for SkipTokens<I> where
+    I: FusedIterator<Item = Node<'a, T, S>>
+{
+}
 
 impl<I> Clone for SkipTokens<I>
 where

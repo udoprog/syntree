@@ -47,13 +47,13 @@ use crate::{Kind, Node, SkipTokens};
 /// );
 /// # Ok(()) }
 /// ```
-pub struct Ancestors<'a, T> {
-    node: Option<Node<'a, T>>,
+pub struct Ancestors<'a, T, S> {
+    node: Option<Node<'a, T, S>>,
 }
 
-impl<'a, T> Ancestors<'a, T> {
+impl<'a, T, S> Ancestors<'a, T, S> {
     /// Construct a new ancestor iterator.
-    pub(crate) const fn new(node: Option<Node<'a, T>>) -> Self {
+    pub(crate) const fn new(node: Option<Node<'a, T, S>>) -> Self {
         Self { node }
     }
 
@@ -93,7 +93,8 @@ impl<'a, T> Ancestors<'a, T> {
     /// assert_eq!(out, ["child", "root"]);
     /// # Ok(()) }
     /// ```
-    pub fn next_node(&mut self) -> Option<Node<'a, T>> {
+    #[inline]
+    pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
         loop {
             let node = self.next()?;
 
@@ -104,9 +105,10 @@ impl<'a, T> Ancestors<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Ancestors<'a, T> {
-    type Item = Node<'a, T>;
+impl<'a, T, S> Iterator for Ancestors<'a, T, S> {
+    type Item = Node<'a, T, S>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.node.take()?;
         self.node = node.parent();
@@ -114,17 +116,17 @@ impl<'a, T> Iterator for Ancestors<'a, T> {
     }
 }
 
-impl<'a, T> FusedIterator for Ancestors<'a, T> {}
+impl<'a, T, S> FusedIterator for Ancestors<'a, T, S> {}
 
-impl<'a, T> Clone for Ancestors<'a, T> {
+impl<'a, T, S> Clone for Ancestors<'a, T, S> {
+    #[inline]
     fn clone(&self) -> Self {
-        *self
+        Self { node: self.node }
     }
 }
 
-impl<'a, T> Copy for Ancestors<'a, T> {}
-
-impl<'a, T> Default for Ancestors<'a, T> {
+impl<'a, T, S> Default for Ancestors<'a, T, S> {
+    #[inline]
     fn default() -> Self {
         Self { node: None }
     }
