@@ -1,6 +1,7 @@
-use std::iter::FusedIterator;
+use core::iter::FusedIterator;
 
-use crate::{Kind, Node, SkipTokens};
+use crate::node::{Node, SkipTokens};
+use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::parent`] elements of a node. This
 /// is used for iterating over the ancestors of a node.

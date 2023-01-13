@@ -1,7 +1,9 @@
-use std::iter::FusedIterator;
+use core::iter::FusedIterator;
 
 use crate::links::Links;
-use crate::{Kind, Node, SkipTokens};
+use crate::node::{Node, SkipTokens};
+use crate::non_max::NonMax;
+use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -20,12 +22,12 @@ use crate::{Kind, Node, SkipTokens};
 ///     }
 /// };
 ///
-/// let mut it = tree.first().and_then(|n| n.next()).map(|n| n.siblings()).unwrap_or_default();
+/// let mut it = tree.first().and_then(|n| n.last()).map(|n| n.children()).unwrap_or_default();
 /// assert_eq!(it.next().map(|n| *n.value()), None);
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// See [`Node::siblings`].
+/// See [`Tree::children`][crate::Tree::children] or [`Node::children`].
 ///
 /// # Examples
 ///
@@ -42,26 +44,43 @@ use crate::{Kind, Node, SkipTokens};
 ///     }
 /// };
 ///
-/// let root = tree.first().ok_or("missing root")?;
+/// assert_eq!(
+///     tree.children().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root", "root2"]
+/// );
 ///
 /// assert_eq!(
-///     root.siblings().map(|n| *n.value()).collect::<Vec<_>>(),
-///     ["root", "root2"]
+///     tree.children().rev().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root2", "root"]
+/// );
+///
+/// let root = tree.first().ok_or("missing root node")?;
+///
+/// assert_eq!(
+///     root.children().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["child1", "child3"]
+/// );
+///
+/// assert_eq!(
+///     root.children().rev().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["child3", "child1"]
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Siblings<'a, T, S> {
+pub struct Children<'a, T, S> {
     tree: &'a [Links<T, S>],
-    links: Option<&'a Links<T, S>>,
+    first: Option<NonMax>,
+    last: Option<NonMax>,
 }
 
-impl<'a, T, S> Siblings<'a, T, S> {
+impl<'a, T, S> Children<'a, T, S> {
     /// Construct a new child iterator.
-    pub(crate) const fn new(tree: &'a [Links<T, S>], links: &'a Links<T, S>) -> Self {
-        Self {
-            tree,
-            links: Some(links),
-        }
+    pub(crate) const fn new(
+        tree: &'a [Links<T, S>],
+        first: Option<NonMax>,
+        last: Option<NonMax>,
+    ) -> Self {
+        Self { tree, first, last }
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this
@@ -89,9 +108,7 @@ impl<'a, T, S> Siblings<'a, T, S> {
     ///     ("t4", 1)
     /// };
     ///
-    /// let first = tree.first().ok_or("missing first")?;
-    ///
-    /// let mut it = first.siblings();
+    /// let mut it = tree.children();
     /// let mut out = Vec::new();
     ///
     /// while let Some(n) = it.next_node() {
@@ -112,33 +129,53 @@ impl<'a, T, S> Siblings<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Iterator for Siblings<'a, T, S> {
+impl<'a, T, S> Iterator for Children<'a, T, S> {
     type Item = Node<'a, T, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let links = self.links.take()?;
-        self.links = links.next.and_then(|id| self.tree.get(id.get()));
-        Some(Node::new(links, self.tree))
+        let first = self.first.take()?;
+        let node = self.tree.get(first.get())?;
+
+        if first != self.last? {
+            self.first = node.next;
+        }
+
+        Some(Node::new(node, self.tree))
     }
 }
 
-impl<'a, T, S> FusedIterator for Siblings<'a, T, S> {}
+impl<'a, T, S> DoubleEndedIterator for Children<'a, T, S> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let last = self.last.take()?;
+        let node = self.tree.get(last.get())?;
 
-impl<'a, T, S> Clone for Siblings<'a, T, S> {
+        if last != self.first? {
+            self.last = node.prev;
+        }
+
+        Some(Node::new(node, self.tree))
+    }
+}
+
+impl<'a, T, S> FusedIterator for Children<'a, T, S> {}
+
+impl<'a, T, S> Clone for Children<'a, T, S> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
             tree: self.tree,
-            links: self.links,
+            first: self.first,
+            last: self.last,
         }
     }
 }
 
-impl<'a, T, S> Default for Siblings<'a, T, S> {
+impl<'a, T, S> Default for Children<'a, T, S> {
     fn default() -> Self {
         Self {
             tree: &[],
-            links: None,
+            first: None,
+            last: None,
         }
     }
 }

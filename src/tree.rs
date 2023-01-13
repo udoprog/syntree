@@ -2,9 +2,10 @@ use core::fmt;
 use core::ops::Range;
 
 use crate::links::Links;
+use crate::node::Node;
+use crate::node::{Children, Walk, WalkEvents};
 use crate::non_max::NonMax;
-use crate::span::{self, usize_to_index, Index};
-use crate::{Children, Node, Span, Walk, WalkEvents};
+use crate::span::{self, usize_to_index, Index, Span};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

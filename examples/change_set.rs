@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use syntree::{print, ChangeSet};
+use syntree::edit::ChangeSet;
+use syntree::print;
 
 fn main() -> Result<()> {
     let tree = syntree::tree! {

@@ -1,6 +1,6 @@
-use std::fmt;
-use std::mem::size_of;
-use std::ops;
+use core::fmt;
+use core::mem::size_of;
+use core::ops;
 
 /// The index used in a span.
 #[cfg(syntree_compact)]
@@ -265,7 +265,7 @@ pub trait Builder: self::sealed::Sealed + Copy {
     fn set_end(&mut self, end: Index);
 
     #[doc(hidden)]
-    fn len(&self) -> usize;
+    fn len(&self) -> Index;
 }
 
 impl Builder for Span {
@@ -299,7 +299,7 @@ impl Builder for Span {
     }
 
     #[inline]
-    fn len(&self) -> usize {
+    fn len(&self) -> Index {
         Span::len(self)
     }
 }
@@ -329,7 +329,7 @@ impl Builder for () {
     fn set_end(&mut self, _: Index) {}
 
     #[inline]
-    fn len(&self) -> usize {
+    fn len(&self) -> Index {
         0
     }
 }

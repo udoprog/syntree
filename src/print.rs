@@ -1,6 +1,6 @@
 //! Helper utilities for pretty-printing trees.
 
-use std::fmt;
+use core::fmt;
 use std::io::{Error, Write};
 
 use crate::{Kind, Span, Tree};

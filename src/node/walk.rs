@@ -1,6 +1,7 @@
 use crate::links::Links;
+use crate::node::{Event, SkipTokens, WalkEvents};
 use crate::non_max::NonMax;
-use crate::{Event, Node, SkipTokens, WalkEvents};
+use crate::Node;
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.

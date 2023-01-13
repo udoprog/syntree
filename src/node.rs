@@ -1,12 +1,28 @@
+//! Types associated to nodes and in particular node walking.
+
+mod ancestors;
+mod children;
+mod siblings;
+mod skip_tokens;
+mod walk;
+mod walk_events;
+
 use core::fmt;
 use core::mem::size_of;
 use core::ops::Range;
 
+use crate::builder::Id;
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::span::Span;
 use crate::tree::Kind;
-use crate::{Ancestors, Children, Id, Siblings, Walk, WalkEvents};
+
+pub use self::ancestors::Ancestors;
+pub use self::children::Children;
+pub use self::siblings::Siblings;
+pub use self::skip_tokens::SkipTokens;
+pub use self::walk::{Walk, WithDepths};
+pub use self::walk_events::{Event, WalkEvents};
 
 /// A node in the tree.
 pub struct Node<'a, T, S = Span> {
@@ -21,8 +37,7 @@ impl<'a, T, S> Node<'a, T, S> {
 
     /// Get the identifier of the current node.
     ///
-    /// This can be used to register a change in a [`ChangeSet`][crate::ChangeSet]
-    /// later.
+    /// This can be used to register a change in a [`ChangeSet`] later.
     ///
     /// ```
     /// let mut tree = syntree::Builder::new();
@@ -44,6 +59,8 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(child2.id(), child2_id);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    ///
+    /// [`ChangeSet`]: crate::edit::ChangeSet
     #[must_use]
     pub fn id(&self) -> Id {
         let current = self.links as *const _ as usize;

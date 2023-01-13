@@ -45,7 +45,7 @@ fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax>, Err
         builder.token(STRING, s.len())?;
     }
 
-    builder.close_at(c, ROOT)?;
+    builder.close_at(&c, ROOT)?;
     builder.build()
 }
 
@@ -92,7 +92,7 @@ fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax>, Error> {
         builder.token(WHITESPACE.into(), 1)?;
     }
 
-    builder.close_at(c, ROOT)?;
+    builder.close_at(&c, ROOT)?;
     builder.build()
 }
 

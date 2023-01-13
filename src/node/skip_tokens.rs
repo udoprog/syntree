@@ -1,15 +1,18 @@
-use std::iter::FusedIterator;
+use core::iter::FusedIterator;
 
-use crate::{Kind, Node};
+use crate::node::Node;
+use crate::tree::Kind;
 
 /// Wrapped around an iterator that excludes [`Kind::Token`] nodes.
 ///
-/// See [`Siblings::skip_tokens`][crate::Siblings::skip_tokens] or [`Walk::skip_tokens`][crate::Walk::skip_tokens].
+/// See [`Siblings::skip_tokens`] or [`Walk::skip_tokens`].
+///
+/// [`Siblings::skip_tokens`]: crate::node::Siblings::skip_tokens
+/// [`Walk::skip_tokens`]: crate::node::Walk::skip_tokens
 ///
 /// # Examples
 ///
-/// Filtering [`Kind::Token`] elements from a [Siblings][crate::Siblings]
-/// iterator:
+/// Filtering [`Kind::Token`] elements from a [`Siblings`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
@@ -31,7 +34,7 @@ use crate::{Kind, Node};
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// Filtering [`Kind::Token`] elements from a [Walk][crate::Walk] iterator:
+/// Filtering [`Kind::Token`] elements from a [`Walk`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
@@ -53,6 +56,9 @@ use crate::{Kind, Node};
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
+///
+/// [`Siblings`]: crate::node::Siblings
+/// [`Walk`]: crate::node::Walk
 pub struct SkipTokens<I> {
     iter: I,
 }

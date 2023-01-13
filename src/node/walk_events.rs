@@ -25,7 +25,7 @@ pub enum Event {
 /// # Examples
 ///
 /// ```
-/// use syntree::Event::*;
+/// use syntree::node::Event::*;
 ///
 /// let tree = syntree::tree! {
 ///     "root" => {
@@ -108,7 +108,7 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
     /// iterator.
     ///
     /// ```
-    /// use syntree::Event::*;
+    /// use syntree::node::Event::*;
     ///
     /// let tree = syntree::tree! {
     ///     "root" => {

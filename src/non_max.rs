@@ -6,8 +6,8 @@ pub(crate) type NonMax = self::imp::NonMaxU32;
 
 #[cfg(not(syntree_compact))]
 mod imp {
-    use std::fmt;
-    use std::num::NonZeroUsize;
+    use core::fmt;
+    use core::num::NonZeroUsize;
 
     /// Helper struct which behaves exactly like `NonZeroUsize` except that it
     /// rejects max values.
@@ -45,9 +45,9 @@ mod imp {
 
 #[cfg(syntree_compact)]
 mod imp {
-    use std::fmt;
-    use std::mem::size_of;
-    use std::num::NonZeroU32;
+    use core::fmt;
+    use core::mem::size_of;
+    use core::num::NonZeroU32;
 
     /// Helper struct which behaves exactly like `NonZeroU32` except that it rejects
     /// max values.

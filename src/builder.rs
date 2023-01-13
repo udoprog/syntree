@@ -1,6 +1,5 @@
-use std::rc::Rc;
+mod checkpoint;
 
-use core::cell::Cell;
 use core::mem::replace;
 
 use crate::error::Error;
@@ -9,34 +8,18 @@ use crate::non_max::NonMax;
 use crate::span::{self, Index, Length, Span};
 use crate::tree::{Kind, Tree};
 
+pub use self::checkpoint::Checkpoint;
+
 /// The identifier of a node as returned by functions such as
 /// [`Builder::open`] or [`Builder::token`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Id(pub(crate) NonMax);
 
-/// The identifier of a node as returned by functions such as
-/// [`Builder::checkpoint`].
-///
-/// This can be used as a checkpoint in [`Builder::close_at`], and a
-/// checkpoint can be fetched up front from [`Builder::checkpoint`].
-#[derive(Debug, Clone)]
-#[repr(transparent)]
-pub struct Checkpoint(Rc<Cell<CheckpointData>>);
-
 impl Id {
     pub(crate) const fn new(id: NonMax) -> Self {
         Self(id)
     }
-}
-
-/// The parent of the checkpoint.
-#[derive(Debug, Clone, Copy)]
-struct CheckpointData {
-    // The node being wrapped by the checkpoint.
-    node: NonMax,
-    // The parent node of the context being checkpointed.
-    parent: Option<NonMax>,
 }
 
 /// A builder for a [Tree].
@@ -330,16 +313,12 @@ where
         let node = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         if let Some(c) = &self.checkpoint {
-            if c.0.get().node == node {
+            if c.node() == node {
                 return Ok(c.clone());
             }
         }
 
-        let c = Checkpoint(Rc::new(Cell::new(CheckpointData {
-            node,
-            parent: self.parents.last().copied(),
-        })));
-
+        let c = Checkpoint::new(node, self.parents.last().copied());
         self.checkpoint = Some(c.clone());
         Ok(c)
     }
@@ -446,10 +425,9 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn close_at(&mut self, c: &Checkpoint, data: T) -> Result<Id, Error> {
-        let c = &*c.0;
-        let id = c.get().node;
+        let (id, parent) = c.get();
 
-        if c.get().parent.as_ref() != self.parents.last() {
+        if parent.as_ref() != self.parents.last() {
             return Err(Error::CloseAtError);
         }
 
@@ -512,11 +490,7 @@ where
         self.tree.push(added);
         self.sibling = Some(next_id);
 
-        c.set(CheckpointData {
-            node: next_id,
-            parent,
-        });
-
+        c.set(next_id, parent);
         Ok(Id(next_id))
     }
 

@@ -1,3 +1,5 @@
+//! Types associated with performing immutable editing of a tree.
+
 use std::collections::HashMap;
 
 use crate::builder::Id;
@@ -22,7 +24,7 @@ pub(crate) enum Change {
 /// # Examples
 ///
 /// ```
-/// use syntree::ChangeSet;
+/// use syntree::edit::ChangeSet;
 ///
 /// let tree = syntree::tree! {
 ///     "root" => {
@@ -85,7 +87,7 @@ impl<T, S> ChangeSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::ChangeSet;
+    /// use syntree::edit::ChangeSet;
     ///
     /// let tree = syntree::tree! {
     ///     "root" => {
@@ -127,7 +129,7 @@ impl<T, S> ChangeSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::ChangeSet;
+    /// use syntree::edit::ChangeSet;
     ///
     /// let tree = syntree::tree! {
     ///     "root" => {

@@ -286,31 +286,18 @@
 
 #[macro_use]
 mod macros;
-mod ancestors;
 mod builder;
-mod change_set;
-mod children;
+pub mod edit;
 mod error;
 mod links;
-mod node;
+pub mod node;
 mod non_max;
 pub mod print;
-mod siblings;
-mod skip_tokens;
 mod span;
 mod tree;
-mod walk;
-mod walk_events;
 
-pub use self::ancestors::Ancestors;
 pub use self::builder::{Builder, Checkpoint, Id};
-pub use self::change_set::ChangeSet;
-pub use self::children::Children;
 pub use self::error::Error;
 pub use self::node::Node;
-pub use self::siblings::Siblings;
-pub use self::skip_tokens::SkipTokens;
 pub use self::span::Span;
 pub use self::tree::{Kind, Tree};
-pub use self::walk::{Walk, WithDepths};
-pub use self::walk_events::{Event, WalkEvents};
