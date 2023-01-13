@@ -133,9 +133,7 @@ where
     T: fmt::Debug,
     S: fmt::Display,
 {
-    let mut it = tree.walk();
-
-    while let Some((depth, node)) = it.next_with_depth() {
+    for (depth, node) in tree.walk().with_depths() {
         let n = depth * 2;
         let data = node.value();
         let span = node.span();

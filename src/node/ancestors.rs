@@ -52,6 +52,7 @@ pub struct Ancestors<'a, T, S> {
 
 impl<'a, T, S> Ancestors<'a, T, S> {
     /// Construct a new ancestor iterator.
+    #[inline]
     pub(crate) const fn new(node: Option<Node<'a, T, S>>) -> Self {
         Self { node }
     }
@@ -60,6 +61,7 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     /// iterator. This filters out [`Kind::Token`] elements.
     ///
     /// See [`SkipTokens`] for documentation.
+    #[inline]
     #[must_use]
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
@@ -115,16 +117,16 @@ impl<'a, T, S> Iterator for Ancestors<'a, T, S> {
     }
 }
 
-impl<'a, T, S> FusedIterator for Ancestors<'a, T, S> {}
+impl<T, S> FusedIterator for Ancestors<'_, T, S> {}
 
-impl<'a, T, S> Clone for Ancestors<'a, T, S> {
+impl<T, S> Clone for Ancestors<'_, T, S> {
     #[inline]
     fn clone(&self) -> Self {
         Self { node: self.node }
     }
 }
 
-impl<'a, T, S> Default for Ancestors<'a, T, S> {
+impl<T, S> Default for Ancestors<'_, T, S> {
     #[inline]
     fn default() -> Self {
         Self { node: None }

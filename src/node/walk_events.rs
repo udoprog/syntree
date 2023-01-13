@@ -1,3 +1,5 @@
+use std::iter::FusedIterator;
+
 use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::Node;
@@ -65,7 +67,7 @@ pub enum Event {
 ///         (Next, "c4"),
 ///         (Up, "c1"),
 ///         (Next, "c5"),
-///         (Next, "c6")
+///         (Next, "c6"),
 ///     ]
 /// );
 ///
@@ -77,17 +79,63 @@ pub enum Event {
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
+///
+/// Example showcasing how we can use events to keep track of the depth in which
+/// nodes are being traversed:
+///
+/// ```
+/// use syntree::node::Event::*;
+///
+/// let tree = syntree::tree! {
+///     "root" => {
+///         "c1" => {
+///             "c2",
+///             "c3",
+///         }
+///     }
+/// };
+///
+/// let mut it = tree.walk_events();
+/// let mut depth = 0;
+///
+/// let mut nodes = Vec::new();
+///
+/// while let Some((event, node)) = it.next() {
+///     // Only register each node once.
+///     match event {
+///         Up => {
+///             depth -= 1;
+///         }
+///         Down => {
+///             depth += 1;
+///             nodes.push((depth, *node.value()));
+///         }
+///         Next => {
+///             nodes.push((depth, *node.value()));
+///         }
+///     }
+/// }
+///
+/// assert_eq!(depth, 0);
+///
+/// assert_eq!(
+///     nodes,
+///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]
+/// );
+/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// ```
 pub struct WalkEvents<'a, T, S> {
     /// The tree being iterated over.
     tree: &'a [Links<T, S>],
     // The current node.
     node: Option<(NonMax, Event)>,
-    // Parent nodes.
-    parents: Vec<NonMax>,
+    // Current depth being walked.
+    depth: usize,
 }
 
 impl<'a, T, S> WalkEvents<'a, T, S> {
     /// Construct a new events walker.
+    #[inline]
     pub(crate) const fn new(tree: &'a [Links<T, S>], node: Option<NonMax>) -> Self {
         Self {
             tree,
@@ -95,71 +143,23 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
                 Some(n) => Some((n, Event::Next)),
                 None => None,
             },
-            parents: Vec::new(),
+            depth: 0,
         }
     }
 
-    /// Get the current depth of the iterator.
-    ///
-    /// # Examples
-    ///
-    /// Somewhat unintuitively if you want to know the depth of the next element
-    /// from the iterator you need to query the depth *before* advancing the
-    /// iterator.
-    ///
-    /// ```
-    /// use syntree::node::Event::*;
-    ///
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2",
-    ///             "c3",
-    ///         }
-    ///     }
-    /// };
-    ///
-    /// let mut it = tree.walk_events();
-    /// let mut depth = it.depth();
-    ///
-    /// let mut nodes = Vec::new();
-    ///
-    /// while let Some((event, node)) = it.next() {
-    ///     // Only register each node once.
-    ///     if !matches!(event, Up) {
-    ///         nodes.push((depth, *node.value()));
-    ///     }
-    ///
-    ///     // Query the *next* depth here.
-    ///     depth = it.depth();
-    /// }
-    ///
-    /// assert_eq!(it.depth(), 0);
-    ///
-    /// assert_eq!(
-    ///     nodes,
-    ///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]
-    /// );
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
-    /// ```
-    #[must_use]
-    pub fn depth(&self) -> usize {
-        self.parents.len()
+    /// Get current depth.
+    pub(crate) fn depth(&self) -> usize {
+        self.depth
     }
 
-    fn step(
-        &mut self,
-        node: NonMax,
-        links: &'a Links<T, S>,
-        event: Event,
-    ) -> Option<(NonMax, Event)> {
-        if matches!(event, Event::Up) {
+    fn step(&mut self, links: &'a Links<T, S>, event: Event) -> Option<(NonMax, Event)> {
+        if let Event::Up = event {
             if let Some(next) = links.next {
                 return Some((next, Event::Next));
             }
         } else {
             if let Some(first) = links.first {
-                self.parents.push(node);
+                self.depth = self.depth.checked_add(1)?;
                 return Some((first, Event::Down));
             }
 
@@ -168,11 +168,30 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
             }
         }
 
-        if let Some(parent) = self.parents.pop() {
-            return Some((parent, Event::Up));
-        }
+        self.depth = self.depth.checked_sub(1)?;
+        Some((links.parent?, Event::Up))
+    }
+}
 
-        None
+impl<T, S> Clone for WalkEvents<'_, T, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree,
+            node: self.node,
+            depth: self.depth,
+        }
+    }
+}
+
+impl<T, S> Default for WalkEvents<'_, T, S> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            tree: &[],
+            node: None,
+            depth: 0,
+        }
     }
 }
 
@@ -183,7 +202,7 @@ impl<'a, T, S> Iterator for WalkEvents<'a, T, S> {
         let (node, event) = self.node.take()?;
         let links = self.tree.get(node.get())?;
 
-        if let Some(id) = self.step(node, links, event) {
+        if let Some(id) = self.step(links, event) {
             self.node = Some(id);
         }
 
@@ -191,3 +210,5 @@ impl<'a, T, S> Iterator for WalkEvents<'a, T, S> {
         Some((event, node))
     }
 }
+
+impl<T, S> FusedIterator for WalkEvents<'_, T, S> {}

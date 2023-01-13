@@ -75,6 +75,7 @@ pub struct Children<'a, T, S> {
 
 impl<'a, T, S> Children<'a, T, S> {
     /// Construct a new child iterator.
+    #[inline]
     pub(crate) const fn new(
         tree: &'a [Links<T, S>],
         first: Option<NonMax>,
@@ -118,6 +119,7 @@ impl<'a, T, S> Children<'a, T, S> {
     /// assert_eq!(out, ["child1", "child2", "child3"]);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
         loop {
             let node = self.next()?;
@@ -132,6 +134,7 @@ impl<'a, T, S> Children<'a, T, S> {
 impl<'a, T, S> Iterator for Children<'a, T, S> {
     type Item = Node<'a, T, S>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.first.take()?;
         let node = self.tree.get(first.get())?;
@@ -144,7 +147,8 @@ impl<'a, T, S> Iterator for Children<'a, T, S> {
     }
 }
 
-impl<'a, T, S> DoubleEndedIterator for Children<'a, T, S> {
+impl<T, S> DoubleEndedIterator for Children<'_, T, S> {
+    #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         let last = self.last.take()?;
         let node = self.tree.get(last.get())?;
@@ -157,9 +161,9 @@ impl<'a, T, S> DoubleEndedIterator for Children<'a, T, S> {
     }
 }
 
-impl<'a, T, S> FusedIterator for Children<'a, T, S> {}
+impl<T, S> FusedIterator for Children<'_, T, S> {}
 
-impl<'a, T, S> Clone for Children<'a, T, S> {
+impl<T, S> Clone for Children<'_, T, S> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -170,7 +174,8 @@ impl<'a, T, S> Clone for Children<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Default for Children<'a, T, S> {
+impl<T, S> Default for Children<'_, T, S> {
+    #[inline]
     fn default() -> Self {
         Self {
             tree: &[],

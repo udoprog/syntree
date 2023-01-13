@@ -58,6 +58,7 @@ pub struct Siblings<'a, T, S> {
 
 impl<'a, T, S> Siblings<'a, T, S> {
     /// Construct a new child iterator.
+    #[inline]
     pub(crate) const fn new(tree: &'a [Links<T, S>], links: &'a Links<T, S>) -> Self {
         Self {
             tree,
@@ -102,6 +103,7 @@ impl<'a, T, S> Siblings<'a, T, S> {
     /// assert_eq!(out, ["child1", "child2", "child3"]);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
         loop {
             let node = self.next()?;
@@ -116,6 +118,7 @@ impl<'a, T, S> Siblings<'a, T, S> {
 impl<'a, T, S> Iterator for Siblings<'a, T, S> {
     type Item = Node<'a, T, S>;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let links = self.links.take()?;
         self.links = links.next.and_then(|id| self.tree.get(id.get()));
@@ -123,9 +126,9 @@ impl<'a, T, S> Iterator for Siblings<'a, T, S> {
     }
 }
 
-impl<'a, T, S> FusedIterator for Siblings<'a, T, S> {}
+impl<T, S> FusedIterator for Siblings<'_, T, S> {}
 
-impl<'a, T, S> Clone for Siblings<'a, T, S> {
+impl<T, S> Clone for Siblings<'_, T, S> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -135,7 +138,8 @@ impl<'a, T, S> Clone for Siblings<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Default for Siblings<'a, T, S> {
+impl<T, S> Default for Siblings<'_, T, S> {
+    #[inline]
     fn default() -> Self {
         Self {
             tree: &[],

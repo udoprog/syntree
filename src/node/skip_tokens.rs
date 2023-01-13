@@ -64,6 +64,7 @@ pub struct SkipTokens<I> {
 }
 
 impl<I> SkipTokens<I> {
+    #[inline]
     pub(crate) const fn new(iter: I) -> Self {
         Self { iter }
     }
@@ -75,6 +76,7 @@ where
 {
     type Item = I::Item;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let node = self.iter.next()?;
@@ -90,6 +92,7 @@ impl<'a, I, T: 'a, S: 'a> DoubleEndedIterator for SkipTokens<I>
 where
     I: DoubleEndedIterator<Item = Node<'a, T, S>>,
 {
+    #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
             let node = self.iter.next_back()?;
@@ -122,6 +125,7 @@ impl<I> Default for SkipTokens<I>
 where
     I: Default,
 {
+    #[inline]
     fn default() -> Self {
         Self {
             iter: Default::default(),
