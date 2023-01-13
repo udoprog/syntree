@@ -3,7 +3,7 @@ use core::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{usize_to_index, Index};
+use crate::span::{usize_to_index, Index, SpanBuilder};
 use crate::{Children, Node, Span, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
@@ -24,7 +24,7 @@ pub(crate) struct TreeIndex {
 
 /// A syntax tree.
 #[derive(Clone)]
-pub struct Tree<T, S> {
+pub struct Tree<T, S = Span> {
     /// Links in the tree.
     tree: Vec<Links<T, S>>,
     /// The span of the whole tree.
@@ -41,10 +41,13 @@ pub struct Tree<T, S> {
 
 impl<T, S> Tree<T, S> {
     /// Construct a new empty tree.
-    pub(crate) const fn new() -> Self {
+    pub(crate) const fn new_with() -> Self
+    where
+        S: SpanBuilder,
+    {
         Self {
             tree: Vec::new(),
-            span: Span::point(0),
+            span: S::EMPTY,
             indexes: Vec::new(),
             first: None,
             last: None,
@@ -52,10 +55,13 @@ impl<T, S> Tree<T, S> {
     }
 
     /// Construct a new tree with the given capacity.
-    pub(crate) fn with_capacity(capacity: usize) -> Self {
+    pub(crate) fn with_capacity(capacity: usize) -> Self
+    where
+        S: SpanBuilder,
+    {
         Self {
             tree: Vec::with_capacity(capacity),
-            span: Span::point(0),
+            span: S::EMPTY,
             indexes: Vec::new(),
             first: None,
             last: None,
@@ -87,39 +93,13 @@ impl<T, S> Tree<T, S> {
     /// assert_eq!(tree.span(), Span::new(0, 13));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub const fn span(&self) -> Span {
-        self.span
+    pub const fn span(&self) -> &S {
+        &self.span
     }
 
     /// Get mutable span from the tree.
-    pub(crate) fn span_mut(&mut self) -> &mut Span {
+    pub(crate) fn span_mut(&mut self) -> &mut S {
         &mut self.span
-    }
-
-    /// Access the [Span] of the node as a [Range].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "number" => {
-    ///             ("lit", 5)
-    ///         },
-    ///         "ident" => {
-    ///             ("lit", 3)
-    ///         }
-    ///     },
-    ///     "root2" => {
-    ///         ("whitespace", 5)
-    ///     }
-    /// };
-    ///
-    /// assert_eq!(tree.range(), 0..13);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
-    /// ```
-    pub const fn range(&self) -> Range<usize> {
-        self.span.range()
     }
 
     /// The total number of elements in the tree.
@@ -255,6 +235,70 @@ impl<T, S> Tree<T, S> {
         self.node_at(self.last?)
     }
 
+    /// The first id currently being set.
+    pub(crate) fn first_id(&self) -> Option<NonMax> {
+        self.first
+    }
+
+    /// Get the tree links mutably.
+    pub(crate) fn links_mut(&mut self) -> (&mut Option<NonMax>, &mut Option<NonMax>) {
+        (&mut self.first, &mut self.last)
+    }
+
+    /// Get a mutable reference to an element in the tree.
+    pub(crate) fn get_mut(&mut self, id: NonMax) -> Option<&mut Links<T, S>> {
+        self.tree.get_mut(id.get())
+    }
+
+    /// Push a new element onto the tree.
+    pub(crate) fn push(&mut self, links: Links<T, S>) {
+        self.tree.push(links);
+    }
+
+    /// Push the given index.
+    pub(crate) fn push_index(&mut self, index: Index, id: NonMax) {
+        self.indexes.push(TreeIndex { index, id });
+    }
+
+    /// Optionally get the links at the given location.
+    pub(crate) fn links_at_mut(&mut self, index: NonMax) -> Option<&mut Links<T, S>> {
+        self.tree.get_mut(index.get())
+    }
+
+    /// Construct a node at the given location.
+    pub(crate) fn node_at(&self, index: NonMax) -> Option<Node<'_, T, S>> {
+        let cur = self.tree.get(index.get())?;
+        Some(Node::new(cur, &self.tree))
+    }
+}
+
+impl<T> Tree<T, Span> {
+    /// Access the [Span] of the node as a [Range].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree.range(), 0..13);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub const fn range(&self) -> Range<usize> {
+        self.span.range()
+    }
+
     /// Query for the node that matches the given range.
     ///
     /// This query finds the node which contains the entirety of the given
@@ -330,7 +374,7 @@ impl<T, S> Tree<T, S> {
     /// assert_eq!(*child.value(), "child");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, S>> {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, Span>> {
         let start = usize_to_index(span.start)?;
         let end = usize_to_index(span.end)?;
         self.node_with_span_internal(start, end)
@@ -436,11 +480,11 @@ impl<T, S> Tree<T, S> {
     /// assert_eq!(*child.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T, S>> {
+    pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T, Span>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: Index, end: Index) -> Option<Node<'_, T, S>> {
+    fn node_with_span_internal(&self, start: Index, end: Index) -> Option<Node<'_, T, Span>> {
         let result = self.indexes.binary_search_by(|f| f.index.cmp(&start));
 
         let n = match result {
@@ -460,48 +504,15 @@ impl<T, S> Tree<T, S> {
 
         Some(node)
     }
-
-    /// The first id currently being set.
-    pub(crate) fn first_id(&self) -> Option<NonMax> {
-        self.first
-    }
-
-    /// Get the tree links mutably.
-    pub(crate) fn links_mut(&mut self) -> (&mut Option<NonMax>, &mut Option<NonMax>) {
-        (&mut self.first, &mut self.last)
-    }
-
-    /// Get a mutable reference to an element in the tree.
-    pub(crate) fn get_mut(&mut self, id: NonMax) -> Option<&mut Links<T, S>> {
-        self.tree.get_mut(id.get())
-    }
-
-    /// Push a new element onto the tree.
-    pub(crate) fn push(&mut self, links: Links<T, S>) {
-        self.tree.push(links);
-    }
-
-    /// Push the given index.
-    pub(crate) fn push_index(&mut self, index: Index, id: NonMax) {
-        self.indexes.push(TreeIndex { index, id });
-    }
-
-    /// Optionally get the links at the given location.
-    pub(crate) fn links_at_mut(&mut self, index: NonMax) -> Option<&mut Links<T, S>> {
-        self.tree.get_mut(index.get())
-    }
-
-    /// Construct a node at the given location.
-    pub(crate) fn node_at(&self, index: NonMax) -> Option<Node<'_, T, S>> {
-        let cur = self.tree.get(index.get())?;
-        Some(Node::new(cur, &self.tree))
-    }
 }
 
-impl<T, S> Default for Tree<T, S> {
+impl<T, S> Default for Tree<T, S>
+where
+    S: SpanBuilder,
+{
     #[inline]
     fn default() -> Self {
-        Self::new()
+        Self::new_with()
     }
 }
 

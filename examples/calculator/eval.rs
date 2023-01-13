@@ -58,25 +58,25 @@ fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError>
             GROUP => {
                 node = node
                     .first()
-                    .ok_or(EvalError::new(node.span(), Missing(NUMBER)))?;
+                    .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
                 continue;
             }
             NUMBER => source[node.range()]
                 .parse::<i64>()
-                .map_err(|_| EvalError::new(node.span(), BadNumber)),
+                .map_err(|_| EvalError::new(*node.span(), BadNumber)),
             OPERATION => {
                 let mut it = node.children().skip_tokens();
 
                 let first = it
                     .next()
-                    .ok_or(EvalError::new(node.span(), Missing(NUMBER)))?;
+                    .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
 
                 let mut base = eval_node(first, source)?;
 
                 while let Some(op) = it.next() {
                     let op = op
                         .first()
-                        .ok_or(EvalError::new(node.span(), ExpectedOperator))?;
+                        .ok_or(EvalError::new(*node.span(), ExpectedOperator))?;
 
                     let (calculate, error): (fn(i64, i64) -> Option<i64>, _) = match *op.value() {
                         PLUS => (i64::checked_add, Overflow),
@@ -84,12 +84,12 @@ fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError>
                         MUL => (i64::checked_mul, Overflow),
                         DIV => (i64::checked_div, DivideByZero),
                         POW => (pow, Overflow),
-                        what => return Err(EvalError::new(node.span(), UnexpectedOperator(what))),
+                        what => return Err(EvalError::new(*node.span(), UnexpectedOperator(what))),
                     };
 
                     let first = it
                         .next()
-                        .ok_or(EvalError::new(node.span(), Missing(NUMBER)))?;
+                        .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
                     let b = eval_node(first, source)?;
 
                     base = match calculate(base, b) {
@@ -100,7 +100,7 @@ fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError>
 
                 Ok(base)
             }
-            what => Err(EvalError::new(node.span(), Expected(NUMBER, what))),
+            what => Err(EvalError::new(*node.span(), Expected(NUMBER, what))),
         };
     }
 }

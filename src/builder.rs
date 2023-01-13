@@ -4,8 +4,8 @@ use std::rc::Rc;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{usize_to_index, Index};
-use crate::{Kind, Span, Tree, TreeError};
+use crate::span::{usize_to_index, Index, Span, SpanBuilder};
+use crate::{Kind, Tree, TreeError};
 
 /// The identifier of a node as returned by functions such as
 /// [TreeBuilder::open] or [TreeBuilder::token].
@@ -70,7 +70,7 @@ struct CheckpointData {
 /// # Ok(()) }
 /// ```
 #[derive(Debug, Clone)]
-pub struct TreeBuilder<T> {
+pub struct TreeBuilder<T, S = Span> {
     /// Data in the tree being built.
     tree: Tree<T, S>,
     /// References to parent nodes of the current node being constructed.
@@ -120,14 +120,59 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub const fn new() -> Self {
+        Self::new_with()
+    }
+}
+
+impl<T, S> TreeBuilder<T, S>
+where
+    S: SpanBuilder,
+{
+    /// Construct a new tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::TreeBuilder;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut tree = TreeBuilder::new();
+    ///
+    /// tree.open("root")?;
+    ///
+    /// tree.open("child")?;
+    /// tree.token("token", 5)?;
+    /// tree.close()?;
+    ///
+    /// tree.open("child2")?;
+    /// tree.close()?;
+    ///
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "root" => {
+    ///         "child" => {
+    ///             ("token", 5)
+    ///         },
+    ///         "child2"
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok(()) }
+    /// ```
+    pub const fn new_with() -> Self {
         TreeBuilder {
-            tree: Tree::new(),
+            tree: Tree::new_with(),
             parents: Vec::new(),
             checkpoint: None,
             sibling: None,
             cursor: 0,
         }
     }
+
     /// Start a node with the given `data`.
     ///
     /// This pushes a new link with the given type onto the stack which links
@@ -154,7 +199,7 @@ impl<T> TreeBuilder<T> {
     /// # Ok(()) }
     /// ```
     pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
-        let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
+        let id = self.insert(data, Kind::Node, S::point(self.cursor))?;
         self.parents.push(id);
         Ok(Id(id))
     }
@@ -195,12 +240,12 @@ impl<T> TreeBuilder<T> {
                 .tree
                 .get_mut(head)
                 .ok_or(TreeError::MissingNode(Id(head)))?;
-            let end = node.span.end;
+            let end = node.span.end();
             let parent = self
                 .tree
                 .get_mut(parent)
                 .ok_or(TreeError::MissingNode(Id(parent)))?;
-            parent.span.end = end;
+            parent.span.set_end(end);
         }
 
         Ok(())
@@ -231,10 +276,10 @@ impl<T> TreeBuilder<T> {
             self.cursor = usize_to_index(len)
                 .and_then(|len| self.cursor.checked_add(len))
                 .ok_or(TreeError::Overflow)?;
-            self.tree.span_mut().end = self.cursor;
+            self.tree.span_mut().set_end(self.cursor);
         }
 
-        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor))?;
+        let id = self.insert(value, Kind::Token, S::new(start, self.cursor))?;
         self.sibling = Some(id);
 
         if len > 0 {
@@ -415,7 +460,7 @@ impl<T> TreeBuilder<T> {
         let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
+            let new_id = self.insert(data, Kind::Node, S::point(self.cursor))?;
             self.sibling = Some(new_id);
             debug_assert_eq!(new_id, id, "new id should match the expected id");
             return Ok(Id(new_id));
@@ -430,7 +475,7 @@ impl<T> TreeBuilder<T> {
         let (last, span) = if let Some(next) = links.next {
             let span = links.span;
             let (last, end) = restructure_close_at(&mut self.tree, next_id, next)?;
-            (Some(last), Span::new(span.start, end))
+            (Some(last), S::new(span.start(), end))
         } else {
             (Some(id), links.span)
         };
@@ -538,7 +583,7 @@ impl<T> TreeBuilder<T> {
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: Span) -> Result<NonMax, TreeError> {
+    fn insert(&mut self, data: T, kind: Kind, span: S) -> Result<NonMax, TreeError> {
         let new = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
 
         let prev = self.sibling.take();
@@ -562,7 +607,7 @@ impl<T> TreeBuilder<T> {
                 }
 
                 node.last = Some(new);
-                node.span.end = span.end;
+                node.span.set_end(span.end());
             }
         } else {
             let (first, last) = self.tree.links_mut();
@@ -582,27 +627,34 @@ impl<T> TreeBuilder<T> {
     }
 }
 
-impl<T> Default for TreeBuilder<T> {
+impl<T, S> Default for TreeBuilder<T, S>
+where
+    S: SpanBuilder,
+{
+    #[inline]
     fn default() -> Self {
-        Self::new()
+        Self::new_with()
     }
 }
 
 // Adjust span to encapsulate all children and check that we just inserted the
 // checkpointed node in the right location which should be the tail sibling of
 // the replaced node.
-fn restructure_close_at<T>(
+fn restructure_close_at<T, S>(
     tree: &mut Tree<T, S>,
     parent_id: NonMax,
     next: NonMax,
-) -> Result<(NonMax, Index), TreeError> {
+) -> Result<(NonMax, Index), TreeError>
+where
+    S: SpanBuilder,
+{
     let mut links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
-    let mut last = (next, links.span.end);
+    let mut last = (next, links.span.end());
     links.parent = Some(parent_id);
 
     while let Some(next) = links.next {
         links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
-        last = (next, links.span.end);
+        last = (next, links.span.end());
         links.parent = Some(parent_id);
     }
 

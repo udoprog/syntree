@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::Index;
-use crate::{Id, Kind, Node, Span, Tree, TreeError};
+use crate::span::{Index, SpanBuilder};
+use crate::{Id, Kind, Node, Tree, TreeError};
 
 #[derive(Debug)]
 pub(crate) enum Change {
@@ -150,8 +150,9 @@ impl<T, S> ChangeSet<T, S> {
     pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, TreeError>
     where
         T: Clone,
+        S: SpanBuilder,
     {
-        let mut output = Tree::with_capacity(tree.capacity());
+        let mut output = Tree::<T, S>::with_capacity(tree.capacity());
 
         let mut refactor = RefactorWalk {
             parents: Vec::new(),
@@ -205,7 +206,7 @@ impl<T, S> ChangeSet<T, S> {
             };
 
             let span = match node.kind() {
-                Kind::Node => Span::point(cursor),
+                Kind::Node => S::point(cursor),
                 Kind::Token => {
                     let len = node.span().len();
 
@@ -215,9 +216,9 @@ impl<T, S> ChangeSet<T, S> {
                         cursor = cursor
                             .checked_add(node.span().len())
                             .ok_or(TreeError::Overflow)?;
-                        Span::new(start, cursor)
+                        S::new(start, cursor)
                     } else {
-                        Span::point(cursor)
+                        S::point(cursor)
                     }
                 }
             };
@@ -230,7 +231,7 @@ impl<T, S> ChangeSet<T, S> {
                 }
 
                 parent.last = Some(node_id);
-                parent.span.end = span.end;
+                parent.span.set_end(span.end());
             }
 
             output.push(Links {
@@ -247,7 +248,7 @@ impl<T, S> ChangeSet<T, S> {
             current = refactor.step(node, node_id);
         }
 
-        output.span_mut().end = cursor;
+        output.span_mut().set_end(cursor);
         Ok(output)
     }
 }
@@ -263,7 +264,7 @@ impl<T, S> Default for ChangeSet<T, S> {
 }
 
 /// The state of the skipped subtree.
-struct Skipped<'a, T> {
+struct Skipped<'a, T, S> {
     node: Node<'a, T, S>,
     first: bool,
 }
@@ -274,7 +275,7 @@ struct RefactorWalk<'a, T, S> {
 }
 
 impl<'a, T, S> RefactorWalk<'a, T, S> {
-    fn skip_subtree(&mut self, node: Node<'a, T, S>, first: bool) -> Option<Skipped<'a, T>> {
+    fn skip_subtree(&mut self, node: Node<'a, T, S>, first: bool) -> Option<Skipped<'a, T, S>> {
         if let Some(next) = node.next() {
             return Some(Skipped { node: next, first });
         }

@@ -86,13 +86,13 @@ impl Span {
     /// let a = Span::new(4, 8);
     /// let b = Span::new(5, 9);
     ///
-    /// let span = a.join(b);
+    /// let span = a.join(&b);
     ///
     /// assert_eq!(span.start, 4);
     /// assert_eq!(span.end, 9);
-    /// assert_eq!(span, b.join(a));
+    /// assert_eq!(span, b.join(&a));
     /// ```
-    pub const fn join(self, other: Self) -> Self {
+    pub const fn join(&self, other: &Self) -> Self {
         Self {
             start: if self.start < other.start {
                 self.start
@@ -132,7 +132,7 @@ impl Span {
     /// assert_eq!(Span::new(0, 0).len(), 0);
     /// assert_eq!(Span::new(0, 10).len(), 10);
     /// ```
-    pub const fn len(self) -> Index {
+    pub const fn len(&self) -> Index {
         self.end.saturating_sub(self.start)
     }
 
@@ -174,5 +174,123 @@ impl fmt::Display for Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (&self.start, &self.end).fmt(f)
+    }
+}
+
+impl PartialEq<&Span> for Span {
+    #[inline]
+    fn eq(&self, other: &&Span) -> bool {
+        *self == **other
+    }
+}
+
+impl PartialEq<Span> for &Span {
+    #[inline]
+    fn eq(&self, other: &Span) -> bool {
+        **self == *other
+    }
+}
+
+mod sealed {
+    pub trait Sealed {}
+
+    impl Sealed for super::Span {}
+
+    impl Sealed for () {}
+}
+
+/// Trait governing how to build and adjust spans.
+pub trait SpanBuilder: self::sealed::Sealed + Copy {
+    /// Empty span.
+    const EMPTY: Self;
+
+    /// Construct a span at the given index.
+    #[doc(hidden)]
+    fn point(index: Index) -> Self;
+
+    /// Construct a new span.
+    #[doc(hidden)]
+    fn new(start: Index, end: Index) -> Self;
+
+    /// Get start of the span.
+    #[doc(hidden)]
+    fn start(&self) -> Index;
+
+    /// Get end of the span.
+    #[doc(hidden)]
+    fn end(&self) -> Index;
+
+    /// Update end value of the span.
+    #[doc(hidden)]
+    fn set_end(&mut self, end: Index);
+
+    /// Value representing the length of a span.
+    #[doc(hidden)]
+    fn len(&self) -> usize;
+}
+
+impl SpanBuilder for Span {
+    const EMPTY: Self = Span::point(0);
+
+    #[inline]
+    fn point(index: Index) -> Self {
+        Span::point(index)
+    }
+
+    #[inline]
+    fn new(start: Index, end: Index) -> Self {
+        Span::new(start, end)
+    }
+
+    #[inline]
+    fn start(&self) -> Index {
+        self.start
+    }
+
+    #[inline]
+    fn end(&self) -> Index {
+        self.end
+    }
+
+    #[inline]
+    fn set_end(&mut self, end: Index) {
+        self.end = end;
+    }
+
+    #[inline]
+    fn len(&self) -> usize {
+        Span::len(self)
+    }
+}
+
+impl SpanBuilder for () {
+    const EMPTY: Self = ();
+
+    #[inline]
+    fn point(_: Index) -> Self {
+        ()
+    }
+
+    #[inline]
+    fn new(_: Index, _: Index) -> Self {
+        ()
+    }
+
+    #[inline]
+    fn start(&self) -> Index {
+        0
+    }
+
+    #[inline]
+    fn end(&self) -> Index {
+        0
+    }
+
+    #[inline]
+    fn set_end(&mut self, _: Index) {}
+
+    #[inline]
+    fn len(&self) -> usize {
+        0
     }
 }

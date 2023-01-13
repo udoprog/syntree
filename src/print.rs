@@ -1,6 +1,6 @@
 //! Helper utilities for pretty-printing trees.
 
-use std::fmt::Debug;
+use std::fmt;
 use std::io::{Error, Write};
 
 use crate::{Kind, Span, Tree};
@@ -60,8 +60,8 @@ use crate::{Kind, Span, Tree};
 pub fn print<O, T, S>(o: O, tree: &Tree<T, S>) -> Result<(), Error>
 where
     O: Write,
-    T: Debug,
-    S: Debug,
+    T: fmt::Debug,
+    S: fmt::Display,
 {
     print_with_lookup(o, tree, |_| None)
 }
@@ -117,11 +117,10 @@ where
 /// NUMBER@6..8
 ///   NUMBER@6..8 "64"
 /// ```
-pub fn print_with_source<O, T, S>(o: O, tree: &Tree<T, S>, source: &str) -> Result<(), Error>
+pub fn print_with_source<O, T>(o: O, tree: &Tree<T, Span>, source: &str) -> Result<(), Error>
 where
     O: Write,
-    T: Debug,
-    S: Debug,
+    T: fmt::Debug,
 {
     print_with_lookup(o, tree, |span| source.get(span.range()))
 }
@@ -129,12 +128,12 @@ where
 fn print_with_lookup<'a, O, T, S>(
     mut o: O,
     tree: &Tree<T, S>,
-    source: impl Fn(Span) -> Option<&'a str>,
+    source: impl Fn(&S) -> Option<&'a str>,
 ) -> Result<(), Error>
 where
     O: Write,
-    T: Debug,
-    S: Debug,
+    T: fmt::Debug,
+    S: fmt::Display,
 {
     let mut it = tree.walk();
 

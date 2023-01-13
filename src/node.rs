@@ -4,11 +4,12 @@ use core::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
+use crate::span::Span;
 use crate::tree::Kind;
-use crate::{Ancestors, Children, Id, Siblings, Span, Walk, WalkEvents};
+use crate::{Ancestors, Children, Id, Siblings, Walk, WalkEvents};
 
 /// A node in the tree.
-pub struct Node<'a, T, S> {
+pub struct Node<'a, T, S = Span> {
     links: &'a Links<T, S>,
     tree: &'a [Links<T, S>],
 }
@@ -49,7 +50,7 @@ impl<'a, T, S> Node<'a, T, S> {
     pub fn id(&self) -> Id {
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
-        let id = (current - base) / size_of::<Links<T>>();
+        let id = (current - base) / size_of::<Links<T, S>>();
         // SAFETY: It's impossible to construct a node with an offset which is
         // not a legal `NonMax`.
         unsafe { Id::new(NonMax::new_unchecked(id)) }
@@ -141,38 +142,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok(()) }
     /// ```
     pub const fn span(&self) -> &S {
-        self.links.span
-    }
-
-    /// Access the [Span] of the node as a [Range].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "number" => {
-    ///             ("lit", 5)
-    ///         },
-    ///         "ident" => {
-    ///             ("lit", 3)
-    ///         }
-    ///     },
-    ///     "root2" => {
-    ///         ("whitespace", 5)
-    ///     }
-    /// };
-    ///
-    /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(root.range(), 0..8);
-    ///
-    /// let root2 = root.next().ok_or("missing second root")?;
-    /// assert_eq!(root2.range(), 8..13);
-    /// # Ok(()) }
-    /// ```
-    pub const fn range(&self) -> Range<usize> {
-        self.links.span.range()
+        &self.links.span
     }
 
     /// Check if the current node is empty. In that it doesn't have any
@@ -477,9 +447,43 @@ impl<'a, T, S> Node<'a, T, S> {
     }
 }
 
-impl<'a, T> fmt::Debug for Node<'a, T, S>
+impl<T> Node<'_, T, Span> {
+    /// Access the [Span] of the node as a [Range].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.range(), 0..8);
+    ///
+    /// let root2 = root.next().ok_or("missing second root")?;
+    /// assert_eq!(root2.range(), 8..13);
+    /// # Ok(()) }
+    /// ```
+    pub const fn range(&self) -> Range<usize> {
+        self.links.span.range()
+    }
+}
+
+impl<T, S> fmt::Debug for Node<'_, T, S>
 where
     T: fmt::Debug,
+    S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
@@ -490,17 +494,19 @@ where
     }
 }
 
-impl<'a, T> Clone for Node<'a, T, S> {
+impl<T, S> Clone for Node<'_, T, S> {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for Node<'a, T, S> {}
+impl<T, S> Copy for Node<'_, T, S> {}
 
-impl<'a, T> PartialEq for Node<'a, T, S>
+impl<T, S> PartialEq for Node<'_, T, S>
 where
     T: PartialEq,
+    S: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.links.data == other.links.data
@@ -509,4 +515,9 @@ where
     }
 }
 
-impl<'a, T> Eq for Node<'a, T, S> where T: Eq {}
+impl<T, S> Eq for Node<'_, T, S>
+where
+    T: Eq,
+    S: Eq,
+{
+}
