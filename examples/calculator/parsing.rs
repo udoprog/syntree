@@ -2,7 +2,7 @@ use crate::lexer::{Lexer, Token};
 use crate::Syntax;
 use anyhow::Result;
 use syntree::{TreeBuilder, TreeError};
-use Syntax::*;
+use Syntax::{EOF, WHITESPACE};
 
 /// Parser and lexer baked into one.
 pub(crate) struct Parser<'a> {

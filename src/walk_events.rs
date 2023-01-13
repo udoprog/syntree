@@ -2,9 +2,9 @@ use crate::links::Links;
 use crate::non_max::NonMax;
 use crate::Node;
 
-/// An event indicating how a tree is being walked with [WalkEvents].
+/// An event indicating how a tree is being walked with [`WalkEvents`].
 ///
-/// See [WalkEvents] for documentation.
+/// See [`WalkEvents`] for documentation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Event {
     /// Walk the next sibling node. This is also the initial event being emitted
@@ -19,8 +19,8 @@ pub enum Event {
 /// A low-level iterator which walks the tree while emitting [Event] instances
 /// indicating *how* the structure is being navigated.
 ///
-/// See [Tree::walk_events][crate::Tree::walk_events] or
-/// [Node::walk_events][crate::Node::walk_events].
+/// See [`Tree::walk_events`][crate::Tree::walk_events] or
+/// [`Node::walk_events`][crate::Node::walk_events].
 ///
 /// # Examples
 ///
@@ -142,6 +142,7 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
     /// );
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn depth(&self) -> usize {
         self.parents.len()
     }

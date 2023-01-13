@@ -3,7 +3,7 @@ use core::ops::Range;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{usize_to_index, Index, SpanBuilder};
+use crate::span::{self, usize_to_index, Index};
 use crate::{Children, Node, Span, Walk, WalkEvents};
 
 /// The kind of a node in the [Tree].
@@ -43,7 +43,7 @@ impl<T, S> Tree<T, S> {
     /// Construct a new empty tree.
     pub(crate) const fn new_with() -> Self
     where
-        S: SpanBuilder,
+        S: span::Builder,
     {
         Self {
             tree: Vec::new(),
@@ -57,7 +57,7 @@ impl<T, S> Tree<T, S> {
     /// Construct a new tree with the given capacity.
     pub(crate) fn with_capacity(capacity: usize) -> Self
     where
-        S: SpanBuilder,
+        S: span::Builder,
     {
         Self {
             tree: Vec::with_capacity(capacity),
@@ -186,7 +186,7 @@ impl<T, S> Tree<T, S> {
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
-    /// See [Walk] for documentation.
+    /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, S> {
         Walk::new(self.tree.as_slice(), self.first)
     }
@@ -194,7 +194,7 @@ impl<T, S> Tree<T, S> {
     /// Walk the tree forwards in a depth-first fashion emitting events
     /// indicating how the tree is being traversed.
     ///
-    /// See [WalkEvents] for documentation.
+    /// See [`WalkEvents`] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T, S> {
         WalkEvents::new(self.tree.as_slice(), self.first)
     }
@@ -295,6 +295,7 @@ impl<T> Tree<T, Span> {
     /// assert_eq!(tree.range(), 0..13);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn range(&self) -> Range<usize> {
         self.span.range()
     }
@@ -374,6 +375,7 @@ impl<T> Tree<T, Span> {
     /// assert_eq!(*child.value(), "child");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, Span>> {
         let start = usize_to_index(span.start)?;
         let end = usize_to_index(span.end)?;
@@ -480,6 +482,7 @@ impl<T> Tree<T, Span> {
     /// assert_eq!(*child.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T, Span>> {
         self.node_with_span_internal(span.start, span.end)
     }
@@ -508,7 +511,7 @@ impl<T> Tree<T, Span> {
 
 impl<T, S> Default for Tree<T, S>
 where
-    S: SpanBuilder,
+    S: span::Builder,
 {
     #[inline]
     fn default() -> Self {
@@ -539,8 +542,6 @@ where
     S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        return f.debug_tuple("Tree").field(&List(self)).finish();
-
         struct List<'a, T, S>(&'a Tree<T, S>);
 
         impl<T, S> fmt::Debug for List<'_, T, S>
@@ -552,5 +553,7 @@ where
                 f.debug_list().entries(self.0.walk().with_depths()).finish()
             }
         }
+
+        f.debug_tuple("Tree").field(&List(self)).finish()
     }
 }

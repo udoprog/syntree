@@ -2,7 +2,7 @@ use std::iter::FusedIterator;
 
 use crate::{Kind, Node, SkipTokens};
 
-/// An iterator that iterates over the [Node::parent] elements of a node. This
+/// An iterator that iterates over the [`Node::parent`] elements of a node. This
 /// is used for iterating over the ancestors of a node.
 ///
 /// Note that this iterator also implements [Default], allowing it to
@@ -22,7 +22,7 @@ use crate::{Kind, Node, SkipTokens};
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// See [Node::ancestors].
+/// See [`Node::ancestors`].
 ///
 /// # Examples
 ///
@@ -55,10 +55,11 @@ impl<'a, T, S> Ancestors<'a, T, S> {
         Self { node }
     }
 
-    /// Construct a [SkipTokens] iterator from the remainder of this
-    /// iterator. This filters out [Kind::Token] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this
+    /// iterator. This filters out [`Kind::Token`] elements.
     ///
-    /// See [SkipTokens] for documentation.
+    /// See [`SkipTokens`] for documentation.
+    #[must_use]
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }

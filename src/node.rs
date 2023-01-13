@@ -21,7 +21,7 @@ impl<'a, T, S> Node<'a, T, S> {
 
     /// Get the identifier of the current node.
     ///
-    /// This can be used to register a change in a [ChangeSet][crate::ChangeSet]
+    /// This can be used to register a change in a [`ChangeSet`][crate::ChangeSet]
     /// later.
     ///
     /// ```
@@ -46,6 +46,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(child2.id(), child2_id);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn id(&self) -> Id {
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
@@ -77,14 +78,15 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*ident.value(), "ident");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn value(&self) -> &'a T {
         &self.links.data
     }
 
     /// Access the kind of the node.
     ///
-    /// Terminating nodes are [Kind::Token] and intermediary nodes are
-    /// [Kind::Node].
+    /// Terminating nodes are [`Kind::Token`] and intermediary nodes are
+    /// [`Kind::Node`].
     ///
     /// # Examples
     ///
@@ -104,6 +106,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert!(root.children().all(|n| matches!(n.kind(), Kind::Token)));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn kind(&self) -> Kind {
         self.links.kind
     }
@@ -137,6 +140,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(root2.span(), Span::new(8, 13));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn span(&self) -> &S {
         &self.links.span
     }
@@ -161,6 +165,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert!(!last.is_empty());
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.links.first.is_none()
     }
@@ -168,6 +173,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// Get the ancestors of this node.
     ///
     /// See [Ancestors] for documentation.
+    #[must_use]
     pub fn ancestors(&self) -> Ancestors<'a, T, S> {
         Ancestors::new(Some(*self))
     }
@@ -175,6 +181,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// Get an iterator over the siblings of this node, including itself.
     ///
     /// See [Siblings] for documentation.
+    #[must_use]
     pub fn siblings(&self) -> Siblings<'a, T, S> {
         Siblings::new(self.tree, self.links)
     }
@@ -182,6 +189,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// Get an iterator over the children of this node.
     ///
     /// See [Children] for documentation.
+    #[must_use]
     pub fn children(&self) -> Children<'a, T, S> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
@@ -190,6 +198,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// node.
     ///
     /// See [Walk] for documentation.
+    #[must_use]
     pub fn walk(&self) -> Walk<'a, T, S> {
         Walk::new(self.tree, self.links.first)
     }
@@ -197,7 +206,8 @@ impl<'a, T, S> Node<'a, T, S> {
     /// Walk the node forwards in a depth-first fashion emitting events
     /// indicating how the rest of the tree is being traversed.
     ///
-    /// See [WalkEvents] for documentation.
+    /// See [`WalkEvents`] for documentation.
+    #[must_use]
     pub fn walk_events(&self) -> WalkEvents<'a, T, S> {
         WalkEvents::new(self.tree, self.links.first)
     }
@@ -232,6 +242,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn parent(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.parent?)
     }
@@ -263,6 +274,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*number.value(), "number");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn prev(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.prev?)
     }
@@ -293,6 +305,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*ident.value(), "ident");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn next(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.next?)
     }
@@ -323,6 +336,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*number.value(), "number");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn first(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.first?)
     }
@@ -353,6 +367,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*whitespace.value(), "whitespace");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub fn last(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.last?)
     }
@@ -361,8 +376,8 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// A "preceeding node" is one which constitutes tokens the immediately
     /// preceedes the ones of the current node, so this function scans first the
-    /// parents of the current node for a matching [Node::prev] sibling, and
-    /// then traverses that matches [Node::last].
+    /// parents of the current node for a matching [`Node::prev`] sibling, and
+    /// then traverses that matches [`Node::last`].
     ///
     /// # Examples
     ///
@@ -464,6 +479,7 @@ impl<T> Node<'_, T, Span> {
     /// assert_eq!(root2.range(), 8..13);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn range(&self) -> Range<usize> {
         self.links.span.range()
     }

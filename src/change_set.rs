@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{Index, SpanBuilder};
+use crate::span::{self, Index};
 use crate::{Id, Kind, Node, Tree, TreeError};
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ pub(crate) enum Change {
 
 /// A recorded set of tree modifications.
 ///
-/// You can use [ChangeSet::modify] to construct a new modified tree from an
+/// You can use [`ChangeSet::modify`] to construct a new modified tree from an
 /// existing one.
 ///
 /// # Examples
@@ -70,7 +70,8 @@ pub struct ChangeSet<T, S> {
 }
 
 impl<T, S> ChangeSet<T, S> {
-    /// Construct a new empty [ChangeSet].
+    /// Construct a new empty [`ChangeSet`].
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -147,7 +148,7 @@ impl<T, S> ChangeSet<T, S> {
     pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, TreeError>
     where
         T: Clone,
-        S: SpanBuilder,
+        S: span::Builder,
     {
         let mut output = Tree::<T, S>::with_capacity(tree.capacity());
 
@@ -190,7 +191,9 @@ impl<T, S> ChangeSet<T, S> {
 
             // Since we are the first node in the sequence we're obligated to
             // set the first child of the parent.
-            let prev = if !first {
+            let prev = if first {
+                None
+            } else {
                 let prev = refactor.prev.take();
 
                 if let Some(prev) = prev.and_then(|id| output.get_mut(id)) {
@@ -198,8 +201,6 @@ impl<T, S> ChangeSet<T, S> {
                 }
 
                 prev
-            } else {
-                None
             };
 
             let span = match node.kind() {

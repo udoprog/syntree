@@ -4,20 +4,20 @@ use std::rc::Rc;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{Index, Span, SpanBuilder, SpanLength};
+use crate::span::{self, Index, Span, SpanLength};
 use crate::{Kind, Tree, TreeError};
 
 /// The identifier of a node as returned by functions such as
-/// [TreeBuilder::open] or [TreeBuilder::token].
+/// [`TreeBuilder::open`] or [`TreeBuilder::token`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Id(pub(crate) NonMax);
 
 /// The identifier of a node as returned by functions such as
-/// [TreeBuilder::checkpoint].
+/// [`TreeBuilder::checkpoint`].
 ///
-/// This can be used as a checkpoint in [TreeBuilder::close_at], and a
-/// checkpoint can be fetched up front from [TreeBuilder::checkpoint].
+/// This can be used as a checkpoint in [`TreeBuilder::close_at`], and a
+/// checkpoint can be fetched up front from [`TreeBuilder::checkpoint`].
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Checkpoint(Rc<Cell<CheckpointData>>);
@@ -40,7 +40,7 @@ struct CheckpointData {
 /// A builder for a [Tree].
 ///
 /// This maintains a stack of nodes being built which has to be balanced with
-/// calls to [TreeBuilder::open] and [TreeBuilder::close].
+/// calls to [`TreeBuilder::open`] and [`TreeBuilder::close`].
 ///
 /// # Examples
 ///
@@ -117,6 +117,7 @@ impl<T> TreeBuilder<T> {
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn new() -> Self {
         Self::new_with()
     }
@@ -124,7 +125,7 @@ impl<T> TreeBuilder<T> {
 
 impl<T, S> TreeBuilder<T, S>
 where
-    S: SpanBuilder,
+    S: span::Builder,
 {
     /// Construct a new tree with a custom span.
     ///
@@ -160,6 +161,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use]
     pub const fn new_with() -> Self {
         TreeBuilder {
             tree: Tree::new_with(),
@@ -174,7 +176,7 @@ where
     ///
     /// This pushes a new link with the given type onto the stack which links
     /// itself onto the last sibling node that ben introduced either through
-    /// [TreeBuilder::close] or [TreeBuilder::close_at].
+    /// [`TreeBuilder::close`] or [`TreeBuilder::close_at`].
     ///
     /// # Examples
     ///
@@ -202,11 +204,11 @@ where
 
     /// End a node being built.
     ///
-    /// This call must be balanced with a prior call to [TreeBuilder::open]. If
-    /// not this will result in an [TreeError::CloseError] being raised.
+    /// This call must be balanced with a prior call to [`TreeBuilder::open`]. If
+    /// not this will result in an [`TreeError::CloseError`] being raised.
     ///
     /// This will pop a value of the stack, and set that value as the next
-    /// sibling which will be used with [TreeBuilder::open].
+    /// sibling which will be used with [`TreeBuilder::open`].
     ///
     /// # Examples
     ///
@@ -289,7 +291,7 @@ where
     /// # Panics
     ///
     /// This panics if the number of nodes are too many to fit in a vector on
-    /// your architecture. This corresponds to [usize::MAX].
+    /// your architecture. This corresponds to [`usize::MAX`].
     ///
     /// # Examples
     ///
@@ -338,7 +340,7 @@ where
     /// Insert a node that wraps from the given checkpointed location.
     ///
     /// The checkpoint being closed *must* be a sibling. Otherwise a
-    /// [TreeError::CloseAtError] will be raised.
+    /// [`TreeError::CloseAtError`] will be raised.
     ///
     /// # Examples
     ///
@@ -518,7 +520,7 @@ where
     /// Build a [Tree] from the current state of the builder.
     ///
     /// This requires the stack in the builder to be empty. Otherwise a
-    /// [TreeError::BuildError] will be raised.
+    /// [`TreeError::BuildError`] will be raised.
     ///
     /// # Examples
     ///
@@ -618,7 +620,7 @@ where
 
 impl<T, S> Default for TreeBuilder<T, S>
 where
-    S: SpanBuilder,
+    S: span::Builder,
 {
     #[inline]
     fn default() -> Self {
@@ -635,7 +637,7 @@ fn restructure_close_at<T, S>(
     next: NonMax,
 ) -> Result<(NonMax, Index), TreeError>
 where
-    S: SpanBuilder,
+    S: span::Builder,
 {
     let mut links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
     let mut last = (next, links.span.end());

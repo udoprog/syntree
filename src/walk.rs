@@ -5,7 +5,7 @@ use crate::{Event, Node, SkipTokens, WalkEvents};
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
 ///
-/// See [Tree::walk][crate::Tree::walk] or [Node::walk].
+/// See [`Tree::walk`][crate::Tree::walk] or [`Node::walk`].
 ///
 /// # Examples
 ///
@@ -54,21 +54,23 @@ impl<'a, T, S> Walk<'a, T, S> {
 
     /// Convert this iterator into one which includes depths.
     ///
-    /// See [WithDepths] for documentation.
+    /// See [`WithDepths`] for documentation.
+    #[must_use]
     pub fn with_depths(self) -> WithDepths<'a, T, S> {
         WithDepths { iter: self }
     }
 
-    /// Construct a [SkipTokens] iterator from the remainder of this
-    /// iterator. This filters out [Kind::Token][crate::Kind::Token] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this
+    /// iterator. This filters out [`Kind::Token`][crate::Kind::Token] elements.
     ///
-    /// See [SkipTokens] for documentation.
+    /// See [`SkipTokens`] for documentation.
+    #[must_use]
     pub fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
 
     /// Get the next node including the depth which it is located at. This
-    /// exists as an alternative to coercing this iterator into [WithDepths].
+    /// exists as an alternative to coercing this iterator into [`WithDepths`].
     ///
     /// # Examples
     ///
@@ -118,7 +120,7 @@ impl<'a, T, S> Iterator for Walk<'a, T, S> {
 }
 
 /// An iterator that walks over the entire tree, visiting every node exactly
-/// once. This is constructed with [Walk::with_depths].
+/// once. This is constructed with [`Walk::with_depths`].
 ///
 /// # Examples
 ///

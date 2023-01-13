@@ -3,7 +3,9 @@ use crate::Syntax;
 use anyhow::Result;
 use syntree::TreeError;
 
-use self::Syntax::*;
+use self::Syntax::{
+    CLOSE_PAREN, DIV, ERROR, GROUP, MINUS, MUL, NUMBER, OPEN_PAREN, OPERATION, OPERATOR, PLUS, POW,
+};
 
 fn op(syntax: Syntax) -> Option<(u8, u8)> {
     let prio = match syntax {

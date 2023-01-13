@@ -19,7 +19,7 @@ enum Syntax {
     ERROR,
 }
 
-use Syntax::*;
+use Syntax::{ERROR, LITERAL, SYNTHETIC, WHITESPACE};
 
 #[derive(Default)]
 struct Storage {
@@ -59,13 +59,13 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
                 WHITESPACE
             }
             '$' => {
-                eat(&mut it, |c| matches!(c, 'a'..='z'));
-                let end = it.peek().map(|(n, _)| *n).unwrap_or(len);
+                eat(&mut it, |c| c.is_ascii_lowercase());
+                let end = it.peek().map_or(len, |(n, _)| *n);
                 let id = &source[(start + 1)..end];
                 SYNTHETIC(storage.lookup(id))
             }
             'A'..='Z' | 'a'..='z' => {
-                eat(&mut it, |c| matches!(c, 'A'..='Z' | 'a'..='z'));
+                eat(&mut it, |c| c.is_ascii_alphabetic());
                 LITERAL
             }
             _ => {
@@ -74,7 +74,7 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
             }
         };
 
-        let end = it.peek().map(|(n, _)| *n).unwrap_or(len);
+        let end = it.peek().map_or(len, |(n, _)| *n);
         Some((syntax, end.saturating_sub(start)))
     });
 
@@ -128,7 +128,7 @@ fn main() -> Result<()> {
             }
         };
 
-        println!("{} = {:?}", count, string);
+        println!("{count} = {string:?}");
         count += 1;
     }
 

@@ -9,7 +9,7 @@ enum Syntax {
     WHITESPACE,
 }
 
-use Syntax::*;
+use Syntax::{LIT, NUMBER, ROOT, WHITESPACE};
 
 #[test]
 fn balanced_checkpoint() -> Result<()> {

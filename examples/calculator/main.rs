@@ -48,7 +48,7 @@ fn main() -> Result<()> {
     for result in eval::eval(&tree, &source) {
         match result {
             Ok(output) => {
-                writeln!(o, "Output = {}", output)?;
+                writeln!(o, "Output = {output}")?;
             }
             Err(e) => {
                 let file = SimpleFile::new("<cli>", &source);

@@ -2,7 +2,7 @@ use crate::Syntax;
 use syntree::{Node, Span, Tree};
 use thiserror::Error;
 
-use Syntax::*;
+use Syntax::{DIV, GROUP, MINUS, MUL, NUMBER, OPERATION, PLUS, POW};
 
 #[derive(Debug, Error)]
 #[error("{kind}")]
@@ -45,7 +45,10 @@ pub(crate) enum EvalErrorKind {
     DivideByZero,
 }
 
-use EvalErrorKind::*;
+use EvalErrorKind::{
+    BadNumber, DivideByZero, Expected, ExpectedOperator, Missing, Overflow, Underflow,
+    UnexpectedOperator,
+};
 
 fn pow(a: i64, b: i64) -> Option<i64> {
     let pow = u32::try_from(b).ok()?;

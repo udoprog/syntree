@@ -2,7 +2,7 @@ use std::iter::FusedIterator;
 
 use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 
-/// An iterator that iterates over the [Node::next] elements of a node. This is
+/// An iterator that iterates over the [`Node::next`] elements of a node. This is
 /// typically used for iterating over the children of a tree.
 ///
 /// Note that this iterator also implements [Default], allowing it to
@@ -24,7 +24,7 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// See [Tree::children][crate::Tree::children] or [Node::children].
+/// See [`Tree::children`][crate::Tree::children] or [`Node::children`].
 ///
 /// # Examples
 ///
@@ -80,10 +80,11 @@ impl<'a, T, S> Children<'a, T, S> {
         Self { tree, first, last }
     }
 
-    /// Construct a [SkipTokens] iterator from the remainder of this
-    /// iterator. This filters out [Kind::Token] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this
+    /// iterator. This filters out [`Kind::Token`] elements.
     ///
-    /// See [SkipTokens] for documentation.
+    /// See [`SkipTokens`] for documentation.
+    #[must_use]
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }

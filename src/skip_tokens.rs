@@ -2,13 +2,13 @@ use std::iter::FusedIterator;
 
 use crate::{Kind, Node};
 
-/// Wrapped around an iterator that excludes [Kind::Token] nodes.
+/// Wrapped around an iterator that excludes [`Kind::Token`] nodes.
 ///
-/// See [Siblings::skip_tokens][crate::Siblings::skip_tokens] or [Walk::skip_tokens][crate::Walk::skip_tokens].
+/// See [`Siblings::skip_tokens`][crate::Siblings::skip_tokens] or [`Walk::skip_tokens`][crate::Walk::skip_tokens].
 ///
 /// # Examples
 ///
-/// Filtering [Kind::Token] elements from a [Siblings][crate::Siblings]
+/// Filtering [`Kind::Token`] elements from a [Siblings][crate::Siblings]
 /// iterator:
 ///
 /// ```
@@ -31,7 +31,7 @@ use crate::{Kind, Node};
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// Filtering [Kind::Token] elements from a [Walk][crate::Walk] iterator:
+/// Filtering [`Kind::Token`] elements from a [Walk][crate::Walk] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
@@ -104,14 +104,13 @@ impl<I> Clone for SkipTokens<I>
 where
     I: Clone,
 {
+    #[inline]
     fn clone(&self) -> Self {
         Self {
             iter: self.iter.clone(),
         }
     }
 }
-
-impl<I> Copy for SkipTokens<I> where I: Copy {}
 
 impl<I> Default for SkipTokens<I>
 where

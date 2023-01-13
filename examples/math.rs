@@ -20,7 +20,7 @@ enum Syntax {
     ROOT,
 }
 
-use Syntax::*;
+use Syntax::{ADD, DIV, ERROR, MUL, NUMBER, OPERATION, ROOT, SUB, WHITESPACE};
 
 struct Parser<I: Iterator<Item = (Syntax, usize)>> {
     builder: TreeBuilder<Syntax>,
@@ -29,12 +29,7 @@ struct Parser<I: Iterator<Item = (Syntax, usize)>> {
 
 impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
     fn peek(&mut self) -> Result<Option<Syntax>, TreeError> {
-        while self
-            .iter
-            .peek()
-            .map(|&(t, _)| t == WHITESPACE)
-            .unwrap_or(false)
-        {
+        while self.iter.peek().map_or(false, |&(t, _)| t == WHITESPACE) {
             self.bump()?;
         }
         Ok(self.iter.peek().map(|&(t, _)| t))
@@ -42,7 +37,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
 
     fn bump(&mut self) -> Result<(), TreeError> {
         if let Some((token, len)) = self.iter.next() {
-            self.builder.token(token.into(), len)?;
+            self.builder.token(token, len)?;
         }
 
         Ok(())
@@ -71,7 +66,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         let c = self.builder.checkpoint()?;
         next(self)?;
 
-        while self.peek()?.map(|t| tokens.contains(&t)).unwrap_or(false) {
+        while self.peek()?.map_or(false, |t| tokens.contains(&t)) {
             self.bump()?;
             next(self)?;
             self.builder.close_at(&c, OPERATION)?;
@@ -92,7 +87,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         self.builder.open(ROOT)?;
         self.parse_add()?;
         self.builder.close()?;
-        Ok(self.builder.build()?)
+        self.builder.build()
     }
 }
 
@@ -122,7 +117,7 @@ fn lexer(source: &str) -> impl Iterator<Item = (Syntax, usize)> + '_ {
             }
         };
 
-        let end = it.peek().map(|(n, _)| *n).unwrap_or(len);
+        let end = it.peek().map_or(len, |(n, _)| *n);
         Some((syntax, end.saturating_sub(start)))
     });
 

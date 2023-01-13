@@ -17,6 +17,7 @@ pub(crate) type Index = usize;
 
 #[cfg(not(syntree_compact))]
 #[inline]
+#[allow(clippy::unnecessary_wraps)]
 pub(crate) fn usize_to_index(value: usize) -> Option<Index> {
     Some(value)
 }
@@ -40,7 +41,7 @@ impl Span {
     ///
     /// # Panics
     ///
-    /// Panics if `start` does not precede or equal to `end.
+    /// Panics if `start` does not precede or equal to `end`.
     ///
     /// ```should_panic
     /// use syntree::Span;
@@ -58,6 +59,7 @@ impl Span {
     /// assert_eq!(span.start, 4);
     /// assert_eq!(span.end, 8);
     /// ```
+    #[must_use]
     pub const fn new(start: Index, end: Index) -> Self {
         assert!(start <= end, "start of the span must come before end");
         Self { start, end }
@@ -72,6 +74,7 @@ impl Span {
     ///
     /// assert_eq!(Span::point(4), Span::new(4, 4));
     /// ```
+    #[must_use]
     pub const fn point(at: Index) -> Self {
         Self { start: at, end: at }
     }
@@ -92,6 +95,7 @@ impl Span {
     /// assert_eq!(span.end, 9);
     /// assert_eq!(span, b.join(&a));
     /// ```
+    #[must_use]
     pub const fn join(&self, other: &Self) -> Self {
         Self {
             start: if self.start < other.start {
@@ -107,7 +111,7 @@ impl Span {
         }
     }
 
-    /// Coerce into a [ops::Range] which is useful for slicing.
+    /// Coerce into a [`ops::Range`] which is useful for slicing.
     ///
     /// # Examples
     ///
@@ -118,6 +122,8 @@ impl Span {
     ///
     /// assert_eq!(a.range(), 4..8);
     /// ```
+    #[allow(clippy::unnecessary_cast)]
+    #[must_use]
     pub const fn range(self) -> ops::Range<usize> {
         (self.start as usize)..(self.end as usize)
     }
@@ -132,6 +138,7 @@ impl Span {
     /// assert_eq!(Span::new(0, 0).len(), 0);
     /// assert_eq!(Span::new(0, 10).len(), 10);
     /// ```
+    #[must_use]
     pub const fn len(&self) -> Index {
         self.end.saturating_sub(self.start)
     }
@@ -144,8 +151,10 @@ impl Span {
     /// use syntree::Span;
     ///
     /// assert!(Span::new(0, 0).is_empty());
+    /// assert!(!Span::new(0, 10).is_empty());
     /// ```
-    pub const fn is_empty(self) -> bool {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.end == self.start
     }
 
@@ -160,6 +169,7 @@ impl Span {
     /// assert!(Span::new(2, 3).contains(2));
     /// assert!(!Span::new(2, 3).contains(3));
     /// ```
+    #[must_use]
     pub const fn contains(self, index: Index) -> bool {
         self.start <= index && index < self.end
     }
@@ -200,11 +210,11 @@ mod sealed {
 }
 
 pub trait SpanLength: self::sealed::Sealed + Copy {
-    /// Test if span length is non-empty.
+    #[doc(hidden)]
     fn is_empty(&self) -> bool;
 
-    /// Coerce into index.
-    fn into_index(&self) -> Option<Index>;
+    #[doc(hidden)]
+    fn into_index(self) -> Option<Index>;
 }
 
 impl SpanLength for () {
@@ -214,7 +224,7 @@ impl SpanLength for () {
     }
 
     #[inline]
-    fn into_index(&self) -> Option<Index> {
+    fn into_index(self) -> Option<Index> {
         Some(0)
     }
 }
@@ -226,45 +236,39 @@ impl SpanLength for usize {
     }
 
     #[inline]
-    fn into_index(&self) -> Option<Index> {
-        usize_to_index(*self)
+    fn into_index(self) -> Option<Index> {
+        usize_to_index(self)
     }
 }
 
 /// Trait governing how to build and adjust spans.
-pub trait SpanBuilder: self::sealed::Sealed + Copy {
-    /// Empty span.
+pub trait Builder: self::sealed::Sealed + Copy {
+    #[doc(hidden)]
     const EMPTY: Self;
 
-    /// The length as part of the span.
+    #[doc(hidden)]
     type Length: SpanLength;
 
-    /// Construct a span at the given index.
     #[doc(hidden)]
     fn point(index: Index) -> Self;
 
-    /// Construct a new span.
     #[doc(hidden)]
     fn new(start: Index, end: Index) -> Self;
 
-    /// Get start of the span.
     #[doc(hidden)]
     fn start(&self) -> Index;
 
-    /// Get end of the span.
     #[doc(hidden)]
     fn end(&self) -> Index;
 
-    /// Update end value of the span.
     #[doc(hidden)]
     fn set_end(&mut self, end: Index);
 
-    /// Value representing the length of a span.
     #[doc(hidden)]
     fn len(&self) -> usize;
 }
 
-impl SpanBuilder for Span {
+impl Builder for Span {
     const EMPTY: Self = Span::point(0);
 
     type Length = usize;
@@ -300,20 +304,16 @@ impl SpanBuilder for Span {
     }
 }
 
-impl SpanBuilder for () {
+impl Builder for () {
     const EMPTY: Self = ();
 
     type Length = ();
 
     #[inline]
-    fn point(_: Index) -> Self {
-        ()
-    }
+    fn point(_: Index) -> Self {}
 
     #[inline]
-    fn new(_: Index, _: Index) -> Self {
-        ()
-    }
+    fn new(_: Index, _: Index) -> Self {}
 
     #[inline]
     fn start(&self) -> Index {

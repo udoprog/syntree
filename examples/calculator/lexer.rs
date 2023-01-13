@@ -1,6 +1,6 @@
 use crate::Syntax;
 
-use Syntax::*;
+use Syntax::{CLOSE_PAREN, DIV, ERROR, MINUS, MUL, NUMBER, OPEN_PAREN, PLUS, POW, WHITESPACE};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Token {
@@ -82,7 +82,7 @@ impl<'a> Lexer<'a> {
             }
             '0'..='9' => {
                 self.step();
-                self.consume_while(|c| matches!(c, '0'..='9'));
+                self.consume_while(|c| c.is_ascii_digit());
                 NUMBER
             }
             _ => {

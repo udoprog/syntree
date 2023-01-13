@@ -8,7 +8,7 @@ use crate::{Kind, Span, Tree};
 /// Pretty-print a tree without a source.
 ///
 /// This will replace all source references with `+`. If you have a source
-/// available you can use [print_with_source] instead.
+/// available you can use [`print_with_source`] instead.
 ///
 /// # Examples
 ///
