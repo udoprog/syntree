@@ -89,17 +89,17 @@
 //! library is responsible for providing it as necessary. Like when calling
 //! [`print_with_source`].
 //!
-//! The API for constructing a syntax tree is provided through [`TreeBuilder`]
+//! The API for constructing a syntax tree is provided through [`Builder`]
 //! which provides streaming builder methods. Internally the builder is
 //! represented as a contiguous slab of memory. Once a tree is built the
 //! structure of the tree can be queried through the [`Tree`] type.
 //!
 //! Note that [`syntree::tree!`] is only a helper which simplifies building
 //! trees for examples. It corresponds exactly to performing [`open`],
-//! [`close`], and [`token`] calls on [`TreeBuilder`] as specified.
+//! [`close`], and [`token`] calls on [`Builder`] as specified.
 //!
 //! ```
-//! use syntree::{Span, TreeBuilder};
+//! use syntree::{Span, Builder};
 //!
 //! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //! enum Syntax {
@@ -110,7 +110,7 @@
 //!
 //! use Syntax::*;
 //!
-//! let mut tree = TreeBuilder::new();
+//! let mut tree = Builder::new();
 //!
 //! tree.open(NUMBER)?;
 //! tree.token(LIT, 1)?;
@@ -219,7 +219,7 @@
 //! ### Errors instead of panics
 //!
 //! Another point where this crate differs is that we rely on propagating a
-//! [`TreeError`] during tree construction if the API is used incorrectly
+//! [`Error`] during tree construction if the API is used incorrectly
 //! *instead* of panicking.
 //!
 //! While on the surface this might seem like a minor difference in opinion on
@@ -259,16 +259,16 @@
 //! queried. Something which `rowan` solves for you, but `syntree` leaves as an
 //! exercise to the reader.
 //!
-//! [`close`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.close
-//! [`open`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.open
+//! [`close`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.close
+//! [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 //! [`rowan`]: https://docs.rs/rowan/latest/rowan/
 //! [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
-//! [`token`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html#method.token
+//! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
-//! [`TreeBuilder`]: https://docs.rs/syntree/latest/syntree/struct.TreeBuilder.html
-//! [`TreeError`]: https://docs.rs/syntree/latest/syntree/enum.TreeError.html
+//! [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
+//! [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [any-syntax]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
 //! [calculator]: https://github.com/udoprog/syntree/blob/main/examples/calculator
@@ -303,10 +303,10 @@ mod walk;
 mod walk_events;
 
 pub use self::ancestors::Ancestors;
-pub use self::builder::{Checkpoint, Id, TreeBuilder};
+pub use self::builder::{Builder, Checkpoint, Id};
 pub use self::change_set::ChangeSet;
 pub use self::children::Children;
-pub use self::error::TreeError;
+pub use self::error::Error;
 pub use self::node::Node;
 pub use self::siblings::Siblings;
 pub use self::skip_tokens::SkipTokens;

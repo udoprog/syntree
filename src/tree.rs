@@ -107,9 +107,7 @@ impl<T, S> Tree<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::<()>::new();
+    /// let mut tree = syntree::Builder::<()>::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.len(), 0);
@@ -137,9 +135,7 @@ impl<T, S> Tree<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::<()>::new();
+    /// let mut tree = syntree::Builder::<()>::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
     /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -153,9 +149,7 @@ impl<T, S> Tree<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::<()>::new();
+    /// let mut tree = syntree::Builder::<()>::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.capacity(), 0);
@@ -358,9 +352,7 @@ impl<T> Tree<T, Span> {
     /// Range queries work as expected with checkpoints:
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     /// tree.open("child")?;
@@ -442,9 +434,9 @@ impl<T> Tree<T, Span> {
     /// Range queries work as expected with checkpoints:
     ///
     /// ```
-    /// use syntree::{Span, TreeBuilder};
+    /// use syntree::{Span, Builder};
     ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     ///

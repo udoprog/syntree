@@ -25,9 +25,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// later.
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     /// let root_id = tree.open("root")?;
     /// let child_id = tree.open("child")?;
     /// tree.close()?;

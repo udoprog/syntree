@@ -1,7 +1,7 @@
 use crate::parsing::Parser;
 use crate::Syntax;
 use anyhow::Result;
-use syntree::TreeError;
+use syntree::Error;
 
 use self::Syntax::{
     CLOSE_PAREN, DIV, ERROR, GROUP, MINUS, MUL, NUMBER, OPEN_PAREN, OPERATION, OPERATOR, PLUS, POW,
@@ -18,7 +18,7 @@ fn op(syntax: Syntax) -> Option<(u8, u8)> {
     Some(prio)
 }
 
-fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), TreeError> {
+fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), Error> {
     // Eat all available whitespace before getting a checkpoint.
     let tok = p.peek()?;
 

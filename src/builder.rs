@@ -1,23 +1,25 @@
-use std::cell::Cell;
-use std::mem::replace;
 use std::rc::Rc;
 
+use core::cell::Cell;
+use core::mem::replace;
+
+use crate::error::Error;
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{self, Index, Span, SpanLength};
-use crate::{Kind, Tree, TreeError};
+use crate::span::{self, Index, Length, Span};
+use crate::tree::{Kind, Tree};
 
 /// The identifier of a node as returned by functions such as
-/// [`TreeBuilder::open`] or [`TreeBuilder::token`].
+/// [`Builder::open`] or [`Builder::token`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Id(pub(crate) NonMax);
 
 /// The identifier of a node as returned by functions such as
-/// [`TreeBuilder::checkpoint`].
+/// [`Builder::checkpoint`].
 ///
-/// This can be used as a checkpoint in [`TreeBuilder::close_at`], and a
-/// checkpoint can be fetched up front from [`TreeBuilder::checkpoint`].
+/// This can be used as a checkpoint in [`Builder::close_at`], and a
+/// checkpoint can be fetched up front from [`Builder::checkpoint`].
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Checkpoint(Rc<Cell<CheckpointData>>);
@@ -40,14 +42,12 @@ struct CheckpointData {
 /// A builder for a [Tree].
 ///
 /// This maintains a stack of nodes being built which has to be balanced with
-/// calls to [`TreeBuilder::open`] and [`TreeBuilder::close`].
+/// calls to [`Builder::open`] and [`Builder::close`].
 ///
 /// # Examples
 ///
 /// ```
-/// use syntree::TreeBuilder;
-///
-/// let mut tree = TreeBuilder::new();
+/// let mut tree = syntree::Builder::new();
 ///
 /// tree.open("root")?;
 /// tree.open("child")?;
@@ -69,7 +69,7 @@ struct CheckpointData {
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug, Clone)]
-pub struct TreeBuilder<T, S = Span> {
+pub struct Builder<T, S = Span> {
     /// Data in the tree being built.
     tree: Tree<T, S>,
     /// References to parent nodes of the current node being constructed.
@@ -82,15 +82,13 @@ pub struct TreeBuilder<T, S = Span> {
     cursor: Index,
 }
 
-impl<T> TreeBuilder<T> {
+impl<T> Builder<T> {
     /// Construct a new tree with the default [`Span`].
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("root")?;
     ///
@@ -123,7 +121,7 @@ impl<T> TreeBuilder<T> {
     }
 }
 
-impl<T, S> TreeBuilder<T, S>
+impl<T, S> Builder<T, S>
 where
     S: span::Builder,
 {
@@ -132,9 +130,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Tree, TreeBuilder};
+    /// use syntree::{Tree, Builder};
     ///
-    /// let mut tree = TreeBuilder::<_, ()>::new_with();
+    /// let mut tree = Builder::<_, ()>::new_with();
     ///
     /// tree.open("root")?;
     ///
@@ -163,7 +161,7 @@ where
     /// ```
     #[must_use]
     pub const fn new_with() -> Self {
-        TreeBuilder {
+        Builder {
             tree: Tree::new_with(),
             parents: Vec::new(),
             checkpoint: None,
@@ -176,14 +174,17 @@ where
     ///
     /// This pushes a new link with the given type onto the stack which links
     /// itself onto the last sibling node that ben introduced either through
-    /// [`TreeBuilder::close`] or [`TreeBuilder::close_at`].
+    /// [`Builder::close`] or [`Builder::close_at`].
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("root")?;
     ///
@@ -196,7 +197,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
+    pub fn open(&mut self, data: T) -> Result<Id, Error> {
         let id = self.insert(data, Kind::Node, S::point(self.cursor))?;
         self.parents.push(id);
         Ok(Id(id))
@@ -204,18 +205,18 @@ where
 
     /// End a node being built.
     ///
-    /// This call must be balanced with a prior call to [`TreeBuilder::open`]. If
-    /// not this will result in an [`TreeError::CloseError`] being raised.
-    ///
     /// This will pop a value of the stack, and set that value as the next
-    /// sibling which will be used with [`TreeBuilder::open`].
+    /// sibling which will be used with [`Builder::open`].
+    ///
+    /// # Errors
+    ///
+    /// This call must be balanced with a prior call to [`Builder::open`].
+    /// If not this will result in an [`Error::CloseError`] being raised.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("root")?;
     ///
@@ -228,20 +229,20 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn close(&mut self) -> Result<(), TreeError> {
-        let head = self.parents.pop().ok_or(TreeError::CloseError)?;
+    pub fn close(&mut self) -> Result<(), Error> {
+        let head = self.parents.pop().ok_or(Error::CloseError)?;
         self.sibling = Some(head);
 
         if let Some(&parent) = self.parents.last() {
             let node = self
                 .tree
                 .get_mut(head)
-                .ok_or(TreeError::MissingNode(Id(head)))?;
+                .ok_or(Error::MissingNode(Id(head)))?;
             let end = node.span.end();
             let parent = self
                 .tree
                 .get_mut(parent)
-                .ok_or(TreeError::MissingNode(Id(parent)))?;
+                .ok_or(Error::MissingNode(Id(parent)))?;
             parent.span.set_end(end);
         }
 
@@ -252,12 +253,15 @@ where
     ///
     /// A token is always a terminating element without children.
     ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
+    ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("child")?;
     /// tree.token("lit", 4)?;
@@ -265,14 +269,14 @@ where
     ///
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn token(&mut self, value: T, len: S::Length) -> Result<Id, TreeError> {
+    pub fn token(&mut self, value: T, len: S::Length) -> Result<Id, Error> {
         let start = self.cursor;
 
         if !len.is_empty() {
             self.cursor = len
                 .into_index()
                 .and_then(|len| self.cursor.checked_add(len))
-                .ok_or(TreeError::Overflow)?;
+                .ok_or(Error::Overflow)?;
             self.tree.span_mut().set_end(self.cursor);
         }
 
@@ -288,6 +292,11 @@ where
 
     /// Get a checkpoint corresponding to the current position in the tree.
     ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
+    ///
     /// # Panics
     ///
     /// This panics if the number of nodes are too many to fit in a vector on
@@ -296,9 +305,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     /// tree.open("child")?;
@@ -319,8 +326,8 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn checkpoint(&mut self) -> Result<Checkpoint, TreeError> {
-        let node = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
+    pub fn checkpoint(&mut self) -> Result<Checkpoint, Error> {
+        let node = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         if let Some(c) = &self.checkpoint {
             if c.0.get().node == node {
@@ -339,15 +346,15 @@ where
 
     /// Insert a node that wraps from the given checkpointed location.
     ///
+    /// # Errors
+    ///
     /// The checkpoint being closed *must* be a sibling. Otherwise a
-    /// [`TreeError::CloseAtError`] will be raised.
+    /// [`Error::CloseAtError`] will be raised.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     /// tree.token("lit", 3)?;
@@ -368,9 +375,7 @@ where
     /// More complex example:
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     ///
@@ -407,9 +412,7 @@ where
     /// Adding a token after a checkpoint:
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     /// tree.open("child")?;
@@ -442,15 +445,15 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn close_at(&mut self, c: &Checkpoint, data: T) -> Result<Id, TreeError> {
+    pub fn close_at(&mut self, c: &Checkpoint, data: T) -> Result<Id, Error> {
         let c = &*c.0;
         let id = c.get().node;
 
         if c.get().parent.as_ref() != self.parents.last() {
-            return Err(TreeError::CloseAtError);
+            return Err(Error::CloseAtError);
         }
 
-        let next_id = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
+        let next_id = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
             let new_id = self.insert(data, Kind::Node, S::point(self.cursor))?;
@@ -519,15 +522,15 @@ where
 
     /// Build a [Tree] from the current state of the builder.
     ///
+    /// # Errors
+    ///
     /// This requires the stack in the builder to be empty. Otherwise a
-    /// [`TreeError::BuildError`] will be raised.
+    /// [`Error::BuildError`] will be raised.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
-    ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("child")?;
     /// tree.token("number", 3)?;
@@ -551,9 +554,9 @@ where
     /// If a tree is unbalanced during construction, building will fail with an error:
     ///
     /// ```
-    /// use syntree::{TreeError, Span, TreeBuilder};
+    /// use syntree::{Error, Span, Builder};
     ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = syntree::Builder::new();
     ///
     /// tree.open("number")?;
     /// tree.token("lit", 3)?;
@@ -562,20 +565,20 @@ where
     /// tree.open("number")?;
     ///
     /// // "number" is left open.
-    /// assert!(matches!(tree.build(), Err(TreeError::BuildError)));
+    /// assert!(matches!(tree.build(), Err(Error::BuildError)));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn build(self) -> Result<Tree<T, S>, TreeError> {
+    pub fn build(self) -> Result<Tree<T, S>, Error> {
         if !self.parents.is_empty() {
-            return Err(TreeError::BuildError);
+            return Err(Error::BuildError);
         }
 
         Ok(self.tree)
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: S) -> Result<NonMax, TreeError> {
-        let new = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
+    fn insert(&mut self, data: T, kind: Kind, span: S) -> Result<NonMax, Error> {
+        let new = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
         let parent = self.parents.last().copied();
@@ -618,7 +621,7 @@ where
     }
 }
 
-impl<T, S> Default for TreeBuilder<T, S>
+impl<T, S> Default for Builder<T, S>
 where
     S: span::Builder,
 {
@@ -635,16 +638,16 @@ fn restructure_close_at<T, S>(
     tree: &mut Tree<T, S>,
     parent_id: NonMax,
     next: NonMax,
-) -> Result<(NonMax, Index), TreeError>
+) -> Result<(NonMax, Index), Error>
 where
     S: span::Builder,
 {
-    let mut links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
+    let mut links = tree.get_mut(next).ok_or(Error::MissingNode(Id(next)))?;
     let mut last = (next, links.span.end());
     links.parent = Some(parent_id);
 
     while let Some(next) = links.next {
-        links = tree.get_mut(next).ok_or(TreeError::MissingNode(Id(next)))?;
+        links = tree.get_mut(next).ok_or(Error::MissingNode(Id(next)))?;
         last = (next, links.span.end());
         links.parent = Some(parent_id);
     }

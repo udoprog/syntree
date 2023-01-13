@@ -3,8 +3,6 @@
 /// # Examples
 ///
 /// ```
-/// use syntree::TreeBuilder;
-///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// enum Syntax {
 ///     Root,
@@ -13,7 +11,7 @@
 ///     Whitespace,
 /// }
 ///
-/// let mut tree = TreeBuilder::new();
+/// let mut tree = syntree::Builder::new();
 ///
 /// tree.open(Syntax::Root)?;
 ///
@@ -86,7 +84,7 @@ macro_rules! tree {
     }};
 
     ($($tt:tt)*) => {{
-        let mut b = $crate::TreeBuilder::new();
+        let mut b = $crate::Builder::new();
         $crate::tree!(@o b, $($tt)*);
         b.build()?
     }};
@@ -112,7 +110,7 @@ macro_rules! tree {
 #[macro_export]
 macro_rules! tree_with {
     ($($tt:tt)*) => {{
-        let mut b = $crate::TreeBuilder::new_with();
+        let mut b = $crate::Builder::new_with();
         $crate::tree!(@o b, $($tt)*);
         b.build()?
     }};

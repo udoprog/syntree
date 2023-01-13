@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use std::iter::Peekable;
-use syntree::{print, Tree, TreeBuilder, TreeError};
+use syntree::{print, Builder, Error, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
@@ -23,19 +23,19 @@ enum Syntax {
 use Syntax::{ADD, DIV, ERROR, MUL, NUMBER, OPERATION, ROOT, SUB, WHITESPACE};
 
 struct Parser<I: Iterator<Item = (Syntax, usize)>> {
-    builder: TreeBuilder<Syntax>,
+    builder: Builder<Syntax>,
     iter: Peekable<I>,
 }
 
 impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
-    fn peek(&mut self) -> Result<Option<Syntax>, TreeError> {
+    fn peek(&mut self) -> Result<Option<Syntax>, Error> {
         while self.iter.peek().map_or(false, |&(t, _)| t == WHITESPACE) {
             self.bump()?;
         }
         Ok(self.iter.peek().map(|&(t, _)| t))
     }
 
-    fn bump(&mut self) -> Result<(), TreeError> {
+    fn bump(&mut self) -> Result<(), Error> {
         if let Some((token, len)) = self.iter.next() {
             self.builder.token(token, len)?;
         }
@@ -43,7 +43,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         Ok(())
     }
 
-    fn parse_val(&mut self) -> Result<(), TreeError> {
+    fn parse_val(&mut self) -> Result<(), Error> {
         match self.peek()? {
             Some(NUMBER) => {
                 self.bump()?;
@@ -61,8 +61,8 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
     fn handle_operation(
         &mut self,
         tokens: &[Syntax],
-        next: fn(&mut Self) -> Result<(), TreeError>,
-    ) -> Result<(), TreeError> {
+        next: fn(&mut Self) -> Result<(), Error>,
+    ) -> Result<(), Error> {
         let c = self.builder.checkpoint()?;
         next(self)?;
 
@@ -75,15 +75,15 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         Ok(())
     }
 
-    fn parse_mul(&mut self) -> Result<(), TreeError> {
+    fn parse_mul(&mut self) -> Result<(), Error> {
         self.handle_operation(&[MUL, DIV], Self::parse_val)
     }
 
-    fn parse_add(&mut self) -> Result<(), TreeError> {
+    fn parse_add(&mut self) -> Result<(), Error> {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<Syntax>, TreeError> {
+    fn parse(mut self) -> Result<Tree<Syntax>, Error> {
         self.builder.open(ROOT)?;
         self.parse_add()?;
         self.builder.close()?;
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
     let iter = lexer(&source);
 
     let parser = Parser {
-        builder: TreeBuilder::new(),
+        builder: Builder::new(),
         iter: iter.peekable(),
     };
 

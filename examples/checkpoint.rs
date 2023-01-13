@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
-use syntree::{print, TreeBuilder};
+use syntree::{print, Builder};
 
 fn main() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = Builder::new();
 
     let c = tree.checkpoint()?;
     tree.open("child")?;

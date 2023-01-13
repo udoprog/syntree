@@ -1,5 +1,4 @@
 use anyhow::Result;
-use syntree::TreeBuilder;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
@@ -13,7 +12,7 @@ use Syntax::{LIT, NUMBER, ROOT, WHITESPACE};
 
 #[test]
 fn balanced_checkpoint() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = syntree::Builder::new();
 
     let c = tree.checkpoint()?;
 
@@ -51,7 +50,7 @@ fn balanced_checkpoint() -> Result<()> {
 
 #[test]
 fn test_checkpoint_mutation() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = syntree::Builder::new();
 
     let outer = tree.checkpoint()?;
     let inner = tree.checkpoint()?;
@@ -75,7 +74,7 @@ fn test_checkpoint_mutation() -> Result<()> {
 
 #[test]
 fn test_nested_checkpoints() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = syntree::Builder::new();
 
     let a = tree.checkpoint()?;
     tree.token("a", 3)?;
@@ -101,7 +100,7 @@ fn test_nested_checkpoints() -> Result<()> {
 
 #[test]
 fn test_nested_checkpoints2() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = syntree::Builder::new();
 
     let a = tree.checkpoint()?;
     let b = tree.checkpoint()?;

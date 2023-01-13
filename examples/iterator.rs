@@ -1,8 +1,7 @@
 use anyhow::Result;
-use syntree::TreeBuilder;
 
 fn main() -> Result<()> {
-    let mut tree = TreeBuilder::new();
+    let mut tree = syntree::Builder::new();
 
     tree.open("root1")?;
 

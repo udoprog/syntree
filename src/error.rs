@@ -1,39 +1,38 @@
-use std::error::Error;
-use std::fmt;
+use core::fmt;
 
 use crate::Id;
 
 /// Errors raised while building a tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum TreeError {
-    /// Error raised by [TreeBuilder::close][crate::TreeBuilder::close] if there
+pub enum Error {
+    /// Error raised by [Builder::close][crate::Builder::close] if there
     /// currently is no node being built.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::{TreeBuilder, TreeError};
+    /// use syntree::{Builder, Error};
     ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = Builder::new();
     ///
     /// tree.open("root")?;
     /// tree.close()?;
     ///
     /// // Syntax::Root and Syntax::Child is left open.
-    /// assert_eq!(tree.close(), Err(TreeError::CloseError));
+    /// assert_eq!(tree.close(), Err(Error::CloseError));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     CloseError,
-    /// Error raised by [TreeBuilder::build][crate::TreeBuilder::build] if the
+    /// Error raised by [Builder::build][crate::Builder::build] if the
     /// tree isn't correctly balanced.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::{TreeBuilder, TreeError};
+    /// use syntree::{Builder, Error};
     ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = Builder::new();
     ///
     /// tree.open("number")?;
     /// tree.token("lit", 3)?;
@@ -42,19 +41,19 @@ pub enum TreeError {
     /// tree.open("number")?;
     ///
     /// // Syntax::Number is left open.
-    /// assert_eq!(tree.build(), Err(TreeError::BuildError));
+    /// assert_eq!(tree.build(), Err(Error::BuildError));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     BuildError,
-    /// Error raised by [TreeBuilder::close_at][crate::TreeBuilder::close_at] if
+    /// Error raised by [Builder::close_at][crate::Builder::close_at] if
     /// we're not trying to close at a sibling node.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::{TreeBuilder, TreeError};
+    /// use syntree::{Builder, Error};
     ///
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = Builder::new();
     ///
     /// let c = tree.checkpoint()?;
     ///
@@ -62,7 +61,7 @@ pub enum TreeError {
     /// tree.token("token", 3)?;
     ///
     /// let result = tree.close_at(&c, "operation");
-    /// assert_eq!(result, Err(TreeError::CloseAtError));
+    /// assert_eq!(result, Err(Error::CloseAtError));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     CloseAtError,
@@ -80,33 +79,33 @@ pub enum TreeError {
     MissingCloseAtSibling,
 }
 
-impl Error for TreeError {}
+impl std::error::Error for Error {}
 
-impl fmt::Display for TreeError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TreeError::CloseError => {
+            Error::CloseError => {
                 write!(f, "no node being built")
             }
-            TreeError::BuildError => {
+            Error::BuildError => {
                 write!(f, "tree is currently being built")
             }
-            TreeError::CloseAtError => {
+            Error::CloseAtError => {
                 write!(
                     f,
                     "trying to close a node which is not a sibling of the checkpoint being closed"
                 )
             }
-            TreeError::Overflow => {
+            Error::Overflow => {
                 write!(f, "numerical overflow")
             }
-            TreeError::MissingNode(id) => {
+            Error::MissingNode(id) => {
                 write!(f, "missing node with id `{}`", id.0.get())
             }
-            TreeError::MissingCloseAtLinksNext => {
+            Error::MissingCloseAtLinksNext => {
                 write!(f, "missing links next while closing checkpoint")
             }
-            TreeError::MissingCloseAtSibling => {
+            Error::MissingCloseAtSibling => {
                 write!(f, "missing current sibling while closing checkpoint")
             }
         }

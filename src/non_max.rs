@@ -31,7 +31,7 @@ mod imp {
         }
 
         #[inline]
-        pub(crate) const fn get(&self) -> usize {
+        pub(crate) const fn get(self) -> usize {
             self.0.get() ^ usize::MAX
         }
     }
@@ -82,7 +82,7 @@ mod imp {
         }
 
         #[inline]
-        pub(crate) const fn get(&self) -> usize {
+        pub(crate) const fn get(self) -> usize {
             (self.0.get() ^ u32::MAX) as usize
         }
     }

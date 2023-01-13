@@ -1,13 +1,13 @@
 use crate::lexer::{Lexer, Token};
 use crate::Syntax;
 use anyhow::Result;
-use syntree::{TreeBuilder, TreeError};
+use syntree::{Builder, Error};
 use Syntax::{EOF, WHITESPACE};
 
 /// Parser and lexer baked into one.
 pub(crate) struct Parser<'a> {
     lexer: Lexer<'a>,
-    pub(crate) tree: TreeBuilder<Syntax>,
+    pub(crate) tree: Builder<Syntax>,
     // One token of lookahead.
     buf: Option<Token>,
 }
@@ -16,13 +16,13 @@ impl<'a> Parser<'a> {
     pub(crate) fn new(source: &'a str) -> Self {
         Self {
             lexer: Lexer::new(source),
-            tree: TreeBuilder::new(),
+            tree: Builder::new(),
             buf: None,
         }
     }
 
     /// Peek the next token.
-    pub fn peek(&mut self) -> Result<Token, TreeError> {
+    pub fn peek(&mut self) -> Result<Token, Error> {
         loop {
             // Fill up buffer.
             self.fill()?;
@@ -39,12 +39,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Test if the parser is currently at EOF.
-    pub(crate) fn is_eof(&mut self) -> Result<bool, TreeError> {
+    pub(crate) fn is_eof(&mut self) -> Result<bool, Error> {
         Ok(self.peek()?.syntax == EOF)
     }
 
     /// Try to eat the given sequence of syntax as the given node `what`.
-    pub(crate) fn eat(&mut self, what: Syntax) -> Result<bool, TreeError> {
+    pub(crate) fn eat(&mut self, what: Syntax) -> Result<bool, Error> {
         if self.peek()?.syntax != what {
             return Ok(false);
         }
@@ -55,14 +55,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume a token.
-    pub(crate) fn token(&mut self) -> Result<(), TreeError> {
+    pub(crate) fn token(&mut self) -> Result<(), Error> {
         let tok = self.step()?;
         self.tree.token(tok.syntax, tok.len)?;
         Ok(())
     }
 
     /// Bump the current input as the given syntax.
-    pub(crate) fn bump(&mut self, what: Syntax) -> Result<(), TreeError> {
+    pub(crate) fn bump(&mut self, what: Syntax) -> Result<(), Error> {
         let tok = self.step()?;
         self.tree.open(what)?;
         self.tree.token(tok.syntax, tok.len)?;
@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance until one of `any` matches.
-    pub(crate) fn advance_until(&mut self, any: &[Syntax]) -> Result<(), TreeError> {
+    pub(crate) fn advance_until(&mut self, any: &[Syntax]) -> Result<(), Error> {
         // Consume until we see another Number (or EOF) for some primitive
         // error recovery.
         loop {
@@ -89,13 +89,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume the head token.
-    pub(crate) fn step(&mut self) -> Result<Token, TreeError> {
+    pub(crate) fn step(&mut self) -> Result<Token, Error> {
         let tok = self.peek()?;
         self.buf.take();
         Ok(tok)
     }
 
-    fn fill(&mut self) -> Result<(), TreeError> {
+    fn fill(&mut self) -> Result<(), Error> {
         while self.buf.is_none() {
             let tok = match self.lexer.next() {
                 Some(tok) => tok,

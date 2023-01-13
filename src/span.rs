@@ -209,7 +209,7 @@ mod sealed {
     impl Sealed for usize {}
 }
 
-pub trait SpanLength: self::sealed::Sealed + Copy {
+pub trait Length: self::sealed::Sealed + Copy {
     #[doc(hidden)]
     fn is_empty(&self) -> bool;
 
@@ -217,7 +217,7 @@ pub trait SpanLength: self::sealed::Sealed + Copy {
     fn into_index(self) -> Option<Index>;
 }
 
-impl SpanLength for () {
+impl Length for () {
     #[inline]
     fn is_empty(&self) -> bool {
         true
@@ -229,7 +229,7 @@ impl SpanLength for () {
     }
 }
 
-impl SpanLength for usize {
+impl Length for usize {
     #[inline]
     fn is_empty(&self) -> bool {
         *self == 0
@@ -247,7 +247,7 @@ pub trait Builder: self::sealed::Sealed + Copy {
     const EMPTY: Self;
 
     #[doc(hidden)]
-    type Length: SpanLength;
+    type Length: Length;
 
     #[doc(hidden)]
     fn point(index: Index) -> Self;

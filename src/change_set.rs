@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
+use crate::builder::Id;
+use crate::error::Error;
 use crate::links::Links;
+use crate::node::Node;
 use crate::non_max::NonMax;
 use crate::span::{self, Index};
-use crate::{Id, Kind, Node, Tree, TreeError};
+use crate::tree::{Kind, Tree};
 
 #[derive(Debug)]
 pub(crate) enum Change {
@@ -116,6 +119,11 @@ impl<T, S> ChangeSet<T, S> {
     /// Construct a modified tree where the recorded modifications have been
     /// applied.
     ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
+    ///
     /// # Examples
     ///
     /// ```
@@ -145,7 +153,7 @@ impl<T, S> ChangeSet<T, S> {
     /// );
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, TreeError>
+    pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, Error>
     where
         T: Clone,
         S: span::Builder,
@@ -163,14 +171,13 @@ impl<T, S> ChangeSet<T, S> {
         let mut current = tree.first().map(|node| (node, false));
 
         while let Some((mut node, mut first)) = current.take() {
-            let node_id = NonMax::new(output.len()).ok_or(TreeError::Overflow)?;
+            let node_id = NonMax::new(output.len()).ok_or(Error::Overflow)?;
 
             if let Some(change) = self.changes.get(&node_id) {
                 match change {
                     Change::Delete => {
-                        let skipped = match refactor.skip_subtree(node, first) {
-                            Some(output) => output,
-                            None => continue,
+                        let Some(skipped) = refactor.skip_subtree(node, first) else {
+                            continue;
                         };
 
                         node = skipped.node;
@@ -213,7 +220,7 @@ impl<T, S> ChangeSet<T, S> {
                         let start = cursor;
                         cursor = cursor
                             .checked_add(node.span().len())
-                            .ok_or(TreeError::Overflow)?;
+                            .ok_or(Error::Overflow)?;
                         S::new(start, cursor)
                     } else {
                         S::point(cursor)

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 
 use anyhow::Result;
-use syntree::{print, TreeBuilder};
+use syntree::{print, Builder};
 
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
@@ -94,7 +94,7 @@ fn main() -> Result<()> {
 
     let lexer = lexer(&source, &storage);
 
-    let mut tree = TreeBuilder::new();
+    let mut tree = Builder::new();
 
     for (syntax, len) in lexer {
         tree.token(syntax, len)?;
