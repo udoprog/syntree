@@ -7,51 +7,38 @@ on:
       - main
 
 jobs:
-  build:
-    name: Run Tests
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
-        id: toolchain
         with:
           toolchain: stable
           profile: minimal
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            target
-          key: build-${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}
-      - name: Run tests
-        run: cargo test --all
-      - name: Run tests
-        run: cargo test --all
-        env:
-          RUSTFLAGS: "--cfg syntree_compact"
+      - run: cargo test --all
 
-  docs:
-    name: Build Documentation
+  test_syntree_compact:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
-        id: toolchain
+        with:
+          toolchain: stable
+          profile: minimal
+      - run: cargo test --all
+        env:
+          RUSTFLAGS: "--cfg syntree_compact"
+          RUSTDOCFLAGS: "--cfg syntree_compact"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           profile: minimal
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            target
-          key: build-${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}
-      - name: Run tests
-        run: cargo +nightly doc
+      - run: cargo +nightly doc
         env:
           RUSTFLAGS: --cfg docsrs
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
