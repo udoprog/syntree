@@ -23,7 +23,6 @@ use crate::{Kind, Span, Tree};
 ///
 /// use Syntax::*;
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     NUMBER => {
 ///         (NUMBER, 3),
@@ -42,7 +41,7 @@ use crate::{Kind, Span, Tree};
 /// syntree::print::print(&mut s, &tree)?;
 /// # let s = String::from_utf8(s)?;
 /// # assert_eq!(s, "NUMBER@0..3\n  NUMBER@0..3 +\nWHITESPACE@3..4 +\nOPERATOR@4..5\n  PLUS@4..5 +\nWHITESPACE@5..6 +\nNUMBER@6..8\n  NUMBER@6..8 +\n");
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// This would write:
@@ -81,7 +80,6 @@ where
 ///
 /// use Syntax::*;
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let source = "128 + 64";
 ///
 /// let tree = syntree::tree! {
@@ -102,7 +100,7 @@ where
 /// syntree::print::print_with_source(&mut s, &tree, source)?;
 /// # let s = String::from_utf8(s)?;
 /// # assert_eq!(s, "NUMBER@0..3\n  NUMBER@0..3 \"128\"\nWHITESPACE@3..4 \" \"\nOPERATOR@4..5\n  PLUS@4..5 \"+\"\nWHITESPACE@5..6 \" \"\nNUMBER@6..8\n  NUMBER@6..8 \"64\"\n");
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// This would write:

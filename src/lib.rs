@@ -110,7 +110,6 @@
 //!
 //! use Syntax::*;
 //!
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut tree = TreeBuilder::new();
 //!
 //! tree.open(NUMBER)?;
@@ -139,7 +138,7 @@
 //!
 //! let number = tree.first().ok_or("missing number")?;
 //! assert_eq!(number.span(), Span::new(0, 5));
-//! # Ok(()) }
+//! # Ok::<_, Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! Note how the resulting [`Span`] for `NUMBER` corresponds to the full span of

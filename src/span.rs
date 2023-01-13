@@ -195,14 +195,49 @@ mod sealed {
     pub trait Sealed {}
 
     impl Sealed for super::Span {}
-
     impl Sealed for () {}
+    impl Sealed for usize {}
+}
+
+pub trait SpanLength: self::sealed::Sealed + Copy {
+    /// Test if span length is non-empty.
+    fn is_empty(&self) -> bool;
+
+    /// Coerce into index.
+    fn into_index(&self) -> Option<Index>;
+}
+
+impl SpanLength for () {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn into_index(&self) -> Option<Index> {
+        Some(0)
+    }
+}
+
+impl SpanLength for usize {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        *self == 0
+    }
+
+    #[inline]
+    fn into_index(&self) -> Option<Index> {
+        usize_to_index(*self)
+    }
 }
 
 /// Trait governing how to build and adjust spans.
 pub trait SpanBuilder: self::sealed::Sealed + Copy {
     /// Empty span.
     const EMPTY: Self;
+
+    /// The length as part of the span.
+    type Length: SpanLength;
 
     /// Construct a span at the given index.
     #[doc(hidden)]
@@ -231,6 +266,8 @@ pub trait SpanBuilder: self::sealed::Sealed + Copy {
 
 impl SpanBuilder for Span {
     const EMPTY: Self = Span::point(0);
+
+    type Length = usize;
 
     #[inline]
     fn point(index: Index) -> Self {
@@ -265,6 +302,8 @@ impl SpanBuilder for Span {
 
 impl SpanBuilder for () {
     const EMPTY: Self = ();
+
+    type Length = ();
 
     #[inline]
     fn point(_: Index) -> Self {

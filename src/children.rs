@@ -10,7 +10,6 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 /// available:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
@@ -22,7 +21,7 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 ///
 /// let mut it = tree.first().and_then(|n| n.last()).map(|n| n.children()).unwrap_or_default();
 /// assert_eq!(it.next().map(|n| *n.value()), None);
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// See [Tree::children][crate::Tree::children] or [Node::children].
@@ -30,7 +29,6 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 /// # Examples
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
@@ -64,7 +62,7 @@ use crate::{links::Links, non_max::NonMax, Kind, Node, SkipTokens};
 ///     root.children().rev().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child3", "child1"]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct Children<'a, T, S> {
     tree: &'a [Links<T, S>],
@@ -96,7 +94,6 @@ impl<'a, T, S> Children<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     ("t1", 1),
     ///     "child1",
@@ -115,7 +112,7 @@ impl<'a, T, S> Children<'a, T, S> {
     /// }
     ///
     /// assert_eq!(out, ["child1", "child2", "child3"]);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
         loop {

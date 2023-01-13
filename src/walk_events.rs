@@ -27,7 +27,6 @@ pub enum Event {
 /// ```
 /// use syntree::Event::*;
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     "root" => {
 ///         "c1" => {
@@ -76,7 +75,7 @@ pub enum Event {
 ///     c1.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
 ///     [(Next, "c2"), (Next, "c3"), (Next, "c4")]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct WalkEvents<'a, T, S> {
     /// The tree being iterated over.
@@ -111,7 +110,6 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
     /// ```
     /// use syntree::Event::*;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "c1" => {
@@ -142,7 +140,7 @@ impl<'a, T, S> WalkEvents<'a, T, S> {
     ///     nodes,
     ///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]
     /// );
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn depth(&self) -> usize {
         self.parents.len()

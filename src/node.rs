@@ -27,7 +27,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     /// let root_id = tree.open("root")?;
     /// let child_id = tree.open("child")?;
@@ -45,7 +44,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(root.id(), root_id);
     /// assert_eq!(child.id(), child_id);
     /// assert_eq!(child2.id(), child2_id);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn id(&self) -> Id {
         let current = self.links as *const _ as usize;
@@ -61,7 +60,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         ("number", 5),
@@ -77,7 +75,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let ident = number.next().ok_or("missing ident")?;
     /// assert_eq!(*ident.value(), "ident");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn value(&self) -> &'a T {
         &self.links.data
@@ -93,7 +91,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// ```
     /// use syntree::Kind;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         ("number", 5),
@@ -105,7 +102,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(root.kind(), Kind::Node);
     ///
     /// assert!(root.children().all(|n| matches!(n.kind(), Kind::Token)));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn kind(&self) -> Kind {
         self.links.kind
@@ -119,7 +116,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// ```
     /// use syntree::Span;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -139,7 +135,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let root2 = root.next().ok_or("missing second root")?;
     /// assert_eq!(root2.span(), Span::new(8, 13));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn span(&self) -> &S {
         &self.links.span
@@ -151,7 +147,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = syntree::tree! {
     ///     "root",
     ///     "root2" => {
@@ -164,7 +159,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// assert!(first.is_empty());
     /// assert!(!last.is_empty());
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn is_empty(&self) -> bool {
         self.links.first.is_none()
@@ -212,7 +207,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -236,7 +230,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let root = number.parent().ok_or("missing parent")?;
     /// assert_eq!(*root.value(), "root");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn parent(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.parent?)
@@ -247,7 +241,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -268,7 +261,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let number = ident.prev().ok_or("missing number")?;
     /// assert_eq!(*number.value(), "number");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn prev(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.prev?)
@@ -279,7 +272,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -299,7 +291,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let ident = number.next().ok_or("missing second root")?;
     /// assert_eq!(*ident.value(), "ident");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn next(self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.next?)
@@ -310,7 +302,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -330,7 +321,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let number = root.first().ok_or("missing number")?;
     /// assert_eq!(*number.value(), "number");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn first(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.first?)
@@ -341,7 +332,6 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -361,7 +351,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// let whitespace = root2.last().ok_or("missing whitespace")?;
     /// assert_eq!(*whitespace.value(), "whitespace");
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn last(&self) -> Option<Node<'a, T, S>> {
         self.node_at(self.links.last?)
@@ -453,7 +443,6 @@ impl<T> Node<'_, T, Span> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "number" => {
@@ -473,7 +462,7 @@ impl<T> Node<'_, T, Span> {
     ///
     /// let root2 = root.next().ok_or("missing second root")?;
     /// assert_eq!(root2.range(), 8..13);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn range(&self) -> Range<usize> {
         self.links.span.range()

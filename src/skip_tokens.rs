@@ -12,7 +12,6 @@ use crate::{Kind, Node};
 /// iterator:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     ("token1", 1),
 ///     "child1",
@@ -29,13 +28,12 @@ use crate::{Kind, Node};
 ///     it.map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3"]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// Filtering [Kind::Token] elements from a [Walk][crate::Walk] iterator:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     "child1" => {
 ///         "child2",
@@ -53,7 +51,7 @@ use crate::{Kind, Node};
 ///     it.map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3", "child4"]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct SkipTokens<I> {
     iter: I,

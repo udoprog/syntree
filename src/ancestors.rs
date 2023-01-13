@@ -10,7 +10,6 @@ use crate::{Kind, Node, SkipTokens};
 /// available:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1",
@@ -20,7 +19,7 @@ use crate::{Kind, Node, SkipTokens};
 ///
 /// let mut it = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).map(|n| n.ancestors()).unwrap_or_default();
 /// assert!(it.next().is_none());
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// See [Node::ancestors].
@@ -28,7 +27,6 @@ use crate::{Kind, Node, SkipTokens};
 /// # Examples
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
@@ -45,7 +43,7 @@ use crate::{Kind, Node, SkipTokens};
 ///     child2.ancestors().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["child2", "child1", "root"]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct Ancestors<'a, T, S> {
     node: Option<Node<'a, T, S>>,
@@ -71,7 +69,6 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child" => {
@@ -91,7 +88,7 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     /// }
     ///
     /// assert_eq!(out, ["child", "root"]);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {

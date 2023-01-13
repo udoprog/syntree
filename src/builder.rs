@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{usize_to_index, Index, Span, SpanBuilder};
+use crate::span::{Index, Span, SpanBuilder, SpanLength};
 use crate::{Kind, Tree, TreeError};
 
 /// The identifier of a node as returned by functions such as
@@ -47,7 +47,6 @@ struct CheckpointData {
 /// ```
 /// use syntree::TreeBuilder;
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
 /// tree.open("root")?;
@@ -67,7 +66,7 @@ struct CheckpointData {
 /// };
 ///
 /// assert_eq!(tree, expected);
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug, Clone)]
 pub struct TreeBuilder<T, S = Span> {
@@ -84,14 +83,13 @@ pub struct TreeBuilder<T, S = Span> {
 }
 
 impl<T> TreeBuilder<T> {
-    /// Construct a new tree.
+    /// Construct a new tree with the default [`Span`].
     ///
     /// # Examples
     ///
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("root")?;
@@ -117,7 +115,7 @@ impl<T> TreeBuilder<T> {
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn new() -> Self {
         Self::new_with()
@@ -128,20 +126,19 @@ impl<T, S> TreeBuilder<T, S>
 where
     S: SpanBuilder,
 {
-    /// Construct a new tree.
+    /// Construct a new tree with a custom span.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::TreeBuilder;
+    /// use syntree::{Tree, TreeBuilder};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut tree = TreeBuilder::new();
+    /// let mut tree = TreeBuilder::<_, ()>::new_with();
     ///
     /// tree.open("root")?;
     ///
     /// tree.open("child")?;
-    /// tree.token("token", 5)?;
+    /// tree.token("token", ())?;
     /// tree.close()?;
     ///
     /// tree.open("child2")?;
@@ -151,17 +148,17 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected = syntree::tree! {
+    /// let expected: Tree<_, ()> = syntree::tree_with! {
     ///     "root" => {
     ///         "child" => {
-    ///             ("token", 5)
+    ///             ("token", ())
     ///         },
     ///         "child2"
     ///     }
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub const fn new_with() -> Self {
         TreeBuilder {
@@ -184,7 +181,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("root")?;
@@ -196,7 +192,7 @@ where
     /// tree.close()?;
     ///
     /// tree.close()?;
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn open(&mut self, data: T) -> Result<Id, TreeError> {
         let id = self.insert(data, Kind::Node, S::point(self.cursor))?;
@@ -217,7 +213,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("root")?;
@@ -229,7 +224,7 @@ where
     /// tree.close()?;
     ///
     /// tree.close()?;
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn close(&mut self) -> Result<(), TreeError> {
         let head = self.parents.pop().ok_or(TreeError::CloseError)?;
@@ -260,20 +255,20 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("child")?;
     /// tree.token("lit", 4)?;
     /// tree.close()?;
     ///
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn token(&mut self, value: T, len: usize) -> Result<Id, TreeError> {
+    pub fn token(&mut self, value: T, len: S::Length) -> Result<Id, TreeError> {
         let start = self.cursor;
 
-        if len > 0 {
-            self.cursor = usize_to_index(len)
+        if !len.is_empty() {
+            self.cursor = len
+                .into_index()
                 .and_then(|len| self.cursor.checked_add(len))
                 .ok_or(TreeError::Overflow)?;
             self.tree.span_mut().set_end(self.cursor);
@@ -282,7 +277,7 @@ where
         let id = self.insert(value, Kind::Token, S::new(start, self.cursor))?;
         self.sibling = Some(id);
 
-        if len > 0 {
+        if !len.is_empty() {
             self.tree.push_index(self.cursor, id);
         }
 
@@ -301,7 +296,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -321,7 +315,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn checkpoint(&mut self) -> Result<Checkpoint, TreeError> {
         let node = NonMax::new(self.tree.len()).ok_or(TreeError::Overflow)?;
@@ -351,7 +345,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -367,7 +360,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// More complex example:
@@ -375,7 +368,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -407,7 +399,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// Adding a token after a checkpoint:
@@ -415,7 +407,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -447,7 +438,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn close_at(&mut self, c: &Checkpoint, data: T) -> Result<Id, TreeError> {
         let c = &*c.0;
@@ -534,7 +525,6 @@ where
     /// ```
     /// use syntree::TreeBuilder;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("child")?;
@@ -553,7 +543,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// If a tree is unbalanced during construction, building will fail with an error:
@@ -561,7 +551,6 @@ where
     /// ```
     /// use syntree::{TreeError, Span, TreeBuilder};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("number")?;
@@ -572,7 +561,7 @@ where
     ///
     /// // "number" is left open.
     /// assert!(matches!(tree.build(), Err(TreeError::BuildError)));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn build(self) -> Result<Tree<T, S>, TreeError> {
         if !self.parents.is_empty() {

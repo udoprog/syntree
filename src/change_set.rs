@@ -21,7 +21,6 @@ pub(crate) enum Change {
 /// ```
 /// use syntree::ChangeSet;
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     "root" => {
 ///         "child" => {
@@ -62,7 +61,7 @@ pub(crate) enum Change {
 ///         }
 ///     }
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct ChangeSet<T, S> {
     changes: HashMap<NonMax, Change>,
@@ -84,7 +83,6 @@ impl<T, S> ChangeSet<T, S> {
     /// ```
     /// use syntree::ChangeSet;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child" => {
@@ -108,7 +106,7 @@ impl<T, S> ChangeSet<T, S> {
     ///         }
     ///     }
     /// );
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn remove(&mut self, id: Id) {
         self.changes.insert(id.0, Change::Delete);
@@ -122,7 +120,6 @@ impl<T, S> ChangeSet<T, S> {
     /// ```
     /// use syntree::ChangeSet;
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child" => {
@@ -145,7 +142,7 @@ impl<T, S> ChangeSet<T, S> {
     ///         }
     ///     }
     /// );
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, TreeError>
     where

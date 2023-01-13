@@ -13,7 +13,6 @@
 ///     Whitespace,
 /// }
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut tree = TreeBuilder::new();
 ///
 /// tree.open(Syntax::Root)?;
@@ -47,7 +46,7 @@
 /// };
 ///
 /// assert_eq!(expected, tree);
-/// # Ok(()) }
+/// # Ok::<_,  Box<dyn std::error::Error>>(())
 /// ```
 #[macro_export]
 macro_rules! tree {
@@ -88,6 +87,32 @@ macro_rules! tree {
 
     ($($tt:tt)*) => {{
         let mut b = $crate::TreeBuilder::new();
+        $crate::tree!(@o b, $($tt)*);
+        b.build()?
+    }};
+}
+
+/// Helper macro for building a tree in place with a custom span.
+///
+/// # Examples
+///
+/// ```
+/// use syntree::Tree;
+///
+/// let tree: Tree<_, ()> = syntree::tree_with! {
+///     "root" => {
+///         "child" => {
+///             ("token", ())
+///         },
+///         "child2"
+///     }
+/// };
+/// # Ok::<_,  Box<dyn std::error::Error>>(())
+/// ```
+#[macro_export]
+macro_rules! tree_with {
+    ($($tt:tt)*) => {{
+        let mut b = $crate::TreeBuilder::new_with();
         $crate::tree!(@o b, $($tt)*);
         b.build()?
     }};

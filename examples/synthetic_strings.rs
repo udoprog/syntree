@@ -1,7 +1,10 @@
+//! Example that showcases why it might be useful to smuggle more data into the
+//! syntax tree.
+
 use std::collections::HashMap;
-/// Example that showcases why it might be useful to smuggle more data into the
-/// syntax tree.
 use std::iter::Peekable;
+
+use anyhow::Result;
 use syntree::{print, TreeBuilder};
 
 #[derive(Debug, Clone, Copy)]
@@ -83,7 +86,7 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let source = std::env::args().skip(1).collect::<String>();
 
     let mut storage = Storage::default();

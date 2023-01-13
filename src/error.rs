@@ -15,7 +15,6 @@ pub enum TreeError {
     /// ```
     /// use syntree::{TreeBuilder, TreeError};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("root")?;
@@ -23,7 +22,7 @@ pub enum TreeError {
     ///
     /// // Syntax::Root and Syntax::Child is left open.
     /// assert_eq!(tree.close(), Err(TreeError::CloseError));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     CloseError,
     /// Error raised by [TreeBuilder::build][crate::TreeBuilder::build] if the
@@ -34,7 +33,6 @@ pub enum TreeError {
     /// ```
     /// use syntree::{TreeBuilder, TreeError};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// tree.open("number")?;
@@ -45,7 +43,7 @@ pub enum TreeError {
     ///
     /// // Syntax::Number is left open.
     /// assert_eq!(tree.build(), Err(TreeError::BuildError));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     BuildError,
     /// Error raised by [TreeBuilder::close_at][crate::TreeBuilder::close_at] if
@@ -56,7 +54,6 @@ pub enum TreeError {
     /// ```
     /// use syntree::{TreeBuilder, TreeError};
     ///
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut tree = TreeBuilder::new();
     ///
     /// let c = tree.checkpoint()?;
@@ -66,7 +63,7 @@ pub enum TreeError {
     ///
     /// let result = tree.close_at(&c, "operation");
     /// assert_eq!(result, Err(TreeError::CloseAtError));
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     CloseAtError,
     /// Numerical overflow.

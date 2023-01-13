@@ -1,6 +1,7 @@
+use anyhow::{Context, Result};
 use syntree::{print, ChangeSet};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let tree = syntree::tree! {
         "root" => {
             "child" => {
@@ -17,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .first()
         .and_then(|n| n.first())
         .and_then(|n| n.first())
-        .ok_or("missing child")?;
+        .context("missing child")?;
 
     change_set.remove(child.id());
 

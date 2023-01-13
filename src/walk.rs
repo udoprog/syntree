@@ -10,7 +10,6 @@ use crate::{Event, Node, SkipTokens, WalkEvents};
 /// # Examples
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     "root" => {
 ///         "c1" => {
@@ -39,7 +38,7 @@ use crate::{Event, Node, SkipTokens, WalkEvents};
 /// // Walk from second child of the root. Note that the node itself is correctly excluded.
 /// let c5 = root.first().and_then(|n| n.next()).ok_or("missing second child")?;
 /// assert_eq!(c5.walk().map(|n| *n.value()).collect::<Vec<_>>(), Vec::<&str>::new());
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct Walk<'a, T, S> {
     iter: WalkEvents<'a, T, S>,
@@ -74,7 +73,6 @@ impl<'a, T, S> Walk<'a, T, S> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "c1" => {
@@ -91,7 +89,7 @@ impl<'a, T, S> Walk<'a, T, S> {
     /// assert_eq!(it.next().map(|n| *n.value()), Some("c2"));
     /// assert_eq!(it.next_with_depth().map(|(d, n)| (d, *n.value())), Some((2, "c3")));
     /// assert_eq!(it.next(), None);
-    /// # Ok(()) }
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn next_with_depth(&mut self) -> Option<(usize, Node<'a, T, S>)> {
         loop {
@@ -125,7 +123,6 @@ impl<'a, T, S> Iterator for Walk<'a, T, S> {
 /// # Examples
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tree = syntree::tree! {
 ///     "root" => {
 ///         "c1" => {
@@ -149,7 +146,7 @@ impl<'a, T, S> Iterator for Walk<'a, T, S> {
 ///     root.walk().with_depths().map(|(d, n)| (d, *n.value())).collect::<Vec<_>>(),
 ///     [(0, "c1"), (1, "c2"), (1, "c3"), (1, "c4"), (0, "c5"), (0, "c6")]
 /// );
-/// # Ok(()) }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct WithDepths<'a, T, S> {
     iter: Walk<'a, T, S>,
