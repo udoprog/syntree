@@ -16,7 +16,7 @@ fn main() -> Result<()> {
             "child2" => {
             }
         },
-        "root2"
+        "root2" => {}
     };
 
     for (event, n) in tree.walk_events() {

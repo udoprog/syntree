@@ -13,8 +13,8 @@ use crate::tree::Kind;
 /// ```
 /// let mut tree = syntree::tree! {
 ///     "root" => {
-///         "child1",
-///         "child3"
+///         "child1" => {},
+///         "child3" => {}
 ///     }
 /// };
 ///
@@ -31,9 +31,9 @@ use crate::tree::Kind;
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
-///             "child2"
+///             "child2" => {}
 ///         },
-///         "child3"
+///         "child3" => {}
 ///     }
 /// };
 ///

@@ -16,7 +16,7 @@ fn main() -> Result<()> {
             "child2" => {
             }
         },
-        "root2"
+        "root2" => {}
     };
 
     for n in tree.first().into_iter().flat_map(|n| n.walk()) {

@@ -5,7 +5,7 @@ use core::mem::replace;
 use crate::error::Error;
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{self, Index, Length, Span};
+use crate::span::{Index, Indexes, Length, Span, TreeSpan};
 use crate::tree::{Kind, Tree};
 
 pub use self::checkpoint::Checkpoint;
@@ -43,16 +43,19 @@ impl Id {
 ///
 /// let expected = syntree::tree! {
 ///     "root" => {
-///         "child",
-///         "child"
+///         "child" => {},
+///         "child" => {}
 ///     }
 /// };
 ///
 /// assert_eq!(tree, expected);
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-#[derive(Debug, Clone)]
-pub struct Builder<T, S = Span> {
+#[derive(Debug)]
+pub struct Builder<T, S = Span>
+where
+    S: TreeSpan,
+{
     /// Data in the tree being built.
     tree: Tree<T, S>,
     /// References to parent nodes of the current node being constructed.
@@ -91,7 +94,7 @@ impl<T> Builder<T> {
     ///         "child" => {
     ///             ("token", 5)
     ///         },
-    ///         "child2"
+    ///         "child2" => {}
     ///     }
     /// };
     ///
@@ -106,21 +109,21 @@ impl<T> Builder<T> {
 
 impl<T, S> Builder<T, S>
 where
-    S: span::Builder,
+    S: TreeSpan,
 {
     /// Construct a new tree with a custom span.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Tree, Builder};
+    /// use syntree::{span, Tree, Builder};
     ///
-    /// let mut tree = Builder::<_, ()>::new_with();
+    /// let mut tree = Builder::<_, span::Empty>::new_with();
     ///
     /// tree.open("root")?;
     ///
     /// tree.open("child")?;
-    /// tree.token("token", ())?;
+    /// tree.token("token", span::Empty)?;
     /// tree.close()?;
     ///
     /// tree.open("child2")?;
@@ -130,12 +133,12 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected: Tree<_, ()> = syntree::tree_with! {
+    /// let expected: Tree<_, span::Empty> = syntree::tree_with! {
     ///     "root" => {
     ///         "child" => {
-    ///             ("token", ())
+    ///             "token"
     ///         },
-    ///         "child2"
+    ///         "child2" => {}
     ///     }
     /// };
     ///
@@ -250,6 +253,15 @@ where
     /// tree.token("lit", 4)?;
     /// tree.close()?;
     ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "child" => {
+    ///         ("lit", 4)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn token(&mut self, value: T, len: S::Length) -> Result<Id, Error> {
@@ -265,12 +277,46 @@ where
 
         let id = self.insert(value, Kind::Token, S::new(start, self.cursor))?;
         self.sibling = Some(id);
+        let id = Id(id);
 
         if !len.is_empty() {
-            self.tree.push_index(self.cursor, id);
+            self.tree.indexes_mut().push(self.cursor, id);
         }
 
-        Ok(Id(id))
+        Ok(id)
+    }
+
+    /// Declare a token with the specified `value` and an empty length.
+    ///
+    /// A token is always a terminating element without children.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("child")?;
+    /// tree.token_empty("lit")?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "child" => {
+    ///         "lit"
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn token_empty(&mut self, value: T) -> Result<Id, Error> {
+        self.token(value, S::Length::EMPTY)
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
@@ -518,7 +564,7 @@ where
     ///     "child" => {
     ///         ("number", 3)
     ///     },
-    ///     "child",
+    ///     "child" => {},
     /// };
     ///
     /// assert_eq!(tree, expected);
@@ -595,9 +641,27 @@ where
     }
 }
 
+impl<T, S> Clone for Builder<T, S>
+where
+    T: Clone,
+    S: TreeSpan,
+    S::Indexes: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            parents: self.parents.clone(),
+            checkpoint: self.checkpoint.clone(),
+            sibling: self.sibling,
+            cursor: self.cursor,
+        }
+    }
+}
+
 impl<T, S> Default for Builder<T, S>
 where
-    S: span::Builder,
+    S: TreeSpan,
 {
     #[inline]
     fn default() -> Self {
@@ -614,7 +678,7 @@ fn restructure_close_at<T, S>(
     next: NonMax,
 ) -> Result<(NonMax, Index), Error>
 where
-    S: span::Builder,
+    S: TreeSpan,
 {
     let mut links = tree.get_mut(next).ok_or(Error::MissingNode(Id(next)))?;
     let mut last = (next, links.span.end());

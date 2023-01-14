@@ -167,7 +167,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// ```
     /// let mut tree = syntree::tree! {
-    ///     "root",
+    ///     "root" => {},
     ///     "root2" => {
     ///         ("token", 5)
     ///     }

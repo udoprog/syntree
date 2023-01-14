@@ -1,6 +1,12 @@
+//! Types to deal with spans in syntax trees.
+
 use core::fmt;
 use core::mem::size_of;
 use core::ops;
+use core::ops::Range;
+
+use crate::builder::Id;
+use crate::non_max::NonMax;
 
 /// The index used in a span.
 #[cfg(syntree_compact)]
@@ -205,49 +211,25 @@ mod sealed {
     pub trait Sealed {}
 
     impl Sealed for super::Span {}
-    impl Sealed for () {}
+    impl Sealed for super::Empty {}
     impl Sealed for usize {}
+    impl Sealed for Vec<super::TreeIndex> {}
 }
 
-pub trait Length: self::sealed::Sealed + Copy {
-    #[doc(hidden)]
-    fn is_empty(&self) -> bool;
-
-    #[doc(hidden)]
-    fn into_index(self) -> Option<Index>;
-}
-
-impl Length for () {
-    #[inline]
-    fn is_empty(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn into_index(self) -> Option<Index> {
-        Some(0)
-    }
-}
-
-impl Length for usize {
-    #[inline]
-    fn is_empty(&self) -> bool {
-        *self == 0
-    }
-
-    #[inline]
-    fn into_index(self) -> Option<Index> {
-        usize_to_index(self)
-    }
-}
-
-/// Trait governing how to build and adjust spans.
-pub trait Builder: self::sealed::Sealed + Copy {
+/// Trait governing the behavior of a span, allowing it to either use the real
+/// [`Span`] or the zero-cost [`Empty`] span.
+pub trait TreeSpan: self::sealed::Sealed + Copy {
     #[doc(hidden)]
     const EMPTY: Self;
 
     #[doc(hidden)]
+    const INDEXES: Self::Indexes;
+
+    #[doc(hidden)]
     type Length: Length;
+
+    #[doc(hidden)]
+    type Indexes: Indexes;
 
     #[doc(hidden)]
     fn point(index: Index) -> Self;
@@ -266,12 +248,86 @@ pub trait Builder: self::sealed::Sealed + Copy {
 
     #[doc(hidden)]
     fn len(&self) -> Index;
+
+    #[doc(hidden)]
+    fn range(self) -> Range<usize>;
 }
 
-impl Builder for Span {
+#[doc(hidden)]
+pub trait Length: self::sealed::Sealed + Copy {
+    #[doc(hidden)]
+    const EMPTY: Self;
+
+    #[doc(hidden)]
+    fn is_empty(&self) -> bool;
+
+    #[doc(hidden)]
+    fn into_index(self) -> Option<Index>;
+}
+
+#[doc(hidden)]
+pub trait Indexes: self::sealed::Sealed {
+    #[doc(hidden)]
+    fn push(&mut self, cursor: Index, id: Id);
+
+    #[doc(hidden)]
+    fn binary_search(&self, index: Index) -> Result<usize, usize>;
+
+    #[doc(hidden)]
+    fn get(&self, index: usize) -> Option<Id>;
+}
+
+#[derive(Debug, Clone, Copy)]
+#[doc(hidden)]
+pub struct TreeIndex {
+    pub(crate) index: Index,
+    pub(crate) id: NonMax,
+}
+
+impl From<Empty> for usize {
+    #[inline]
+    fn from(Empty: Empty) -> Self {
+        0
+    }
+}
+
+impl Indexes for Vec<TreeIndex> {
+    #[inline]
+    fn push(&mut self, index: Index, Id(id): Id) {
+        Vec::push(self, TreeIndex { index, id })
+    }
+
+    #[inline]
+    fn binary_search(&self, index: Index) -> Result<usize, usize> {
+        self.binary_search_by(|f| f.index.cmp(&index))
+    }
+
+    #[inline]
+    fn get(&self, index: usize) -> Option<Id> {
+        Some(Id(<[_]>::get(self, index)?.id))
+    }
+}
+
+impl Length for usize {
+    const EMPTY: Self = 0;
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        *self == 0
+    }
+
+    #[inline]
+    fn into_index(self) -> Option<Index> {
+        usize_to_index(self)
+    }
+}
+
+impl TreeSpan for Span {
     const EMPTY: Self = Span::point(0);
+    const INDEXES: Self::Indexes = Vec::new();
 
     type Length = usize;
+    type Indexes = Vec<TreeIndex>;
 
     #[inline]
     fn point(index: Index) -> Self {
@@ -302,18 +358,38 @@ impl Builder for Span {
     fn len(&self) -> Index {
         Span::len(self)
     }
+
+    #[inline]
+    fn range(self) -> Range<usize> {
+        Span::range(self)
+    }
 }
 
-impl Builder for () {
-    const EMPTY: Self = ();
+/// The empty span implementation.
+///
+/// This can be used in combination with [`Builder::new_with`].
+///
+/// [`Builder::new_with`]: crate::Builder::new_with
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct Empty;
 
-    type Length = ();
+impl TreeSpan for Empty {
+    const EMPTY: Self = Empty;
+    const INDEXES: Self::Indexes = Empty;
+
+    type Length = Empty;
+    type Indexes = Empty;
 
     #[inline]
-    fn point(_: Index) -> Self {}
+    fn point(_: Index) -> Self {
+        Empty
+    }
 
     #[inline]
-    fn new(_: Index, _: Index) -> Self {}
+    fn new(_: Index, _: Index) -> Self {
+        Empty
+    }
 
     #[inline]
     fn start(&self) -> Index {
@@ -331,5 +407,39 @@ impl Builder for () {
     #[inline]
     fn len(&self) -> Index {
         0
+    }
+
+    #[inline]
+    fn range(self) -> Range<usize> {
+        0..0
+    }
+}
+
+impl Length for Empty {
+    const EMPTY: Self = Empty;
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn into_index(self) -> Option<Index> {
+        Some(0)
+    }
+}
+
+impl Indexes for Empty {
+    #[inline]
+    fn push(&mut self, _: Index, _: Id) {}
+
+    #[inline]
+    fn binary_search(&self, _: Index) -> Result<usize, usize> {
+        Err(0)
+    }
+
+    #[inline]
+    fn get(&self, _: usize) -> Option<Id> {
+        None
     }
 }

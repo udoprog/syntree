@@ -293,7 +293,7 @@ mod links;
 pub mod node;
 mod non_max;
 pub mod print;
-mod span;
+pub mod span;
 mod tree;
 
 pub use self::builder::{Builder, Checkpoint, Id};

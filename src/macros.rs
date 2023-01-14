@@ -23,7 +23,7 @@
 ///
 /// tree.open(Syntax::Number)?;
 /// tree.token(Syntax::Lit, 2)?;
-/// tree.token(Syntax::Lit, 2)?;
+/// tree.token_empty(Syntax::Lit)?;
 /// tree.close()?;
 ///
 /// tree.close()?;
@@ -38,7 +38,7 @@
 ///         (Syntax::Whitespace, 3),
 ///         Syntax::Number => {
 ///             (Syntax::Lit, 2),
-///             (Syntax::Lit, 2)
+///             Syntax::Lit
 ///         }
 ///     }
 /// };
@@ -60,13 +60,11 @@ macro_rules! tree {
     }};
 
     (@o $b:ident, $expr:expr $(,)?) => {{
-        $b.open($expr)?;
-        $b.close()?;
+        $b.token_empty($expr)?;
     }};
 
     (@o $b:ident, $expr:expr, $($rest:tt)*) => {{
-        $b.open($expr)?;
-        $b.close()?;
+        $b.token_empty($expr)?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 
@@ -95,16 +93,27 @@ macro_rules! tree {
 /// # Examples
 ///
 /// ```
-/// use syntree::Tree;
+/// use syntree::{span, Tree};
 ///
-/// let tree: Tree<_, ()> = syntree::tree_with! {
+/// let tree: Tree<_, span::Empty> = syntree::tree_with! {
 ///     "root" => {
 ///         "child" => {
-///             ("token", ())
+///             "token"
 ///         },
 ///         "child2"
 ///     }
 /// };
+///
+/// let expected: Tree<_, span::Empty> = syntree::tree_with! {
+///     "root" => {
+///         "child" => {
+///             ("token", span::Empty)
+///         },
+///         "child2"
+///     }
+/// };
+///
+/// assert_eq!(tree, expected);
 /// # Ok::<_,  Box<dyn std::error::Error>>(())
 /// ```
 #[macro_export]

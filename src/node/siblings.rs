@@ -15,9 +15,9 @@ use crate::tree::Kind;
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
-///             "child2"
+///             "child2" => {}
 ///         },
-///         "child3"
+///         "child3" => {}
 ///     }
 /// };
 ///
@@ -34,12 +34,12 @@ use crate::tree::Kind;
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
-///             "child2"
+///             "child2" => {}
 ///         },
-///         "child3"
+///         "child3" => {}
 ///     },
 ///     "root2" => {
-///         "child4"
+///         "child4" => {}
 ///     }
 /// };
 ///
@@ -83,11 +83,11 @@ impl<'a, T, S> Siblings<'a, T, S> {
     /// ```
     /// let tree = syntree::tree! {
     ///     ("t1", 1),
-    ///     "child1",
+    ///     "child1" => {},
     ///     ("t2", 1),
-    ///     "child2",
+    ///     "child2" => {},
     ///     ("t3", 1),
-    ///     "child3",
+    ///     "child3" => {},
     ///     ("t4", 1)
     /// };
     ///

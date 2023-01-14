@@ -7,7 +7,7 @@ use crate::error::Error;
 use crate::links::Links;
 use crate::node::Node;
 use crate::non_max::NonMax;
-use crate::span::{self, Index};
+use crate::span::{Index, Indexes, TreeSpan};
 use crate::tree::{Kind, Tree};
 
 #[derive(Debug)]
@@ -68,13 +68,19 @@ pub(crate) enum Change {
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct ChangeSet<T, S> {
+pub struct ChangeSet<T, S>
+where
+    S: TreeSpan,
+{
     changes: HashMap<NonMax, Change>,
     #[allow(unused)]
     trees: Vec<Tree<T, S>>,
 }
 
-impl<T, S> ChangeSet<T, S> {
+impl<T, S> ChangeSet<T, S>
+where
+    S: TreeSpan,
+{
     /// Construct a new empty [`ChangeSet`].
     #[must_use]
     pub fn new() -> Self {
@@ -158,7 +164,7 @@ impl<T, S> ChangeSet<T, S> {
     pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, Error>
     where
         T: Clone,
-        S: span::Builder,
+        S: TreeSpan,
     {
         let mut output = Tree::<T, S>::with_capacity(tree.capacity());
 
@@ -218,7 +224,7 @@ impl<T, S> ChangeSet<T, S> {
                     let len = node.span().len();
 
                     if len > 0 {
-                        output.push_index(cursor, node_id);
+                        output.indexes_mut().push(cursor, Id(node_id));
                         let start = cursor;
                         cursor = cursor
                             .checked_add(node.span().len())
@@ -260,7 +266,10 @@ impl<T, S> ChangeSet<T, S> {
     }
 }
 
-impl<T, S> Default for ChangeSet<T, S> {
+impl<T, S> Default for ChangeSet<T, S>
+where
+    S: TreeSpan,
+{
     #[inline]
     fn default() -> Self {
         Self {

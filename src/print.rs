@@ -3,7 +3,8 @@
 use core::fmt;
 use std::io::{Error, Write};
 
-use crate::{Kind, Span, Tree};
+use crate::span::{self, Span};
+use crate::tree::{Kind, Tree};
 
 /// Pretty-print a tree without a source.
 ///
@@ -60,7 +61,7 @@ pub fn print<O, T, S>(o: O, tree: &Tree<T, S>) -> Result<(), Error>
 where
     O: Write,
     T: fmt::Debug,
-    S: fmt::Display,
+    S: span::TreeSpan + fmt::Display,
 {
     print_with_lookup(o, tree, |_| None)
 }
@@ -131,7 +132,7 @@ fn print_with_lookup<'a, O, T, S>(
 where
     O: Write,
     T: fmt::Debug,
-    S: fmt::Display,
+    S: span::TreeSpan + fmt::Display,
 {
     for (depth, node) in tree.walk().with_depths() {
         let n = depth * 2;

@@ -17,11 +17,11 @@ use crate::tree::Kind;
 /// ```
 /// let tree = syntree::tree! {
 ///     ("token1", 1),
-///     "child1",
+///     "child1" => {},
 ///     ("token2", 1),
-///     "child2",
+///     "child2" => {},
 ///     ("token3", 1),
-///     "child3",
+///     "child3" => {},
 ///     ("token4", 1)
 /// };
 ///
@@ -39,9 +39,9 @@ use crate::tree::Kind;
 /// ```
 /// let tree = syntree::tree! {
 ///     "child1" => {
-///         "child2",
+///         "child2" => {},
 ///         ("token1", 1),
-///         "child3",
+///         "child3" => {},
 ///     },
 ///     "child4" => {
 ///         ("token2", 1)

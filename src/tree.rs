@@ -5,7 +5,7 @@ use crate::links::Links;
 use crate::node::Node;
 use crate::node::{Children, Walk, WalkEvents};
 use crate::non_max::NonMax;
-use crate::span::{self, usize_to_index, Index, Span};
+use crate::span::{usize_to_index, Index, Indexes, Span, TreeSpan};
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,15 +17,11 @@ pub enum Kind {
     Token,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TreeIndex {
-    pub(crate) index: Index,
-    pub(crate) id: NonMax,
-}
-
 /// A syntax tree.
-#[derive(Clone)]
-pub struct Tree<T, S = Span> {
+pub struct Tree<T, S = Span>
+where
+    S: TreeSpan,
+{
     /// Links in the tree.
     tree: Vec<Links<T, S>>,
     /// The span of the whole tree.
@@ -33,23 +29,26 @@ pub struct Tree<T, S = Span> {
     /// Token indexes for range searches. This contains the value of the token
     /// cursor each time it is modified and allow for binary searching for
     /// sequences of nodes which corresponds to the given index.
-    indexes: Vec<TreeIndex>,
+    indexes: S::Indexes,
     /// The first element in the tree.
     first: Option<NonMax>,
     /// The last element in the tree.
     last: Option<NonMax>,
 }
 
-impl<T, S> Tree<T, S> {
+impl<T, S> Tree<T, S>
+where
+    S: TreeSpan,
+{
     /// Construct a new empty tree.
     pub(crate) const fn new_with() -> Self
     where
-        S: span::Builder,
+        S: TreeSpan,
     {
         Self {
             tree: Vec::new(),
             span: S::EMPTY,
-            indexes: Vec::new(),
+            indexes: S::INDEXES,
             first: None,
             last: None,
         }
@@ -58,12 +57,12 @@ impl<T, S> Tree<T, S> {
     /// Construct a new tree with the given capacity.
     pub(crate) fn with_capacity(capacity: usize) -> Self
     where
-        S: span::Builder,
+        S: TreeSpan,
     {
         Self {
             tree: Vec::with_capacity(capacity),
             span: S::EMPTY,
-            indexes: Vec::new(),
+            indexes: S::INDEXES,
             first: None,
             last: None,
         }
@@ -119,7 +118,7 @@ impl<T, S> Tree<T, S> {
     ///             ("token", 2)
     ///         },
     ///         ("whitespace", 1),
-    ///         "child2"
+    ///         "child2" => {}
     ///     }
     /// };
     ///
@@ -161,7 +160,7 @@ impl<T, S> Tree<T, S> {
     ///             ("token", 2)
     ///         },
     ///         ("whitespace", 1),
-    ///         "child2"
+    ///         "child2" => {}
     ///     }
     /// };
     ///
@@ -200,8 +199,8 @@ impl<T, S> Tree<T, S> {
     ///
     /// ```
     /// let tree = syntree::tree! {
-    ///     "root",
-    ///     "root2"
+    ///     "root" => {},
+    ///     "root2" => {}
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
@@ -218,8 +217,8 @@ impl<T, S> Tree<T, S> {
     ///
     /// ```
     /// let tree = syntree::tree! {
-    ///     "root",
-    ///     "root2"
+    ///     "root" => {},
+    ///     "root2" => {}
     /// };
     ///
     /// let root = tree.last().ok_or("missing root")?;
@@ -251,8 +250,8 @@ impl<T, S> Tree<T, S> {
     }
 
     /// Push the given index.
-    pub(crate) fn push_index(&mut self, index: Index, id: NonMax) {
-        self.indexes.push(TreeIndex { index, id });
+    pub(crate) fn indexes_mut(&mut self) -> &mut S::Indexes {
+        &mut self.indexes
     }
 
     /// Optionally get the links at the given location.
@@ -265,9 +264,7 @@ impl<T, S> Tree<T, S> {
         let cur = self.tree.get(index.get())?;
         Some(Node::new(cur, &self.tree))
     }
-}
 
-impl<T> Tree<T, Span> {
     /// Access the [Span] of the node as a [Range].
     ///
     /// # Examples
@@ -291,7 +288,7 @@ impl<T> Tree<T, Span> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub const fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<usize> {
         self.span.range()
     }
 
@@ -318,7 +315,7 @@ impl<T> Tree<T, Span> {
     ///             ("token5", 5)
     ///         }
     ///     },
-    ///     "root2"
+    ///     "root2" => {}
     /// };
     ///
     /// let node = tree.node_with_range(0..0).ok_or("missing 0")?;
@@ -369,7 +366,7 @@ impl<T> Tree<T, Span> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, Span>> {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, S>> {
         let start = usize_to_index(span.start)?;
         let end = usize_to_index(span.end)?;
         self.node_with_span_internal(start, end)
@@ -400,7 +397,7 @@ impl<T> Tree<T, Span> {
     ///             ("token5", 5)
     ///         }
     ///     },
-    ///     "root2"
+    ///     "root2" => {}
     /// };
     ///
     /// let node = tree.node_with_span(Span::point(0)).ok_or("missing 0")?;
@@ -476,24 +473,24 @@ impl<T> Tree<T, Span> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T, Span>> {
+    pub fn node_with_span(&self, span: Span) -> Option<Node<'_, T, S>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: Index, end: Index) -> Option<Node<'_, T, Span>> {
-        let result = self.indexes.binary_search_by(|f| f.index.cmp(&start));
+    fn node_with_span_internal(&self, start: Index, end: Index) -> Option<Node<'_, T, S>> {
+        let result = self.indexes.binary_search(start);
 
         let n = match result {
             Ok(n) => n.saturating_add(1),
             Err(n) => n,
         };
 
-        let mut node = self.node_at(self.indexes.get(n)?.id)?;
+        let mut node = self.node_at(self.indexes.get(n)?.0)?;
 
         while let Some(parent) = node.parent() {
             node = parent;
 
-            if parent.span().end >= end {
+            if parent.span().end() >= end {
                 break;
             }
         }
@@ -502,9 +499,27 @@ impl<T> Tree<T, Span> {
     }
 }
 
+impl<T, S> Clone for Tree<T, S>
+where
+    T: Clone,
+    S: TreeSpan,
+    S::Indexes: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            span: self.span,
+            indexes: self.indexes.clone(),
+            first: self.first,
+            last: self.last,
+        }
+    }
+}
+
 impl<T, S> Default for Tree<T, S>
 where
-    S: span::Builder,
+    S: TreeSpan,
 {
     #[inline]
     fn default() -> Self {
@@ -515,7 +530,7 @@ where
 impl<T, S> PartialEq for Tree<T, S>
 where
     T: PartialEq,
-    S: PartialEq,
+    S: TreeSpan + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.walk().with_depths().eq(other.walk().with_depths())
@@ -525,22 +540,24 @@ where
 impl<T, S> Eq for Tree<T, S>
 where
     T: Eq,
-    S: Eq,
+    S: TreeSpan + Eq,
 {
 }
 
 impl<T, S> fmt::Debug for Tree<T, S>
 where
     T: fmt::Debug,
-    S: fmt::Debug,
+    S: TreeSpan + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        struct List<'a, T, S>(&'a Tree<T, S>);
+        struct List<'a, T, S>(&'a Tree<T, S>)
+        where
+            S: TreeSpan;
 
         impl<T, S> fmt::Debug for List<'_, T, S>
         where
             T: fmt::Debug,
-            S: fmt::Debug,
+            S: TreeSpan + fmt::Debug,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_list().entries(self.0.walk().with_depths()).finish()
