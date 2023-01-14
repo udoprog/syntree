@@ -16,7 +16,7 @@
 //! Add `syntree` to your crate:
 //!
 //! ```toml
-//! syntree = "0.13.1"
+//! syntree = "0.13.2"
 //! ```
 //!
 //! If you want a complete sample for how `syntree` can be used for parsing, see
