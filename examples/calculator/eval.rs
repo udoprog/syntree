@@ -1,5 +1,5 @@
 use crate::Syntax;
-use syntree::{Node, Span, Tree};
+use syntree::{span, Node, Span, Tree};
 use thiserror::Error;
 
 use Syntax::{DIV, GROUP, MINUS, MUL, NUMBER, OPERATION, PLUS, POW};
@@ -7,13 +7,13 @@ use Syntax::{DIV, GROUP, MINUS, MUL, NUMBER, OPERATION, PLUS, POW};
 #[derive(Debug, Error)]
 #[error("{kind}")]
 #[non_exhaustive]
-pub(crate) struct EvalError {
-    pub(crate) span: Span,
+pub(crate) struct EvalError<I> {
+    pub(crate) span: Span<I>,
     pub(crate) kind: EvalErrorKind,
 }
 
-impl EvalError {
-    const fn new(span: Span, kind: EvalErrorKind) -> Self {
+impl<I> EvalError<I> {
+    const fn new(span: Span<I>, kind: EvalErrorKind) -> Self {
         Self { span, kind }
     }
 }
@@ -55,7 +55,10 @@ fn pow(a: i64, b: i64) -> Option<i64> {
     a.checked_pow(pow)
 }
 
-fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError> {
+fn eval_node<I>(mut node: Node<'_, Syntax, I>, source: &str) -> Result<i64, EvalError<I>>
+where
+    I: span::Index,
+{
     loop {
         return match *node.value() {
             GROUP => {
@@ -109,10 +112,13 @@ fn eval_node(mut node: Node<'_, Syntax>, source: &str) -> Result<i64, EvalError>
 }
 
 /// Eval a tree emitting all available expressions parsed from it.
-pub(crate) fn eval<'a>(
-    tree: &'a Tree<Syntax>,
+pub(crate) fn eval<'a, I>(
+    tree: &'a Tree<Syntax, I>,
     source: &'a str,
-) -> impl Iterator<Item = Result<i64, EvalError>> + 'a {
+) -> impl Iterator<Item = Result<i64, EvalError<I>>> + 'a
+where
+    I: span::Index,
+{
     let mut it = tree.children().skip_tokens();
 
     std::iter::from_fn(move || {

@@ -7,24 +7,28 @@ on:
       - main
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup toolchain install stable --profile minimal
+      - run: cargo build --all --all-targets
+      - run: cargo build --all --all-targets
+        env:
+          RUSTFLAGS: "--cfg syntree_compact"
+
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - run: rustup toolchain install stable --profile minimal
       - run: cargo test --all
 
   test_syntree_compact:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - run: rustup toolchain install stable --profile minimal
       - run: cargo test --all
         env:
           RUSTFLAGS: "--cfg syntree_compact"
@@ -34,10 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
+      - run: rustup toolchain install nightly --profile minimal
       - run: cargo +nightly doc
         env:
           RUSTFLAGS: --cfg docsrs

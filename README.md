@@ -26,15 +26,74 @@ the [calculator example][calculator].
 
 <br>
 
-## Enabling `syntree_compact`
+## Compact or empty spans
 
-We support a configuration option to reduce the size of the tree in memory.
-It changes the tree from using `usize` as indexes to use `u32` which saves 4
-bytes per reference on 64-bit platforms.
+Spans by default uses `u32`-based indexes, if this is not sufficient they
+can be changed using the [`Builder::new_with`] constructor.
 
-This can be enabled by setting `--cfg syntree_compact` while building and
-might improve performance due to allowing nodes to fit neatly on individual
-cache lines.
+```rust
+use syntree::{Builder, Span, Tree};
+
+let mut tree = Builder::<_, usize>::new_with();
+
+tree.open("root")?;
+tree.open("child")?;
+tree.token("token", 100)?;
+tree.close()?;
+tree.open("child2")?;
+tree.close()?;
+tree.close()?;
+
+let tree = tree.build()?;
+
+let expected: Tree<_, usize> = syntree::tree_with! {
+    "root" => {
+        "child" => { ("token", 100) },
+        "child2" => {}
+    }
+};
+
+assert_eq!(tree, expected);
+assert_eq!(tree.span(), Span::new(0, 100));
+```
+
+Combined with [`span::Empty`], this allows for building trees without the
+overhead of keeping track of spans:
+
+```rust
+use syntree::{Builder, span, Tree};
+
+let mut tree = Builder::<_, span::Empty>::new_with();
+
+tree.open("root")?;
+tree.open("child")?;
+tree.token("token", span::Empty)?;
+tree.close()?;
+tree.open("child2")?;
+tree.close()?;
+tree.close()?;
+
+let tree = tree.build()?;
+
+let expected: Tree<_, span::Empty> = syntree::tree_with! {
+    "root" => {
+        "child" => { "token" },
+        "child2" => {}
+    }
+};
+
+assert_eq!(tree, expected);
+assert!(tree.span().is_empty());
+```
+
+<br>
+
+## Compact identifiers
+
+Each node in a tree is assigned a unique identifier which uses `usize` by
+default, this can experimentally be changed by setting `--cfg
+syntree_compact` while building, causing it to use `u32` identifiers
+instead, which might improve performance under some circumstances.
 
 ```sh
 RUSTFLAGS="--cfg syntree_compact" cargo build
@@ -101,7 +160,7 @@ trees for examples. It corresponds exactly to performing [`open`],
 [`close`], and [`token`] calls on [`Builder`] as specified.
 
 ```rust
-use syntree::{Span, Builder};
+use syntree::{Builder, Span};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
@@ -269,7 +328,9 @@ exercise to the reader.
 [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
+[`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
 [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
+[`span::Empty`]: https://docs.rs/syntree/latest/syntree/span/struct.Empty.html
 [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [any-syntax]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
 [calculator]: https://github.com/udoprog/syntree/blob/main/examples/calculator

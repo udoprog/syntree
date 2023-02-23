@@ -7,7 +7,7 @@ use crate::error::Error;
 use crate::links::Links;
 use crate::node::Node;
 use crate::non_max::NonMax;
-use crate::span::{Index, Indexes, TreeSpan};
+use crate::span::{Index, Indexes, Length, Span};
 use crate::tree::{Kind, Tree};
 
 #[derive(Debug)]
@@ -68,18 +68,18 @@ pub(crate) enum Change {
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct ChangeSet<T, S>
+pub struct ChangeSet<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     changes: HashMap<NonMax, Change>,
     #[allow(unused)]
-    trees: Vec<Tree<T, S>>,
+    trees: Vec<Tree<T, I>>,
 }
 
-impl<T, S> ChangeSet<T, S>
+impl<T, I> ChangeSet<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     /// Construct a new empty [`ChangeSet`].
     #[must_use]
@@ -161,19 +161,19 @@ where
     /// );
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T, S>) -> Result<Tree<T, S>, Error>
+    pub fn modify(&mut self, tree: &Tree<T, I>) -> Result<Tree<T, I>, Error>
     where
         T: Clone,
-        S: TreeSpan,
+        I: Index,
     {
-        let mut output = Tree::<T, S>::with_capacity(tree.capacity());
+        let mut output = Tree::<T, I>::with_capacity(tree.capacity());
 
         let mut refactor = RefactorWalk {
             parents: Vec::new(),
             prev: None,
         };
 
-        let mut cursor = Index::default();
+        let mut cursor = I::EMPTY;
 
         // The specified sub-tree depth is being deleted.
         let mut current = tree.first().map(|node| (node, false));
@@ -219,19 +219,19 @@ where
             };
 
             let span = match node.kind() {
-                Kind::Node => S::point(cursor),
+                Kind::Node => Span::point(cursor),
                 Kind::Token => {
                     let len = node.span().len();
 
-                    if len > 0 {
+                    if !len.is_empty() {
                         output.indexes_mut().push(cursor, Id(node_id));
                         let start = cursor;
                         cursor = cursor
-                            .checked_add(node.span().len())
+                            .checked_add_len(node.span().len())
                             .ok_or(Error::Overflow)?;
-                        S::new(start, cursor)
+                        Span::new(start, cursor)
                     } else {
-                        S::point(cursor)
+                        Span::point(cursor)
                     }
                 }
             };
@@ -244,7 +244,7 @@ where
                 }
 
                 parent.last = Some(node_id);
-                parent.span.set_end(span.end());
+                parent.span.end = span.end;
             }
 
             output.push(Links {
@@ -261,14 +261,14 @@ where
             current = refactor.step(node, node_id);
         }
 
-        output.span_mut().set_end(cursor);
+        output.span_mut().end = cursor;
         Ok(output)
     }
 }
 
-impl<T, S> Default for ChangeSet<T, S>
+impl<T, I> Default for ChangeSet<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     #[inline]
     fn default() -> Self {
@@ -280,18 +280,18 @@ where
 }
 
 /// The state of the skipped subtree.
-struct Skipped<'a, T, S> {
-    node: Node<'a, T, S>,
+struct Skipped<'a, T, I> {
+    node: Node<'a, T, I>,
     first: bool,
 }
 
-struct RefactorWalk<'a, T, S> {
-    parents: Vec<(Node<'a, T, S>, NonMax)>,
+struct RefactorWalk<'a, T, I> {
+    parents: Vec<(Node<'a, T, I>, NonMax)>,
     prev: Option<NonMax>,
 }
 
-impl<'a, T, S> RefactorWalk<'a, T, S> {
-    fn skip_subtree(&mut self, node: Node<'a, T, S>, first: bool) -> Option<Skipped<'a, T, S>> {
+impl<'a, T, I> RefactorWalk<'a, T, I> {
+    fn skip_subtree(&mut self, node: Node<'a, T, I>, first: bool) -> Option<Skipped<'a, T, I>> {
         if let Some(next) = node.next() {
             return Some(Skipped { node: next, first });
         }
@@ -302,7 +302,7 @@ impl<'a, T, S> RefactorWalk<'a, T, S> {
     }
 
     /// Advance the iteration.
-    fn step(&mut self, node: Node<'a, T, S>, node_id: NonMax) -> Option<(Node<'a, T, S>, bool)> {
+    fn step(&mut self, node: Node<'a, T, I>, node_id: NonMax) -> Option<(Node<'a, T, I>, bool)> {
         if let Some(next) = node.first() {
             self.parents.push((node, node_id));
             return Some((next, true));

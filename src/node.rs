@@ -14,7 +14,7 @@ use core::ops::Range;
 use crate::builder::Id;
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::Span;
+use crate::span::{Index, Span};
 use crate::tree::Kind;
 
 pub use self::ancestors::Ancestors;
@@ -25,13 +25,13 @@ pub use self::walk::{Walk, WithDepths};
 pub use self::walk_events::{Event, WalkEvents};
 
 /// A node in the tree.
-pub struct Node<'a, T, S = Span> {
-    links: &'a Links<T, S>,
-    tree: &'a [Links<T, S>],
+pub struct Node<'a, T, I> {
+    links: &'a Links<T, I>,
+    tree: &'a [Links<T, I>],
 }
 
-impl<'a, T, S> Node<'a, T, S> {
-    pub(crate) const fn new(links: &'a Links<T, S>, tree: &'a [Links<T, S>]) -> Self {
+impl<'a, T, I> Node<'a, T, I> {
+    pub(crate) const fn new(links: &'a Links<T, I>, tree: &'a [Links<T, I>]) -> Self {
         Self { links, tree }
     }
 
@@ -65,7 +65,7 @@ impl<'a, T, S> Node<'a, T, S> {
     pub fn id(&self) -> Id {
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
-        let id = (current - base) / size_of::<Links<T, S>>();
+        let id = (current - base) / size_of::<Links<T, I>>();
         // SAFETY: It's impossible to construct a node with an offset which is
         // not a legal `NonMax`.
         unsafe { Id::new(NonMax::new_unchecked(id)) }
@@ -156,7 +156,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub const fn span(&self) -> &S {
+    pub const fn span(&self) -> &Span<I> {
         &self.links.span
     }
 
@@ -189,7 +189,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// See [Ancestors] for documentation.
     #[must_use]
-    pub fn ancestors(&self) -> Ancestors<'a, T, S> {
+    pub fn ancestors(&self) -> Ancestors<'a, T, I> {
         Ancestors::new(Some(*self))
     }
 
@@ -197,7 +197,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// See [Siblings] for documentation.
     #[must_use]
-    pub fn siblings(&self) -> Siblings<'a, T, S> {
+    pub fn siblings(&self) -> Siblings<'a, T, I> {
         Siblings::new(self.tree, self.links)
     }
 
@@ -205,7 +205,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// See [Children] for documentation.
     #[must_use]
-    pub fn children(&self) -> Children<'a, T, S> {
+    pub fn children(&self) -> Children<'a, T, I> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
@@ -214,7 +214,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk(&self) -> Walk<'a, T, S> {
+    pub fn walk(&self) -> Walk<'a, T, I> {
         Walk::new(self.tree, self.links.first)
     }
 
@@ -223,7 +223,7 @@ impl<'a, T, S> Node<'a, T, S> {
     ///
     /// See [`WalkEvents`] for documentation.
     #[must_use]
-    pub fn walk_events(&self) -> WalkEvents<'a, T, S> {
+    pub fn walk_events(&self) -> WalkEvents<'a, T, I> {
         WalkEvents::new(self.tree, self.links.first)
     }
 
@@ -258,7 +258,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn parent(&self) -> Option<Node<'a, T, S>> {
+    pub fn parent(&self) -> Option<Node<'a, T, I>> {
         self.node_at(self.links.parent?)
     }
 
@@ -290,7 +290,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn prev(self) -> Option<Node<'a, T, S>> {
+    pub fn prev(self) -> Option<Node<'a, T, I>> {
         self.node_at(self.links.prev?)
     }
 
@@ -321,7 +321,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn next(self) -> Option<Node<'a, T, S>> {
+    pub fn next(self) -> Option<Node<'a, T, I>> {
         self.node_at(self.links.next?)
     }
 
@@ -352,7 +352,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn first(&self) -> Option<Node<'a, T, S>> {
+    pub fn first(&self) -> Option<Node<'a, T, I>> {
         self.node_at(self.links.first?)
     }
 
@@ -383,7 +383,7 @@ impl<'a, T, S> Node<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn last(&self) -> Option<Node<'a, T, S>> {
+    pub fn last(&self) -> Option<Node<'a, T, I>> {
         self.node_at(self.links.last?)
     }
 
@@ -423,9 +423,9 @@ impl<'a, T, S> Node<'a, T, S> {
     /// assert_eq!(*found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T, S>>
+    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T, I>>
     where
-        P: FnMut(Node<'a, T, S>) -> bool,
+        P: FnMut(Node<'a, T, I>) -> bool,
     {
         // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
@@ -457,7 +457,7 @@ impl<'a, T, S> Node<'a, T, S> {
         }
     }
 
-    fn node_at(&self, id: NonMax) -> Option<Node<'a, T, S>> {
+    fn node_at(&self, id: NonMax) -> Option<Node<'a, T, I>> {
         let cur = self.tree.get(id.get())?;
 
         Some(Self {
@@ -467,7 +467,10 @@ impl<'a, T, S> Node<'a, T, S> {
     }
 }
 
-impl<T> Node<'_, T, Span> {
+impl<T, I> Node<'_, T, I>
+where
+    I: Index,
+{
     /// Access the [Span] of the node as a [Range].
     ///
     /// # Examples
@@ -495,15 +498,16 @@ impl<T> Node<'_, T, Span> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub const fn range(&self) -> Range<usize> {
+    #[inline]
+    pub fn range(&self) -> Range<usize> {
         self.links.span.range()
     }
 }
 
-impl<T, S> fmt::Debug for Node<'_, T, S>
+impl<T, I> fmt::Debug for Node<'_, T, I>
 where
     T: fmt::Debug,
-    S: fmt::Debug,
+    I: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
@@ -514,19 +518,19 @@ where
     }
 }
 
-impl<T, S> Clone for Node<'_, T, S> {
+impl<T, I> Clone for Node<'_, T, I> {
     #[inline]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T, S> Copy for Node<'_, T, S> {}
+impl<T, I> Copy for Node<'_, T, I> {}
 
-impl<T, S> PartialEq for Node<'_, T, S>
+impl<T, I> PartialEq for Node<'_, T, I>
 where
     T: PartialEq,
-    S: PartialEq,
+    I: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.links.data == other.links.data
@@ -535,9 +539,9 @@ where
     }
 }
 
-impl<T, S> Eq for Node<'_, T, S>
+impl<T, I> Eq for Node<'_, T, I>
 where
     T: Eq,
-    S: Eq,
+    I: Eq,
 {
 }
