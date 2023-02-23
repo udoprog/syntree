@@ -22,12 +22,18 @@ enum Syntax {
 
 use Syntax::{ADD, DIV, ERROR, MUL, NUMBER, OPERATION, ROOT, SUB, WHITESPACE};
 
-struct Parser<I: Iterator<Item = (Syntax, usize)>> {
-    builder: Builder<Syntax>,
-    iter: Peekable<I>,
+struct Parser<Iter>
+where
+    Iter: Iterator<Item = (Syntax, usize)>,
+{
+    builder: Builder<Syntax, u32>,
+    iter: Peekable<Iter>,
 }
 
-impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
+impl<Iter> Parser<Iter>
+where
+    Iter: Iterator<Item = (Syntax, usize)>,
+{
     fn peek(&mut self) -> Result<Option<Syntax>, Error> {
         while self.iter.peek().map_or(false, |&(t, _)| t == WHITESPACE) {
             self.bump()?;
@@ -83,7 +89,7 @@ impl<I: Iterator<Item = (Syntax, usize)>> Parser<I> {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<Syntax>, Error> {
+    fn parse(mut self) -> Result<Tree<Syntax, u32>, Error> {
         self.builder.open(ROOT)?;
         self.parse_add()?;
         self.builder.close()?;

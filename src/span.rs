@@ -1,73 +1,203 @@
 //! Types to deal with spans in syntax trees.
 
+use core::cmp;
 use core::fmt;
-use core::mem::size_of;
 use core::ops;
-use core::ops::Range;
 
 use crate::builder::Id;
 use crate::non_max::NonMax;
 
-/// The index used in a span.
-#[cfg(syntree_compact)]
-pub(crate) type Index = u32;
+mod sealed {
+    pub trait Sealed {}
 
-#[cfg(syntree_compact)]
-#[inline]
-pub(crate) fn usize_to_index(value: usize) -> Option<u32> {
-    u32::try_from(value).ok()
+    impl Sealed for u32 {}
+    impl Sealed for usize {}
+    impl Sealed for super::Empty {}
+
+    impl<I> Sealed for Vec<super::TreeIndex<I>> where I: super::Index {}
 }
 
-#[cfg(not(syntree_compact))]
-pub(crate) type Index = usize;
+/// Ensure u32 is smaller or equal to usize.
+const _: () = assert!(core::mem::size_of::<u32>() <= core::mem::size_of::<usize>());
 
-#[cfg(not(syntree_compact))]
-#[inline]
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn usize_to_index(value: usize) -> Option<Index> {
-    Some(value)
+/// A type that can be used as an index in a tree.
+pub trait Index: Sized + Copy + cmp::Ord + cmp::Eq + self::sealed::Sealed {
+    #[doc(hidden)]
+    const EMPTY: Self;
+    #[doc(hidden)]
+    type Indexes: Indexes<Self>;
+    #[doc(hidden)]
+    type Length: Length;
+    #[doc(hidden)]
+    fn is_empty(&self) -> bool;
+    #[doc(hidden)]
+    fn as_usize(self) -> usize;
+    #[doc(hidden)]
+    fn checked_add_len(self, other: Self::Length) -> Option<Self>;
+    #[doc(hidden)]
+    fn len_to(self, other: Self) -> Self::Length;
+    #[doc(hidden)]
+    fn saturating_sub(self, other: Self) -> Self;
+    #[doc(hidden)]
+    fn from_usize(value: usize) -> Option<Self>;
 }
 
-/// Ensure that the specified index is smaller or equal to [usize].
-const _: () = assert!(size_of::<Index>() <= size_of::<usize>());
+#[doc(hidden)]
+pub trait Length: Copy + self::sealed::Sealed {
+    #[doc(hidden)]
+    const EMPTY: Self;
+    #[doc(hidden)]
+    fn is_empty(&self) -> bool;
+}
+
+impl Length for usize {
+    const EMPTY: Self = 0;
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        *self == 0
+    }
+}
+
+impl Index for u32 {
+    const EMPTY: Self = 0;
+
+    type Indexes = Vec<TreeIndex<Self>>;
+    type Length = usize;
+
+    fn is_empty(&self) -> bool {
+        *self == 0
+    }
+
+    #[inline]
+    fn as_usize(self) -> usize {
+        self as usize
+    }
+
+    #[inline]
+    fn checked_add_len(self, other: Self::Length) -> Option<Self> {
+        u32::checked_add(self, u32::try_from(other).ok()?)
+    }
+
+    #[inline]
+    fn len_to(self, other: Self) -> Self::Length {
+        other.saturating_sub(self) as usize
+    }
+
+    #[inline]
+    fn saturating_sub(self, other: Self) -> Self {
+        u32::saturating_sub(self, other)
+    }
+
+    #[inline]
+    fn from_usize(value: usize) -> Option<Self> {
+        u32::try_from(value).ok()
+    }
+}
+
+impl Index for usize {
+    const EMPTY: Self = 0;
+
+    type Indexes = Vec<TreeIndex<Self>>;
+    type Length = usize;
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        *self == 0
+    }
+
+    #[inline]
+    fn as_usize(self) -> usize {
+        self
+    }
+
+    #[inline]
+    fn checked_add_len(self, other: Self::Length) -> Option<Self> {
+        usize::checked_add(self, other)
+    }
+
+    #[inline]
+    fn len_to(self, other: Self) -> Self::Length {
+        other.saturating_sub(self)
+    }
+
+    #[inline]
+    fn saturating_sub(self, other: Self) -> Self {
+        usize::saturating_sub(self, other)
+    }
+
+    #[inline]
+    fn from_usize(value: usize) -> Option<Self> {
+        Some(value)
+    }
+}
+
+impl Index for Empty {
+    const EMPTY: Self = Empty;
+
+    type Indexes = Empty;
+    type Length = Empty;
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn as_usize(self) -> usize {
+        0
+    }
+
+    #[inline]
+    fn checked_add_len(self, _: Self::Length) -> Option<Self> {
+        Some(Empty)
+    }
+
+    #[inline]
+    fn len_to(self, _: Self) -> Self {
+        Empty
+    }
+
+    #[inline]
+    fn saturating_sub(self, _: Self) -> Self {
+        Empty
+    }
+
+    #[inline]
+    fn from_usize(_: usize) -> Option<Self> {
+        Some(Empty)
+    }
+}
 
 /// A span in the source code, akin to `start..end` so the end of the span is
 /// exclusive.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
-pub struct Span {
+pub struct Span<I> {
     /// The start of the span.
-    pub start: Index,
+    pub start: I,
     /// The end of the span.
-    pub end: Index,
+    pub end: I,
 }
 
-impl Span {
+impl<I> Span<I>
+where
+    I: Index,
+{
     /// Construct a new span.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `start` does not precede or equal to `end`.
-    ///
-    /// ```should_panic
-    /// use syntree::Span;
-    ///
-    /// Span::new(9, 8);
-    /// ```
     ///
     /// # Examples
     ///
     /// ```
     /// use syntree::Span;
     ///
-    /// let span = Span::new(4, 8);
+    /// let span = Span::new(4u32, 8u32);
     ///
     /// assert_eq!(span.start, 4);
     /// assert_eq!(span.end, 8);
     /// ```
     #[must_use]
-    pub const fn new(start: Index, end: Index) -> Self {
-        assert!(start <= end, "start of the span must come before end");
+    pub const fn new(start: I, end: I) -> Self {
         Self { start, end }
     }
 
@@ -78,10 +208,10 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// assert_eq!(Span::point(4), Span::new(4, 4));
+    /// assert_eq!(Span::point(4u32), Span::new(4u32, 4u32));
     /// ```
     #[must_use]
-    pub const fn point(at: Index) -> Self {
+    pub const fn point(at: I) -> Self {
         Self { start: at, end: at }
     }
 
@@ -92,8 +222,8 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// let a = Span::new(4, 8);
-    /// let b = Span::new(5, 9);
+    /// let a = Span::new(4u32, 8u32);
+    /// let b = Span::new(5u32, 9u32);
     ///
     /// let span = a.join(&b);
     ///
@@ -102,18 +232,11 @@ impl Span {
     /// assert_eq!(span, b.join(&a));
     /// ```
     #[must_use]
-    pub const fn join(&self, other: &Self) -> Self {
+    #[inline]
+    pub fn join(&self, other: &Self) -> Self {
         Self {
-            start: if self.start < other.start {
-                self.start
-            } else {
-                other.start
-            },
-            end: if self.end > other.end {
-                self.end
-            } else {
-                other.end
-            },
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
         }
     }
 
@@ -124,14 +247,13 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// let a = Span::new(4, 8);
+    /// let a = Span::new(4u32, 8u32);
     ///
     /// assert_eq!(a.range(), 4..8);
     /// ```
-    #[allow(clippy::unnecessary_cast)]
     #[must_use]
-    pub const fn range(self) -> ops::Range<usize> {
-        (self.start as usize)..(self.end as usize)
+    pub fn range(self) -> ops::Range<usize> {
+        self.start.as_usize()..self.end.as_usize()
     }
 
     /// The length of the span.
@@ -141,12 +263,13 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// assert_eq!(Span::new(0, 0).len(), 0);
-    /// assert_eq!(Span::new(0, 10).len(), 10);
+    /// assert_eq!(Span::new(0u32, 0u32).len(), 0);
+    /// assert_eq!(Span::new(0u32, 10u32).len(), 10);
     /// ```
     #[must_use]
-    pub const fn len(&self) -> Index {
-        self.end.saturating_sub(self.start)
+    #[inline]
+    pub fn len(&self) -> I::Length {
+        self.start.len_to(self.end)
     }
 
     /// Test if the span is empty.
@@ -156,11 +279,12 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// assert!(Span::new(0, 0).is_empty());
-    /// assert!(!Span::new(0, 10).is_empty());
+    /// assert!(Span::new(0u32, 0u32).is_empty());
+    /// assert!(!Span::new(0u32, 10u32).is_empty());
     /// ```
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
         self.end == self.start
     }
 
@@ -171,107 +295,66 @@ impl Span {
     /// ```
     /// use syntree::Span;
     ///
-    /// assert!(!Span::new(2, 2).contains(2));
-    /// assert!(Span::new(2, 3).contains(2));
-    /// assert!(!Span::new(2, 3).contains(3));
+    /// assert!(!Span::new(2u32, 2u32).contains(2));
+    /// assert!(Span::new(2u32, 3u32).contains(2));
+    /// assert!(!Span::new(2u32, 3u32).contains(3));
     /// ```
     #[must_use]
-    pub const fn contains(self, index: Index) -> bool {
+    #[inline]
+    pub fn contains(self, index: I) -> bool {
         self.start <= index && index < self.end
     }
 }
 
-impl fmt::Display for Span {
+impl<I> fmt::Display for Span<I>
+where
+    I: fmt::Display,
+{
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}..{}", self.start, self.end)
     }
 }
 
-impl fmt::Debug for Span {
+impl<I> fmt::Debug for Span<I>
+where
+    I: fmt::Debug,
+{
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (&self.start, &self.end).fmt(f)
     }
 }
 
-impl PartialEq<&Span> for Span {
+impl<I> PartialEq<&Span<I>> for Span<I>
+where
+    I: PartialEq,
+{
     #[inline]
-    fn eq(&self, other: &&Span) -> bool {
+    fn eq(&self, other: &&Span<I>) -> bool {
         *self == **other
     }
 }
 
-impl PartialEq<Span> for &Span {
+impl<I> PartialEq<Span<I>> for &Span<I>
+where
+    I: PartialEq,
+{
     #[inline]
-    fn eq(&self, other: &Span) -> bool {
+    fn eq(&self, other: &Span<I>) -> bool {
         **self == *other
     }
 }
 
-mod sealed {
-    pub trait Sealed {}
-
-    impl Sealed for super::Span {}
-    impl Sealed for super::Empty {}
-    impl Sealed for usize {}
-    impl Sealed for Vec<super::TreeIndex> {}
-}
-
-/// Trait governing the behavior of a span, allowing it to either use the real
-/// [`Span`] or the zero-cost [`Empty`] span.
-pub trait TreeSpan: self::sealed::Sealed + Copy {
-    #[doc(hidden)]
+#[doc(hidden)]
+pub trait Indexes<I>: self::sealed::Sealed {
     const EMPTY: Self;
 
     #[doc(hidden)]
-    const INDEXES: Self::Indexes;
+    fn push(&mut self, cursor: I, id: Id);
 
     #[doc(hidden)]
-    type Length: Length;
-
-    #[doc(hidden)]
-    type Indexes: Indexes;
-
-    #[doc(hidden)]
-    fn point(index: Index) -> Self;
-
-    #[doc(hidden)]
-    fn new(start: Index, end: Index) -> Self;
-
-    #[doc(hidden)]
-    fn start(&self) -> Index;
-
-    #[doc(hidden)]
-    fn end(&self) -> Index;
-
-    #[doc(hidden)]
-    fn set_end(&mut self, end: Index);
-
-    #[doc(hidden)]
-    fn len(&self) -> Index;
-
-    #[doc(hidden)]
-    fn range(self) -> Range<usize>;
-}
-
-#[doc(hidden)]
-pub trait Length: self::sealed::Sealed + Copy {
-    #[doc(hidden)]
-    const EMPTY: Self;
-
-    #[doc(hidden)]
-    fn is_empty(&self) -> bool;
-
-    #[doc(hidden)]
-    fn into_index(self) -> Option<Index>;
-}
-
-#[doc(hidden)]
-pub trait Indexes: self::sealed::Sealed {
-    #[doc(hidden)]
-    fn push(&mut self, cursor: Index, id: Id);
-
-    #[doc(hidden)]
-    fn binary_search(&self, index: Index) -> Result<usize, usize>;
+    fn binary_search(&self, index: I) -> Result<usize, usize>;
 
     #[doc(hidden)]
     fn get(&self, index: usize) -> Option<Id>;
@@ -279,8 +362,8 @@ pub trait Indexes: self::sealed::Sealed {
 
 #[derive(Debug, Clone, Copy)]
 #[doc(hidden)]
-pub struct TreeIndex {
-    pub(crate) index: Index,
+pub struct TreeIndex<I> {
+    pub(crate) index: I,
     pub(crate) id: NonMax,
 }
 
@@ -291,77 +374,25 @@ impl From<Empty> for usize {
     }
 }
 
-impl Indexes for Vec<TreeIndex> {
+impl<I> Indexes<I> for Vec<TreeIndex<I>>
+where
+    I: Index,
+{
+    const EMPTY: Self = Self::new();
+
     #[inline]
-    fn push(&mut self, index: Index, Id(id): Id) {
+    fn push(&mut self, index: I, Id(id): Id) {
         Vec::push(self, TreeIndex { index, id })
     }
 
     #[inline]
-    fn binary_search(&self, index: Index) -> Result<usize, usize> {
+    fn binary_search(&self, index: I) -> Result<usize, usize> {
         self.binary_search_by(|f| f.index.cmp(&index))
     }
 
     #[inline]
     fn get(&self, index: usize) -> Option<Id> {
         Some(Id(<[_]>::get(self, index)?.id))
-    }
-}
-
-impl Length for usize {
-    const EMPTY: Self = 0;
-
-    #[inline]
-    fn is_empty(&self) -> bool {
-        *self == 0
-    }
-
-    #[inline]
-    fn into_index(self) -> Option<Index> {
-        usize_to_index(self)
-    }
-}
-
-impl TreeSpan for Span {
-    const EMPTY: Self = Span::point(0);
-    const INDEXES: Self::Indexes = Vec::new();
-
-    type Length = usize;
-    type Indexes = Vec<TreeIndex>;
-
-    #[inline]
-    fn point(index: Index) -> Self {
-        Span::point(index)
-    }
-
-    #[inline]
-    fn new(start: Index, end: Index) -> Self {
-        Span::new(start, end)
-    }
-
-    #[inline]
-    fn start(&self) -> Index {
-        self.start
-    }
-
-    #[inline]
-    fn end(&self) -> Index {
-        self.end
-    }
-
-    #[inline]
-    fn set_end(&mut self, end: Index) {
-        self.end = end;
-    }
-
-    #[inline]
-    fn len(&self) -> Index {
-        Span::len(self)
-    }
-
-    #[inline]
-    fn range(self) -> Range<usize> {
-        Span::range(self)
     }
 }
 
@@ -374,44 +405,20 @@ impl TreeSpan for Span {
 #[repr(transparent)]
 pub struct Empty;
 
-impl TreeSpan for Empty {
-    const EMPTY: Self = Empty;
-    const INDEXES: Self::Indexes = Empty;
-
-    type Length = Empty;
-    type Indexes = Empty;
+impl<I> Indexes<I> for Empty {
+    const EMPTY: Self = Self;
 
     #[inline]
-    fn point(_: Index) -> Self {
-        Empty
+    fn push(&mut self, _: I, _: Id) {}
+
+    #[inline]
+    fn binary_search(&self, _: I) -> Result<usize, usize> {
+        Err(0)
     }
 
     #[inline]
-    fn new(_: Index, _: Index) -> Self {
-        Empty
-    }
-
-    #[inline]
-    fn start(&self) -> Index {
-        0
-    }
-
-    #[inline]
-    fn end(&self) -> Index {
-        0
-    }
-
-    #[inline]
-    fn set_end(&mut self, _: Index) {}
-
-    #[inline]
-    fn len(&self) -> Index {
-        0
-    }
-
-    #[inline]
-    fn range(self) -> Range<usize> {
-        0..0
+    fn get(&self, _: usize) -> Option<Id> {
+        None
     }
 }
 
@@ -421,25 +428,5 @@ impl Length for Empty {
     #[inline]
     fn is_empty(&self) -> bool {
         true
-    }
-
-    #[inline]
-    fn into_index(self) -> Option<Index> {
-        Some(0)
-    }
-}
-
-impl Indexes for Empty {
-    #[inline]
-    fn push(&mut self, _: Index, _: Id) {}
-
-    #[inline]
-    fn binary_search(&self, _: Index) -> Result<usize, usize> {
-        Err(0)
-    }
-
-    #[inline]
-    fn get(&self, _: usize) -> Option<Id> {
-        None
     }
 }

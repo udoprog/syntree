@@ -7,7 +7,7 @@ use Syntax::{EOF, WHITESPACE};
 /// Parser and lexer baked into one.
 pub(crate) struct Parser<'a> {
     lexer: Lexer<'a>,
-    pub(crate) tree: Builder<Syntax>,
+    pub(crate) tree: Builder<Syntax, u32>,
     // One token of lookahead.
     buf: Option<Token>,
 }

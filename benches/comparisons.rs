@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{Builder, Error, Tree};
+use syntree::{span, Builder, Error, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -36,8 +36,11 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree_build(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax>, Error> {
-    let mut builder = Builder::new();
+fn syntree_build<I>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, I>, Error>
+where
+    I: span::Index<Length = usize>,
+{
+    let mut builder = Builder::new_with();
 
     let c = builder.checkpoint()?;
 
@@ -80,8 +83,11 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
     SyntaxNode::new_root(builder.finish())
 }
 
-fn syntree_tree(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax>, Error> {
-    let mut builder = Builder::new();
+fn syntree_tree<I>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, I>, Error>
+where
+    I: span::Index<Length = usize>,
+{
+    let mut builder = Builder::<_, I>::new_with();
 
     let c = builder.checkpoint()?;
 
@@ -105,8 +111,12 @@ fn setup(c: &mut Criterion) {
         let mut group = c.benchmark_group("building");
 
         for size in sizes {
-            group.bench_with_input(BenchmarkId::new("syntree", size), &size, |b, size| {
-                b.iter(|| syntree_build(&strings, *size).expect("failed to build tree"))
+            group.bench_with_input(BenchmarkId::new("syntree-u32", size), &size, |b, size| {
+                b.iter(|| syntree_build::<u32>(&strings, *size).expect("failed to build tree"))
+            });
+
+            group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
+                b.iter(|| syntree_build::<usize>(&strings, *size).expect("failed to build tree"))
             });
 
             group.bench_with_input(BenchmarkId::new("rowan", size), &size, |b, size| {
@@ -119,8 +129,14 @@ fn setup(c: &mut Criterion) {
         let mut group = c.benchmark_group("children_full");
 
         for size in sizes {
-            group.bench_with_input(BenchmarkId::new("syntree", size), &size, |b, size| {
-                let syntree = syntree_tree(*size, &strings).unwrap();
+            group.bench_with_input(BenchmarkId::new("syntree-u32", size), &size, |b, size| {
+                let syntree = syntree_tree::<u32>(*size, &strings).unwrap();
+                let root = syntree.first().unwrap();
+                b.iter(|| root.children().count())
+            });
+
+            group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
+                let syntree = syntree_tree::<usize>(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
                 b.iter(|| root.children().count())
             });
@@ -136,8 +152,14 @@ fn setup(c: &mut Criterion) {
         let mut group = c.benchmark_group("children_nodes_only");
 
         for size in sizes {
-            group.bench_with_input(BenchmarkId::new("syntree", size), &size, |b, size| {
-                let syntree = syntree_tree(*size, &strings).unwrap();
+            group.bench_with_input(BenchmarkId::new("syntree-u32", size), &size, |b, size| {
+                let syntree = syntree_tree::<u32>(*size, &strings).unwrap();
+                let root = syntree.first().unwrap();
+                b.iter(|| root.children().skip_tokens().count())
+            });
+
+            group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
+                let syntree = syntree_tree::<usize>(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
                 b.iter(|| root.children().skip_tokens().count())
             });

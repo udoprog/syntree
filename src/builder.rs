@@ -5,7 +5,7 @@ use core::mem::replace;
 use crate::error::Error;
 use crate::links::Links;
 use crate::non_max::NonMax;
-use crate::span::{Index, Indexes, Length, Span, TreeSpan};
+use crate::span::{Index, Indexes, Length, Span};
 use crate::tree::{Kind, Tree};
 
 pub use self::checkpoint::Checkpoint;
@@ -52,12 +52,12 @@ impl Id {
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug)]
-pub struct Builder<T, S = Span>
+pub struct Builder<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     /// Data in the tree being built.
-    tree: Tree<T, S>,
+    tree: Tree<T, I>,
     /// References to parent nodes of the current node being constructed.
     parents: Vec<NonMax>,
     /// The last checkpoint that was handed out.
@@ -65,11 +65,11 @@ where
     /// Reference to last sibling inserted.
     sibling: Option<NonMax>,
     /// The current cursor.
-    cursor: Index,
+    cursor: I,
 }
 
-impl<T> Builder<T> {
-    /// Construct a new tree with the default [`Span`].
+impl<T> Builder<T, u32> {
+    /// Construct a new tree with a default [`Span`] based on `u32`.
     ///
     /// # Examples
     ///
@@ -107,9 +107,9 @@ impl<T> Builder<T> {
     }
 }
 
-impl<T, S> Builder<T, S>
+impl<T, I> Builder<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     /// Construct a new tree with a custom span.
     ///
@@ -152,7 +152,7 @@ where
             parents: Vec::new(),
             checkpoint: None,
             sibling: None,
-            cursor: 0,
+            cursor: I::EMPTY,
         }
     }
 
@@ -184,7 +184,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn open(&mut self, data: T) -> Result<Id, Error> {
-        let id = self.insert(data, Kind::Node, S::point(self.cursor))?;
+        let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
         self.parents.push(id);
         Ok(Id(id))
     }
@@ -224,12 +224,12 @@ where
                 .tree
                 .get_mut(head)
                 .ok_or(Error::MissingNode(Id(head)))?;
-            let end = node.span.end();
+            let end = node.span.end;
             let parent = self
                 .tree
                 .get_mut(parent)
                 .ok_or(Error::MissingNode(Id(parent)))?;
-            parent.span.set_end(end);
+            parent.span.end = end;
         }
 
         Ok(())
@@ -264,18 +264,15 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn token(&mut self, value: T, len: S::Length) -> Result<Id, Error> {
+    pub fn token(&mut self, value: T, len: I::Length) -> Result<Id, Error> {
         let start = self.cursor;
 
         if !len.is_empty() {
-            self.cursor = len
-                .into_index()
-                .and_then(|len| self.cursor.checked_add(len))
-                .ok_or(Error::Overflow)?;
-            self.tree.span_mut().set_end(self.cursor);
+            self.cursor = self.cursor.checked_add_len(len).ok_or(Error::Overflow)?;
+            self.tree.span_mut().end = self.cursor;
         }
 
-        let id = self.insert(value, Kind::Token, S::new(start, self.cursor))?;
+        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor))?;
         self.sibling = Some(id);
         let id = Id(id);
 
@@ -316,7 +313,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn token_empty(&mut self, value: T) -> Result<Id, Error> {
-        self.token(value, S::Length::EMPTY)
+        self.token(value, I::Length::EMPTY)
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
@@ -480,7 +477,7 @@ where
         let next_id = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, Kind::Node, S::point(self.cursor))?;
+            let new_id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
             self.sibling = Some(new_id);
             debug_assert_eq!(new_id, id, "new id should match the expected id");
             return Ok(Id(new_id));
@@ -495,7 +492,7 @@ where
         let (last, span) = if let Some(next) = links.next {
             let span = links.span;
             let (last, end) = restructure_close_at(&mut self.tree, next_id, next)?;
-            (Some(last), S::new(span.start(), end))
+            (Some(last), Span::new(span.start, end))
         } else {
             (Some(id), links.span)
         };
@@ -588,7 +585,7 @@ where
     /// assert!(matches!(tree.build(), Err(Error::BuildError)));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn build(self) -> Result<Tree<T, S>, Error> {
+    pub fn build(self) -> Result<Tree<T, I>, Error> {
         if !self.parents.is_empty() {
             return Err(Error::BuildError);
         }
@@ -597,7 +594,7 @@ where
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: S) -> Result<NonMax, Error> {
+    fn insert(&mut self, data: T, kind: Kind, span: Span<I>) -> Result<NonMax, Error> {
         let new = NonMax::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
@@ -621,7 +618,7 @@ where
                 }
 
                 node.last = Some(new);
-                node.span.set_end(span.end());
+                node.span.end = span.end;
             }
         } else {
             let (first, last) = self.tree.links_mut();
@@ -641,11 +638,11 @@ where
     }
 }
 
-impl<T, S> Clone for Builder<T, S>
+impl<T, I> Clone for Builder<T, I>
 where
     T: Clone,
-    S: TreeSpan,
-    S::Indexes: Clone,
+    I: Index,
+    I::Indexes: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -659,9 +656,9 @@ where
     }
 }
 
-impl<T, S> Default for Builder<T, S>
+impl<T, I> Default for Builder<T, I>
 where
-    S: TreeSpan,
+    I: Index,
 {
     #[inline]
     fn default() -> Self {
@@ -672,21 +669,21 @@ where
 // Adjust span to encapsulate all children and check that we just inserted the
 // checkpointed node in the right location which should be the tail sibling of
 // the replaced node.
-fn restructure_close_at<T, S>(
-    tree: &mut Tree<T, S>,
+fn restructure_close_at<T, I>(
+    tree: &mut Tree<T, I>,
     parent_id: NonMax,
     next: NonMax,
-) -> Result<(NonMax, Index), Error>
+) -> Result<(NonMax, I), Error>
 where
-    S: TreeSpan,
+    I: Index,
 {
     let mut links = tree.get_mut(next).ok_or(Error::MissingNode(Id(next)))?;
-    let mut last = (next, links.span.end());
+    let mut last = (next, links.span.end);
     links.parent = Some(parent_id);
 
     while let Some(next) = links.next {
         links = tree.get_mut(next).ok_or(Error::MissingNode(Id(next)))?;
-        last = (next, links.span.end());
+        last = (next, links.span.end);
         links.parent = Some(parent_id);
     }
 
