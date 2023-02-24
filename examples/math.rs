@@ -26,7 +26,7 @@ struct Parser<Iter>
 where
     Iter: Iterator<Item = (Syntax, usize)>,
 {
-    builder: Builder<Syntax, u32>,
+    builder: Builder<Syntax, u32, usize>,
     iter: Peekable<Iter>,
 }
 
@@ -89,7 +89,7 @@ where
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<Syntax, u32>, Error> {
+    fn parse(mut self) -> Result<Tree<Syntax, u32, usize>, Error> {
         self.builder.open(ROOT)?;
         self.parse_add()?;
         self.builder.close()?;

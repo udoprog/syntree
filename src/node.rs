@@ -11,9 +11,8 @@ use core::fmt;
 use core::mem::size_of;
 use core::ops::Range;
 
-use crate::builder::Id;
 use crate::links::Links;
-use crate::non_max::NonMax;
+use crate::pointer::Pointer;
 use crate::span::{Index, Span};
 use crate::tree::Kind;
 
@@ -25,50 +24,14 @@ pub use self::walk::{Walk, WithDepths};
 pub use self::walk_events::{Event, WalkEvents};
 
 /// A node in the tree.
-pub struct Node<'a, T, I> {
-    links: &'a Links<T, I>,
-    tree: &'a [Links<T, I>],
+pub struct Node<'a, T, I, P> {
+    links: &'a Links<T, I, P>,
+    tree: &'a [Links<T, I, P>],
 }
 
-impl<'a, T, I> Node<'a, T, I> {
-    pub(crate) const fn new(links: &'a Links<T, I>, tree: &'a [Links<T, I>]) -> Self {
+impl<'a, T, I, P> Node<'a, T, I, P> {
+    pub(crate) const fn new(links: &'a Links<T, I, P>, tree: &'a [Links<T, I, P>]) -> Self {
         Self { links, tree }
-    }
-
-    /// Get the identifier of the current node.
-    ///
-    /// This can be used to register a change in a [`ChangeSet`] later.
-    ///
-    /// ```
-    /// let mut tree = syntree::Builder::new();
-    /// let root_id = tree.open("root")?;
-    /// let child_id = tree.open("child")?;
-    /// tree.close()?;
-    ///
-    /// let child2_id = tree.open("child2")?;
-    /// tree.close()?;
-    /// tree.close()?;
-    ///
-    /// let tree = tree.build()?;
-    /// let root = tree.first().ok_or("missing root")?;
-    /// let child = root.first().ok_or("missing child")?;
-    /// let child2 = child.next().ok_or("missing child2")?;
-    ///
-    /// assert_eq!(root.id(), root_id);
-    /// assert_eq!(child.id(), child_id);
-    /// assert_eq!(child2.id(), child2_id);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
-    /// ```
-    ///
-    /// [`ChangeSet`]: crate::edit::ChangeSet
-    #[must_use]
-    pub fn id(&self) -> Id {
-        let current = self.links as *const _ as usize;
-        let base = self.tree.as_ptr() as usize;
-        let id = (current - base) / size_of::<Links<T, I>>();
-        // SAFETY: It's impossible to construct a node with an offset which is
-        // not a legal `NonMax`.
-        unsafe { Id::new(NonMax::new_unchecked(id)) }
     }
 
     /// Access the data associated with the node.
@@ -189,7 +152,7 @@ impl<'a, T, I> Node<'a, T, I> {
     ///
     /// See [Ancestors] for documentation.
     #[must_use]
-    pub fn ancestors(&self) -> Ancestors<'a, T, I> {
+    pub fn ancestors(&self) -> Ancestors<'a, T, I, P> {
         Ancestors::new(Some(*self))
     }
 
@@ -197,15 +160,20 @@ impl<'a, T, I> Node<'a, T, I> {
     ///
     /// See [Siblings] for documentation.
     #[must_use]
-    pub fn siblings(&self) -> Siblings<'a, T, I> {
+    pub fn siblings(&self) -> Siblings<'a, T, I, P> {
         Siblings::new(self.tree, self.links)
     }
+}
 
+impl<'a, T, I, P> Node<'a, T, I, P>
+where
+    P: Copy,
+{
     /// Get an iterator over the children of this node.
     ///
     /// See [Children] for documentation.
     #[must_use]
-    pub fn children(&self) -> Children<'a, T, I> {
+    pub fn children(&self) -> Children<'a, T, I, P> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
@@ -214,7 +182,7 @@ impl<'a, T, I> Node<'a, T, I> {
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk(&self) -> Walk<'a, T, I> {
+    pub fn walk(&self) -> Walk<'a, T, I, P> {
         Walk::new(self.tree, self.links.first)
     }
 
@@ -223,10 +191,15 @@ impl<'a, T, I> Node<'a, T, I> {
     ///
     /// See [`WalkEvents`] for documentation.
     #[must_use]
-    pub fn walk_events(&self) -> WalkEvents<'a, T, I> {
+    pub fn walk_events(&self) -> WalkEvents<'a, T, I, P> {
         WalkEvents::new(self.tree, self.links.first)
     }
+}
 
+impl<'a, T, I, P> Node<'a, T, I, P>
+where
+    P: Pointer,
+{
     /// Get immediate parent to this node.
     ///
     /// # Examples
@@ -258,7 +231,7 @@ impl<'a, T, I> Node<'a, T, I> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn parent(&self) -> Option<Node<'a, T, I>> {
+    pub fn parent(&self) -> Option<Node<'a, T, I, P>> {
         self.node_at(self.links.parent?)
     }
 
@@ -290,7 +263,7 @@ impl<'a, T, I> Node<'a, T, I> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn prev(self) -> Option<Node<'a, T, I>> {
+    pub fn prev(&self) -> Option<Node<'a, T, I, P>> {
         self.node_at(self.links.prev?)
     }
 
@@ -321,7 +294,7 @@ impl<'a, T, I> Node<'a, T, I> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn next(self) -> Option<Node<'a, T, I>> {
+    pub fn next(&self) -> Option<Node<'a, T, I, P>> {
         self.node_at(self.links.next?)
     }
 
@@ -352,7 +325,7 @@ impl<'a, T, I> Node<'a, T, I> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn first(&self) -> Option<Node<'a, T, I>> {
+    pub fn first(&self) -> Option<Node<'a, T, I, P>> {
         self.node_at(self.links.first?)
     }
 
@@ -383,7 +356,7 @@ impl<'a, T, I> Node<'a, T, I> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn last(&self) -> Option<Node<'a, T, I>> {
+    pub fn last(&self) -> Option<Node<'a, T, I, P>> {
         self.node_at(self.links.last?)
     }
 
@@ -423,9 +396,9 @@ impl<'a, T, I> Node<'a, T, I> {
     /// assert_eq!(*found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T, I>>
+    pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, P>>
     where
-        P: FnMut(Node<'a, T, I>) -> bool,
+        F: FnMut(Node<'a, T, I, P>) -> bool,
     {
         // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
@@ -457,7 +430,7 @@ impl<'a, T, I> Node<'a, T, I> {
         }
     }
 
-    fn node_at(&self, id: NonMax) -> Option<Node<'a, T, I>> {
+    fn node_at(&self, id: P) -> Option<Node<'a, T, I, P>> {
         let cur = self.tree.get(id.get())?;
 
         Some(Self {
@@ -467,7 +440,48 @@ impl<'a, T, I> Node<'a, T, I> {
     }
 }
 
-impl<T, I> Node<'_, T, I>
+impl<T, I, P> Node<'_, T, I, P>
+where
+    P: Pointer,
+{
+    /// Get the identifier of the current node.
+    ///
+    /// This can be used to register a change in a [`ChangeSet`] later.
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// let root_id = tree.open("root")?;
+    /// let child_id = tree.open("child")?;
+    /// tree.close()?;
+    ///
+    /// let child2_id = tree.open("child2")?;
+    /// tree.close()?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    /// let root = tree.first().ok_or("missing root")?;
+    /// let child = root.first().ok_or("missing child")?;
+    /// let child2 = child.next().ok_or("missing child2")?;
+    ///
+    /// assert_eq!(root.id(), root_id);
+    /// assert_eq!(child.id(), child_id);
+    /// assert_eq!(child2.id(), child2_id);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// [`ChangeSet`]: crate::edit::ChangeSet
+    #[must_use]
+    pub fn id(&self) -> P {
+        let current = self.links as *const _ as usize;
+        let base = self.tree.as_ptr() as usize;
+        let id = (current - base) / size_of::<Links<T, I, P>>();
+        // SAFETY: It's impossible to construct a node with an offset which is
+        // not a legal `NonMax`.
+        unsafe { P::new_unchecked(id) }
+    }
+}
+
+impl<T, I, P> Node<'_, T, I, P>
 where
     I: Index,
 {
@@ -504,7 +518,7 @@ where
     }
 }
 
-impl<T, I> fmt::Debug for Node<'_, T, I>
+impl<T, I, P> fmt::Debug for Node<'_, T, I, P>
 where
     T: fmt::Debug,
     I: fmt::Debug,
@@ -518,28 +532,28 @@ where
     }
 }
 
-impl<T, I> Clone for Node<'_, T, I> {
+impl<T, I, P> Clone for Node<'_, T, I, P> {
     #[inline]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T, I> Copy for Node<'_, T, I> {}
+impl<T, I, P> Copy for Node<'_, T, I, P> {}
 
-impl<T, I> PartialEq for Node<'_, T, I>
+impl<T, I, A, B> PartialEq<Node<'_, T, I, A>> for Node<'_, T, I, B>
 where
     T: PartialEq,
     I: PartialEq,
 {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Node<'_, T, I, A>) -> bool {
         self.links.data == other.links.data
             && self.links.kind == other.links.kind
             && self.links.span == other.links.span
     }
 }
 
-impl<T, I> Eq for Node<'_, T, I>
+impl<T, I, P> Eq for Node<'_, T, I, P>
 where
     T: Eq,
     I: Eq,

@@ -95,7 +95,7 @@ macro_rules! tree {
 /// ```
 /// use syntree::{span, Tree};
 ///
-/// let tree: Tree<_, span::Empty> = syntree::tree_with! {
+/// let tree: Tree<_, span::Empty, usize> = syntree::tree_with! {
 ///     "root" => {
 ///         "child" => {
 ///             "token"
@@ -104,7 +104,7 @@ macro_rules! tree {
 ///     }
 /// };
 ///
-/// let expected: Tree<_, span::Empty> = syntree::tree_with! {
+/// let expected: Tree<_, span::Empty, u32> = syntree::tree_with! {
 ///     "root" => {
 ///         "child" => {
 ///             ("token", span::Empty)

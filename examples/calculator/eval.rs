@@ -1,5 +1,5 @@
 use crate::Syntax;
-use syntree::{span, Node, Span, Tree};
+use syntree::{pointer, span, Node, Span, Tree};
 use thiserror::Error;
 
 use Syntax::{DIV, GROUP, MINUS, MUL, NUMBER, OPERATION, PLUS, POW};
@@ -55,9 +55,10 @@ fn pow(a: i64, b: i64) -> Option<i64> {
     a.checked_pow(pow)
 }
 
-fn eval_node<I>(mut node: Node<'_, Syntax, I>, source: &str) -> Result<i64, EvalError<I>>
+fn eval_node<I, P>(mut node: Node<'_, Syntax, I, P>, source: &str) -> Result<i64, EvalError<I>>
 where
     I: span::Index,
+    P: pointer::Pointer,
 {
     loop {
         return match *node.value() {
@@ -112,12 +113,13 @@ where
 }
 
 /// Eval a tree emitting all available expressions parsed from it.
-pub(crate) fn eval<'a, I>(
-    tree: &'a Tree<Syntax, I>,
+pub(crate) fn eval<'a, I, W>(
+    tree: &'a Tree<Syntax, I, W>,
     source: &'a str,
 ) -> impl Iterator<Item = Result<i64, EvalError<I>>> + 'a
 where
     I: span::Index,
+    W: pointer::Width,
 {
     let mut it = tree.children().skip_tokens();
 

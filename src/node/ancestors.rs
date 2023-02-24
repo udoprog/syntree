@@ -1,6 +1,7 @@
 use core::iter::FusedIterator;
 
 use crate::node::{Node, SkipTokens};
+use crate::pointer::Pointer;
 use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::parent`] elements of a node. This
@@ -46,14 +47,14 @@ use crate::tree::Kind;
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Ancestors<'a, T, S> {
-    node: Option<Node<'a, T, S>>,
+pub struct Ancestors<'a, T, I, P> {
+    node: Option<Node<'a, T, I, P>>,
 }
 
-impl<'a, T, S> Ancestors<'a, T, S> {
+impl<'a, T, I, P> Ancestors<'a, T, I, P> {
     /// Construct a new ancestor iterator.
     #[inline]
-    pub(crate) const fn new(node: Option<Node<'a, T, S>>) -> Self {
+    pub(crate) const fn new(node: Option<Node<'a, T, I, P>>) -> Self {
         Self { node }
     }
 
@@ -66,7 +67,12 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
+}
 
+impl<T, I, P> Ancestors<'_, T, I, P>
+where
+    P: Pointer,
+{
     /// Get the next node from the iterator. This advances past all non-node
     /// data.
     ///
@@ -95,7 +101,7 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
+    pub fn next_node(&mut self) -> Option<Node<'_, T, I, P>> {
         loop {
             let node = self.next()?;
 
@@ -106,8 +112,11 @@ impl<'a, T, S> Ancestors<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Iterator for Ancestors<'a, T, S> {
-    type Item = Node<'a, T, S>;
+impl<'a, T, I, P> Iterator for Ancestors<'a, T, I, P>
+where
+    P: Pointer,
+{
+    type Item = Node<'a, T, I, P>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -117,16 +126,16 @@ impl<'a, T, S> Iterator for Ancestors<'a, T, S> {
     }
 }
 
-impl<T, S> FusedIterator for Ancestors<'_, T, S> {}
+impl<T, I, P> FusedIterator for Ancestors<'_, T, I, P> where P: Pointer {}
 
-impl<T, S> Clone for Ancestors<'_, T, S> {
+impl<T, I, P> Clone for Ancestors<'_, T, I, P> {
     #[inline]
     fn clone(&self) -> Self {
         Self { node: self.node }
     }
 }
 
-impl<T, S> Default for Ancestors<'_, T, S> {
+impl<T, I, P> Default for Ancestors<'_, T, I, P> {
     #[inline]
     fn default() -> Self {
         Self { node: None }

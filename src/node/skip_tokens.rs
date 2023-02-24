@@ -59,22 +59,22 @@ use crate::tree::Kind;
 ///
 /// [`Siblings`]: crate::node::Siblings
 /// [`Walk`]: crate::node::Walk
-pub struct SkipTokens<I> {
-    iter: I,
+pub struct SkipTokens<U> {
+    iter: U,
 }
 
-impl<I> SkipTokens<I> {
+impl<U> SkipTokens<U> {
     #[inline]
-    pub(crate) const fn new(iter: I) -> Self {
+    pub(crate) const fn new(iter: U) -> Self {
         Self { iter }
     }
 }
 
-impl<'a, I, T: 'a, S: 'a> Iterator for SkipTokens<I>
+impl<'a, U, T: 'a, I: 'a, P: 'a> Iterator for SkipTokens<U>
 where
-    I: Iterator<Item = Node<'a, T, S>>,
+    U: Iterator<Item = Node<'a, T, I, P>>,
 {
-    type Item = I::Item;
+    type Item = U::Item;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -88,9 +88,9 @@ where
     }
 }
 
-impl<'a, I, T: 'a, S: 'a> DoubleEndedIterator for SkipTokens<I>
+impl<'a, U, T: 'a, I: 'a, P: 'a> DoubleEndedIterator for SkipTokens<U>
 where
-    I: DoubleEndedIterator<Item = Node<'a, T, S>>,
+    U: DoubleEndedIterator<Item = Node<'a, T, I, P>>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -104,14 +104,14 @@ where
     }
 }
 
-impl<'a, I, T: 'a, S: 'a> FusedIterator for SkipTokens<I> where
-    I: FusedIterator<Item = Node<'a, T, S>>
+impl<'a, U, T: 'a, I: 'a, P: 'a> FusedIterator for SkipTokens<U> where
+    U: FusedIterator<Item = Node<'a, T, I, P>>
 {
 }
 
-impl<I> Clone for SkipTokens<I>
+impl<U> Clone for SkipTokens<U>
 where
-    I: Clone,
+    U: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -121,9 +121,9 @@ where
     }
 }
 
-impl<I> Default for SkipTokens<I>
+impl<U> Default for SkipTokens<U>
 where
-    I: Default,
+    U: Default,
 {
     #[inline]
     fn default() -> Self {
