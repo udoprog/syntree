@@ -4,7 +4,7 @@ use core::ops::Range;
 use crate::links::Links;
 use crate::node::Node;
 use crate::node::{Children, Walk, WalkEvents};
-use crate::non_max::NonMax;
+use crate::pointer::{Pointer, Width};
 use crate::span::{Index, Indexes, Span};
 
 /// The kind of a node in the [Tree].
@@ -18,33 +18,32 @@ pub enum Kind {
 }
 
 /// A syntax tree.
-pub struct Tree<T, I>
+pub struct Tree<T, I, W>
 where
     I: Index,
+    W: Width,
 {
     /// Links in the tree.
-    tree: Vec<Links<T, I>>,
+    tree: Vec<Links<T, I, W::Pointer>>,
     /// The span of the whole tree.
     span: Span<I>,
     /// Token indexes for range searches. This contains the value of the token
     /// cursor each time it is modified and allow for binary searching for
     /// sequences of nodes which corresponds to the given index.
-    indexes: I::Indexes,
+    indexes: I::Indexes<W::Pointer>,
     /// The first element in the tree.
-    first: Option<NonMax>,
+    first: Option<W::Pointer>,
     /// The last element in the tree.
-    last: Option<NonMax>,
+    last: Option<W::Pointer>,
 }
 
-impl<T, I> Tree<T, I>
+impl<T, I, W> Tree<T, I, W>
 where
     I: Index,
+    W: Width,
 {
     /// Construct a new empty tree.
-    pub(crate) const fn new_with() -> Self
-    where
-        I: Index,
-    {
+    pub(crate) const fn new_with() -> Self {
         Self {
             tree: Vec::new(),
             span: Span::point(I::EMPTY),
@@ -55,10 +54,7 @@ where
     }
 
     /// Construct a new tree with the given capacity.
-    pub(crate) fn with_capacity(capacity: usize) -> Self
-    where
-        I: Index,
-    {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             tree: Vec::with_capacity(capacity),
             span: Span::point(I::EMPTY),
@@ -107,7 +103,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree = syntree::Builder::<(), u32>::new();
+    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.len(), 0);
@@ -135,7 +131,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree = syntree::Builder::<(), u32>::new();
+    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
     /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -149,7 +145,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree = syntree::Builder::<(), u32>::new();
+    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.capacity(), 0);
@@ -174,14 +170,14 @@ where
     /// Get all root nodes in the tree.
     ///
     /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'_, T, I> {
+    pub fn children(&self) -> Children<'_, T, I, W::Pointer> {
         Children::new(&self.tree, self.first, self.last)
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
     /// See [`Walk`] for documentation.
-    pub fn walk(&self) -> Walk<'_, T, I> {
+    pub fn walk(&self) -> Walk<'_, T, I, W::Pointer> {
         Walk::new(self.tree.as_slice(), self.first)
     }
 
@@ -189,7 +185,7 @@ where
     /// indicating how the tree is being traversed.
     ///
     /// See [`WalkEvents`] for documentation.
-    pub fn walk_events(&self) -> WalkEvents<'_, T, I> {
+    pub fn walk_events(&self) -> WalkEvents<'_, T, I, W::Pointer> {
         WalkEvents::new(self.tree.as_slice(), self.first)
     }
 
@@ -207,7 +203,7 @@ where
     /// assert_eq!(*root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn first(&self) -> Option<Node<'_, T, I>> {
+    pub fn first(&self) -> Option<Node<'_, T, I, W::Pointer>> {
         self.node_at(self.first?)
     }
 
@@ -225,42 +221,45 @@ where
     /// assert_eq!(*root.value(), "root2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn last(&self) -> Option<Node<'_, T, I>> {
+    pub fn last(&self) -> Option<Node<'_, T, I, W::Pointer>> {
         self.node_at(self.last?)
     }
 
     /// The first id currently being set.
-    pub(crate) fn first_id(&self) -> Option<NonMax> {
+    pub(crate) fn first_id(&self) -> Option<W::Pointer> {
         self.first
     }
 
     /// Get the tree links mutably.
-    pub(crate) fn links_mut(&mut self) -> (&mut Option<NonMax>, &mut Option<NonMax>) {
+    pub(crate) fn links_mut(&mut self) -> (&mut Option<W::Pointer>, &mut Option<W::Pointer>) {
         (&mut self.first, &mut self.last)
     }
 
     /// Get a mutable reference to an element in the tree.
-    pub(crate) fn get_mut(&mut self, id: NonMax) -> Option<&mut Links<T, I>> {
+    pub(crate) fn get_mut(&mut self, id: W::Pointer) -> Option<&mut Links<T, I, W::Pointer>> {
         self.tree.get_mut(id.get())
     }
 
     /// Push a new element onto the tree.
-    pub(crate) fn push(&mut self, links: Links<T, I>) {
+    pub(crate) fn push(&mut self, links: Links<T, I, W::Pointer>) {
         self.tree.push(links);
     }
 
     /// Push the given index.
-    pub(crate) fn indexes_mut(&mut self) -> &mut I::Indexes {
+    pub(crate) fn indexes_mut(&mut self) -> &mut I::Indexes<W::Pointer> {
         &mut self.indexes
     }
 
     /// Optionally get the links at the given location.
-    pub(crate) fn links_at_mut(&mut self, index: NonMax) -> Option<&mut Links<T, I>> {
+    pub(crate) fn links_at_mut(
+        &mut self,
+        index: W::Pointer,
+    ) -> Option<&mut Links<T, I, W::Pointer>> {
         self.tree.get_mut(index.get())
     }
 
     /// Construct a node at the given location.
-    pub(crate) fn node_at(&self, index: NonMax) -> Option<Node<'_, T, I>> {
+    pub(crate) fn node_at(&self, index: W::Pointer) -> Option<Node<'_, T, I, W::Pointer>> {
         let cur = self.tree.get(index.get())?;
         Some(Node::new(cur, &self.tree))
     }
@@ -366,7 +365,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I>> {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I, W::Pointer>> {
         let start = I::from_usize(span.start)?;
         let end = I::from_usize(span.end)?;
         self.node_with_span_internal(start, end)
@@ -473,11 +472,11 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I>> {
+    pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I, W::Pointer>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: I, end: I) -> Option<Node<'_, T, I>> {
+    fn node_with_span_internal(&self, start: I, end: I) -> Option<Node<'_, T, I, W::Pointer>> {
         let result = self.indexes.binary_search(start);
 
         let n = match result {
@@ -485,7 +484,7 @@ where
             Err(n) => n,
         };
 
-        let mut node = self.node_at(self.indexes.get(n)?.0)?;
+        let mut node = self.node_at(self.indexes.get(n)?)?;
 
         while let Some(parent) = node.parent() {
             node = parent;
@@ -499,11 +498,13 @@ where
     }
 }
 
-impl<T, I> Clone for Tree<T, I>
+impl<T, I, W> Clone for Tree<T, I, W>
 where
     T: Clone,
     I: Index,
-    I::Indexes: Clone,
+    I::Indexes<W::Pointer>: Clone,
+    W: Width,
+    W::Pointer: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -517,9 +518,10 @@ where
     }
 }
 
-impl<T, I> Default for Tree<T, I>
+impl<T, I, W> Default for Tree<T, I, W>
 where
     I: Index,
+    W: Width,
 {
     #[inline]
     fn default() -> Self {
@@ -527,37 +529,61 @@ where
     }
 }
 
-impl<T, I> PartialEq for Tree<T, I>
+impl<T, I, A, B> PartialEq<Tree<T, I, A>> for Tree<T, I, B>
 where
     T: PartialEq,
     I: Index + PartialEq,
+    A: Width,
+    B: Width,
 {
-    fn eq(&self, other: &Self) -> bool {
-        self.walk().with_depths().eq(other.walk().with_depths())
+    fn eq(&self, other: &Tree<T, I, A>) -> bool {
+        struct Item<'a, T, I, P>((usize, Node<'a, T, I, P>));
+
+        // NB: this is needed because the constraints on tuples doesn't allow
+        // for `A` and `B` to be different.
+        impl<'a, T, I, A, B> PartialEq<Item<'a, T, I, A>> for Item<'a, T, I, B>
+        where
+            T: PartialEq,
+            I: PartialEq,
+        {
+            #[inline]
+            fn eq(&self, other: &Item<'a, T, I, A>) -> bool {
+                self.0 .0 == other.0 .0 && self.0 .1.eq(&other.0 .1)
+            }
+        }
+
+        self.walk()
+            .with_depths()
+            .map(Item)
+            .eq(other.walk().with_depths().map(Item))
     }
 }
 
-impl<T, I> Eq for Tree<T, I>
+impl<T, I, W> Eq for Tree<T, I, W>
 where
     T: Eq,
     I: Index + Eq,
+    W: Width,
 {
 }
 
-impl<T, I> fmt::Debug for Tree<T, I>
+impl<T, I, W> fmt::Debug for Tree<T, I, W>
 where
     T: fmt::Debug,
     I: Index + fmt::Debug,
+    W: Width,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        struct List<'a, T, I>(&'a Tree<T, I>)
+        struct List<'a, T, I, W>(&'a Tree<T, I, W>)
         where
-            I: Index;
+            I: Index,
+            W: Width;
 
-        impl<T, I> fmt::Debug for List<'_, T, I>
+        impl<T, I, W> fmt::Debug for List<'_, T, I, W>
         where
             T: fmt::Debug,
             I: Index + fmt::Debug,
+            W: Width,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_list().entries(self.0.walk().with_depths()).finish()

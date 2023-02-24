@@ -2,6 +2,7 @@ use core::iter::FusedIterator;
 
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
+use crate::pointer::Pointer;
 use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
@@ -51,15 +52,15 @@ use crate::tree::Kind;
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Siblings<'a, T, S> {
-    tree: &'a [Links<T, S>],
-    links: Option<&'a Links<T, S>>,
+pub struct Siblings<'a, T, I, P> {
+    tree: &'a [Links<T, I, P>],
+    links: Option<&'a Links<T, I, P>>,
 }
 
-impl<'a, T, S> Siblings<'a, T, S> {
+impl<'a, T, I, P> Siblings<'a, T, I, P> {
     /// Construct a new child iterator.
     #[inline]
-    pub(crate) const fn new(tree: &'a [Links<T, S>], links: &'a Links<T, S>) -> Self {
+    pub(crate) const fn new(tree: &'a [Links<T, I, P>], links: &'a Links<T, I, P>) -> Self {
         Self {
             tree,
             links: Some(links),
@@ -74,7 +75,12 @@ impl<'a, T, S> Siblings<'a, T, S> {
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
+}
 
+impl<T, I, P> Siblings<'_, T, I, P>
+where
+    P: Pointer,
+{
     /// Get the next node from the iterator. This advances past all non-node
     /// data.
     ///
@@ -104,7 +110,7 @@ impl<'a, T, S> Siblings<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
+    pub fn next_node(&mut self) -> Option<Node<'_, T, I, P>> {
         loop {
             let node = self.next()?;
 
@@ -115,8 +121,11 @@ impl<'a, T, S> Siblings<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Iterator for Siblings<'a, T, S> {
-    type Item = Node<'a, T, S>;
+impl<'a, T, I, P> Iterator for Siblings<'a, T, I, P>
+where
+    P: Pointer,
+{
+    type Item = Node<'a, T, I, P>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -126,9 +135,9 @@ impl<'a, T, S> Iterator for Siblings<'a, T, S> {
     }
 }
 
-impl<T, S> FusedIterator for Siblings<'_, T, S> {}
+impl<T, I, P> FusedIterator for Siblings<'_, T, I, P> where P: Pointer {}
 
-impl<T, S> Clone for Siblings<'_, T, S> {
+impl<T, I, P> Clone for Siblings<'_, T, I, P> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -138,7 +147,7 @@ impl<T, S> Clone for Siblings<'_, T, S> {
     }
 }
 
-impl<T, S> Default for Siblings<'_, T, S> {
+impl<T, I, P> Default for Siblings<'_, T, I, P> {
     #[inline]
     fn default() -> Self {
         Self {

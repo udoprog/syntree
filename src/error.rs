@@ -1,7 +1,5 @@
 use core::fmt;
 
-use crate::Id;
-
 /// Errors raised while building a tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -72,7 +70,7 @@ pub enum Error {
     /// is easier to accomplish.
     Overflow,
     /// The node of the given id is missing.
-    MissingNode(Id),
+    MissingNode(usize),
     /// Missing next.
     MissingCloseAtLinksNext,
     /// Missing sibling.
@@ -99,8 +97,8 @@ impl fmt::Display for Error {
             Error::Overflow => {
                 write!(f, "numerical overflow")
             }
-            Error::MissingNode(id) => {
-                write!(f, "missing node with id `{}`", id.0.get())
+            Error::MissingNode(pointer) => {
+                write!(f, "missing node with id `{}`", pointer)
             }
             Error::MissingCloseAtLinksNext => {
                 write!(f, "missing links next while closing checkpoint")

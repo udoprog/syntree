@@ -1,8 +1,6 @@
 use core::cell::Cell;
 use std::rc::Rc;
 
-use crate::non_max::NonMax;
-
 /// The identifier of a node as returned by functions such as
 /// [`Builder::checkpoint`].
 ///
@@ -13,22 +11,27 @@ use crate::non_max::NonMax;
 /// [`Builder::checkpoint`]: crate::Builder::checkpoint
 #[derive(Debug, Clone)]
 #[repr(transparent)]
-pub struct Checkpoint(Rc<Cell<Inner>>);
+pub struct Checkpoint<P>(Rc<Cell<Inner<P>>>)
+where
+    P: Copy;
 
-impl Checkpoint {
-    pub(crate) fn new(node: NonMax, parent: Option<NonMax>) -> Self {
+impl<P> Checkpoint<P>
+where
+    P: Copy,
+{
+    pub(crate) fn new(node: P, parent: Option<P>) -> Self {
         Self(Rc::new(Cell::new(Inner { node, parent })))
     }
 
-    pub(crate) fn set(&self, node: NonMax, parent: Option<NonMax>) {
+    pub(crate) fn set(&self, node: P, parent: Option<P>) {
         self.0.set(Inner { node, parent });
     }
 
-    pub(crate) fn node(&self) -> NonMax {
+    pub(crate) fn node(&self) -> P {
         self.0.get().node
     }
 
-    pub(crate) fn get(&self) -> (NonMax, Option<NonMax>) {
+    pub(crate) fn get(&self) -> (P, Option<P>) {
         let Inner { node, parent } = self.0.get();
         (node, parent)
     }
@@ -36,9 +39,9 @@ impl Checkpoint {
 
 /// The parent of the checkpoint.
 #[derive(Debug, Clone, Copy)]
-struct Inner {
+struct Inner<P> {
     // The node being wrapped by the checkpoint.
-    node: NonMax,
+    node: P,
     // The parent node of the context being checkpointed.
-    parent: Option<NonMax>,
+    parent: Option<P>,
 }

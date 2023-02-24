@@ -26,13 +26,13 @@
 //!
 //! ## Compact or empty spans
 //!
-//! Spans by default uses `u32`-based indexes, if this is not sufficient they
-//! can be changed using the [`Builder::new_with`] constructor.
+//! Spans by default uses `u32`-based indexes and `usize`-based pointers, this
+//! can be changed from its default using the [`Builder::new_with`] constructor:
 //!
 //! ```
 //! use syntree::{Builder, Span, Tree};
 //!
-//! let mut tree = Builder::<_, usize>::new_with();
+//! let mut tree = Builder::<_, usize, u16>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
@@ -44,7 +44,7 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, usize> = syntree::tree_with! {
+//! let expected: Tree<_, usize, u32> = syntree::tree_with! {
 //!     "root" => {
 //!         "child" => { ("token", 100) },
 //!         "child2" => {}
@@ -62,7 +62,7 @@
 //! ```
 //! use syntree::{Builder, span, Tree};
 //!
-//! let mut tree = Builder::<_, span::Empty>::new_with();
+//! let mut tree = Builder::<_, span::Empty, u32>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
@@ -74,7 +74,7 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, span::Empty> = syntree::tree_with! {
+//! let expected: Tree<_, span::Empty, usize> = syntree::tree_with! {
 //!     "root" => {
 //!         "child" => { "token" },
 //!         "child2" => {}
@@ -84,19 +84,6 @@
 //! assert_eq!(tree, expected);
 //! assert!(tree.span().is_empty());
 //! # Ok::<_, Box<dyn std::error::Error>>(())
-//! ```
-//!
-//! <br>
-//!
-//! ## Compact identifiers
-//!
-//! Each node in a tree is assigned a unique identifier which uses `usize` by
-//! default, this can experimentally be changed by setting `--cfg
-//! syntree_compact` while building, causing it to use `u32` identifiers
-//! instead, which might improve performance under some circumstances.
-//!
-//! ```sh
-//! RUSTFLAGS="--cfg syntree_compact" cargo build
 //! ```
 //!
 //! <br>
@@ -354,12 +341,12 @@ pub mod edit;
 mod error;
 mod links;
 pub mod node;
-mod non_max;
+pub mod pointer;
 pub mod print;
 pub mod span;
 mod tree;
 
-pub use self::builder::{Builder, Checkpoint, Id};
+pub use self::builder::{Builder, Checkpoint};
 pub use self::error::Error;
 pub use self::node::Node;
 pub use self::span::Span;

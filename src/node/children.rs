@@ -2,7 +2,7 @@ use core::iter::FusedIterator;
 
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
-use crate::non_max::NonMax;
+use crate::pointer::Pointer;
 use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
@@ -67,20 +67,16 @@ use crate::tree::Kind;
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Children<'a, T, S> {
-    tree: &'a [Links<T, S>],
-    first: Option<NonMax>,
-    last: Option<NonMax>,
+pub struct Children<'a, T, I, P> {
+    tree: &'a [Links<T, I, P>],
+    first: Option<P>,
+    last: Option<P>,
 }
 
-impl<'a, T, S> Children<'a, T, S> {
+impl<'a, T, I, P> Children<'a, T, I, P> {
     /// Construct a new child iterator.
     #[inline]
-    pub(crate) const fn new(
-        tree: &'a [Links<T, S>],
-        first: Option<NonMax>,
-        last: Option<NonMax>,
-    ) -> Self {
+    pub(crate) const fn new(tree: &'a [Links<T, I, P>], first: Option<P>, last: Option<P>) -> Self {
         Self { tree, first, last }
     }
 
@@ -92,7 +88,12 @@ impl<'a, T, S> Children<'a, T, S> {
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
+}
 
+impl<T, I, P> Children<'_, T, I, P>
+where
+    P: Pointer,
+{
     /// Get the next node from the iterator. This advances past all non-node
     /// data.
     ///
@@ -120,7 +121,7 @@ impl<'a, T, S> Children<'a, T, S> {
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, S>> {
+    pub fn next_node(&mut self) -> Option<Node<'_, T, I, P>> {
         loop {
             let node = self.next()?;
 
@@ -131,8 +132,11 @@ impl<'a, T, S> Children<'a, T, S> {
     }
 }
 
-impl<'a, T, S> Iterator for Children<'a, T, S> {
-    type Item = Node<'a, T, S>;
+impl<'a, T, I, P> Iterator for Children<'a, T, I, P>
+where
+    P: Pointer,
+{
+    type Item = Node<'a, T, I, P>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -147,7 +151,10 @@ impl<'a, T, S> Iterator for Children<'a, T, S> {
     }
 }
 
-impl<T, S> DoubleEndedIterator for Children<'_, T, S> {
+impl<T, I, P> DoubleEndedIterator for Children<'_, T, I, P>
+where
+    P: Pointer,
+{
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         let last = self.last.take()?;
@@ -161,9 +168,12 @@ impl<T, S> DoubleEndedIterator for Children<'_, T, S> {
     }
 }
 
-impl<T, S> FusedIterator for Children<'_, T, S> {}
+impl<T, I, P> FusedIterator for Children<'_, T, I, P> where P: Pointer {}
 
-impl<T, S> Clone for Children<'_, T, S> {
+impl<T, I, P> Clone for Children<'_, T, I, P>
+where
+    P: Copy,
+{
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -174,7 +184,7 @@ impl<T, S> Clone for Children<'_, T, S> {
     }
 }
 
-impl<T, S> Default for Children<'_, T, S> {
+impl<T, I, P> Default for Children<'_, T, I, P> {
     #[inline]
     fn default() -> Self {
         Self {
