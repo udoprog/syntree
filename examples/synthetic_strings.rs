@@ -10,16 +10,16 @@ use syntree::{print, Builder};
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
     /// A string referenced somewhere else using the provided ID.
-    SYNTHETIC(Option<usize>),
+    Synthetic(Option<usize>),
     /// A literal string from the source.
-    LITERAL,
+    Literal,
     /// Whitespace.
-    WHITESPACE,
+    Whitespace,
     /// A lexer error.
-    ERROR,
+    Error,
 }
 
-use Syntax::{ERROR, LITERAL, SYNTHETIC, WHITESPACE};
+use Syntax::*;
 
 #[derive(Default)]
 struct Storage {
@@ -56,21 +56,21 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
         let syntax = match c {
             c if c.is_whitespace() => {
                 eat(&mut it, char::is_whitespace);
-                WHITESPACE
+                Whitespace
             }
             '$' => {
                 eat(&mut it, |c| c.is_ascii_lowercase());
                 let end = it.peek().map_or(len, |(n, _)| *n);
                 let id = &source[(start + 1)..end];
-                SYNTHETIC(storage.lookup(id))
+                Synthetic(storage.lookup(id))
             }
             'A'..='Z' | 'a'..='z' => {
                 eat(&mut it, |c| c.is_ascii_alphabetic());
-                LITERAL
+                Literal
             }
             _ => {
                 eat(&mut it, |c| !c.is_whitespace());
-                ERROR
+                Error
             }
         };
 
@@ -112,7 +112,7 @@ fn main() -> Result<()> {
 
     for node in tree.children() {
         let string = match *node.value() {
-            SYNTHETIC(id) => match id.and_then(|id| storage.get(id)) {
+            Synthetic(id) => match id.and_then(|id| storage.get(id)) {
                 Some(string) => string,
                 None => {
                     println!("{} = {} (not found)", count, &source[node.range()]);
@@ -120,9 +120,9 @@ fn main() -> Result<()> {
                     continue;
                 }
             },
-            LITERAL => &source[node.range()],
-            WHITESPACE => continue,
-            ERROR => {
+            Literal => &source[node.range()],
+            Whitespace => continue,
+            Error => {
                 println!("Error: {}", &source[node.range()]);
                 continue;
             }

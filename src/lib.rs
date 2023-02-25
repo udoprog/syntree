@@ -102,28 +102,28 @@
 //! represented like this:
 //!
 //! ```text
-//! OPERATION@0..16
-//!   NUMBER@0..3
-//!     NUMBER@0..3 "256"
-//!   WHITESPACE@3..4 " "
-//!   OPERATOR@4..5
-//!     DIV@4..5 "/"
-//!   WHITESPACE@5..6 " "
-//!   NUMBER@6..7
-//!     NUMBER@6..7 "2"
-//!   WHITESPACE@7..8 " "
-//!   OPERATOR@8..9
-//!     PLUS@8..9 "+"
-//!   WHITESPACE@9..10 " "
-//!   OPERATION@10..16
-//!     NUMBER@10..12
-//!       NUMBER@10..12 "64"
-//!     WHITESPACE@12..13 " "
-//!     OPERATOR@13..14
-//!       MUL@13..14 "*"
-//!     WHITESPACE@14..15 " "
-//!     NUMBER@15..16
-//!       NUMBER@15..16 "2"
+//! Operation@0..16
+//!   Number@0..3
+//!     Number@0..3 "256"
+//!   Whitespace@3..4 " "
+//!   Operator@4..5
+//!     Div@4..5 "/"
+//!   Whitespace@5..6 " "
+//!   Number@6..7
+//!     Number@6..7 "2"
+//!   Whitespace@7..8 " "
+//!   Operator@8..9
+//!     Plus@8..9 "+"
+//!   Whitespace@9..10 " "
+//!   Operation@10..16
+//!     Number@10..12
+//!       Number@10..12 "64"
+//!     Whitespace@12..13 " "
+//!     Operator@13..14
+//!       Mul@13..14 "*"
+//!     Whitespace@14..15 " "
+//!     Number@15..16
+//!       Number@15..16 "2"
 //! ```
 //!
 //! > Try it for yourself with:
@@ -151,21 +151,21 @@
 //!
 //! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //! enum Syntax {
-//!     NUMBER,
-//!     LIT,
-//!     NESTED,
+//!     Number,
+//!     Lit,
+//!     Nested,
 //! }
 //!
 //! use Syntax::*;
 //!
 //! let mut tree = Builder::new();
 //!
-//! tree.open(NUMBER)?;
-//! tree.token(LIT, 1)?;
-//! tree.token(LIT, 3)?;
+//! tree.open(Number)?;
+//! tree.token(Lit, 1)?;
+//! tree.token(Lit, 3)?;
 //!
-//! tree.open(NESTED)?;
-//! tree.token(LIT, 1)?;
+//! tree.open(Nested)?;
+//! tree.token(Lit, 1)?;
 //! tree.close()?;
 //!
 //! tree.close()?;
@@ -173,11 +173,11 @@
 //! let tree = tree.build()?;
 //!
 //! let expected = syntree::tree! {
-//!     NUMBER => {
-//!         (LIT, 1),
-//!         (LIT, 3),
-//!         NESTED => {
-//!             (LIT, 1)
+//!     Number => {
+//!         (Lit, 1),
+//!         (Lit, 3),
+//!         Nested => {
+//!             (Lit, 1)
 //!         }
 //!     }
 //! };
@@ -189,8 +189,8 @@
 //! # Ok::<_, Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! Note how the resulting [`Span`] for `NUMBER` corresponds to the full span of
-//! its `LIT` children. Including the ones within `NESTED`.
+//! Note how the resulting [`Span`] for `Number` corresponds to the full span of
+//! its `Lit` children. Including the ones within `Nested`.
 //!
 //! Trees are usually constructed by parsing an input. This library encourages
 //! the use of a [handwritten pratt parser][pratt]. See the [calculator
@@ -218,18 +218,18 @@
 //! #[derive(Debug, Clone, Copy)]
 //! enum Syntax {
 //!     /// A string referenced somewhere else using the provided ID.
-//!     SYNTHETIC(Option<usize>),
+//!     Synthetic(Option<usize>),
 //!     /// A literal string from the source.
-//!     LITERAL,
+//!     Lit,
 //!     /// Whitespace.
-//!     WHITESPACE,
+//!     Whitespace,
 //!     /// A lexer error.
-//!     ERROR,
+//!     Error,
 //! }
 //! ```
 //!
 //! You can see the [full `synthetic_strings` example][synthetic_strings] for
-//! how this might be used. But not only can the `SYNTHETIC` token correspond to
+//! how this might be used. But not only can the `Synthetic` token correspond to
 //! some source location (as it should because it was expanded from one!). It
 //! also directly represents that it's *not* a literal string referencing a
 //! source location.
@@ -250,9 +250,9 @@
 //!
 //! ```text
 //! Tree:
-//! LITERAL@0..5 "Hello"
-//! WHITESPACE@5..6 " "
-//! SYNTHETIC(Some(0))@6..12 "$world"
+//! Lit@0..5 "Hello"
+//! Whitespace@5..6 " "
+//! Synthetic(Some(0))@6..12 "$world"
 //! Eval:
 //! 0 = "Hello"
 //! 1 = "Earth"

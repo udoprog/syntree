@@ -7,20 +7,20 @@ use syntree::{print, Builder, Error, Tree};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 enum Syntax {
-    ADD,
-    SUB,
-    MUL,
-    DIV,
+    Add,
+    Sub,
+    Mul,
+    Div,
 
-    WHITESPACE,
+    Whitespace,
 
-    NUMBER,
-    ERROR,
-    OPERATION,
-    ROOT,
+    Number,
+    Error,
+    Operation,
+    Root,
 }
 
-use Syntax::{ADD, DIV, ERROR, MUL, NUMBER, OPERATION, ROOT, SUB, WHITESPACE};
+use Syntax::*;
 
 struct Parser<Iter>
 where
@@ -35,7 +35,7 @@ where
     Iter: Iterator<Item = (Syntax, usize)>,
 {
     fn peek(&mut self) -> Result<Option<Syntax>, Error> {
-        while self.iter.peek().map_or(false, |&(t, _)| t == WHITESPACE) {
+        while self.iter.peek().map_or(false, |&(t, _)| t == Whitespace) {
             self.bump()?;
         }
         Ok(self.iter.peek().map(|&(t, _)| t))
@@ -51,11 +51,11 @@ where
 
     fn parse_val(&mut self) -> Result<(), Error> {
         match self.peek()? {
-            Some(NUMBER) => {
+            Some(Number) => {
                 self.bump()?;
             }
             _ => {
-                self.builder.open(ERROR)?;
+                self.builder.open(Error)?;
                 self.bump()?;
                 self.builder.close()?;
             }
@@ -75,22 +75,22 @@ where
         while self.peek()?.map_or(false, |t| tokens.contains(&t)) {
             self.bump()?;
             next(self)?;
-            self.builder.close_at(&c, OPERATION)?;
+            self.builder.close_at(&c, Operation)?;
         }
 
         Ok(())
     }
 
     fn parse_mul(&mut self) -> Result<(), Error> {
-        self.handle_operation(&[MUL, DIV], Self::parse_val)
+        self.handle_operation(&[Mul, Div], Self::parse_val)
     }
 
     fn parse_add(&mut self) -> Result<(), Error> {
-        self.handle_operation(&[ADD, SUB], Self::parse_mul)
+        self.handle_operation(&[Add, Sub], Self::parse_mul)
     }
 
     fn parse(mut self) -> Result<Tree<Syntax, u32, usize>, Error> {
-        self.builder.open(ROOT)?;
+        self.builder.open(Root)?;
         self.parse_add()?;
         self.builder.close()?;
         self.builder.build()
@@ -107,19 +107,19 @@ fn lexer(source: &str) -> impl Iterator<Item = (Syntax, usize)> + '_ {
         let syntax = match c {
             c if c.is_whitespace() => {
                 eat(&mut it, char::is_whitespace);
-                WHITESPACE
+                Whitespace
             }
-            '+' => ADD,
-            '-' => SUB,
-            '/' => DIV,
-            '*' => MUL,
+            '+' => Add,
+            '-' => Sub,
+            '/' => Div,
+            '*' => Mul,
             '0'..='9' => {
                 eat(&mut it, |c| matches!(c, '0'..='9' | '.'));
-                NUMBER
+                Number
             }
             _ => {
                 eat(&mut it, |c| !c.is_whitespace());
-                ERROR
+                Error
             }
         };
 

@@ -1,47 +1,44 @@
 use crate::parsing::Parser;
 use crate::Syntax;
 use anyhow::Result;
-use syntree::Error;
 
-use self::Syntax::{
-    CLOSE_PAREN, DIV, ERROR, GROUP, MINUS, MUL, NUMBER, OPEN_PAREN, OPERATION, OPERATOR, PLUS, POW,
-};
+use self::Syntax::*;
 
 fn op(syntax: Syntax) -> Option<(u8, u8)> {
     let prio = match syntax {
-        PLUS | MINUS => (1, 2),
-        DIV | MUL => (3, 4),
-        POW => (7, 8),
+        Plus | Minus => (1, 2),
+        Div | Mul => (3, 4),
+        Pow => (7, 8),
         _ => return None,
     };
 
     Some(prio)
 }
 
-fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), Error> {
+fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), syntree::Error> {
     // Eat all available whitespace before getting a checkpoint.
     let tok = p.peek()?;
 
     let c = p.tree.checkpoint()?;
 
     match tok.syntax {
-        OPEN_PAREN => {
+        OpenParen => {
             p.token()?;
 
             let c = p.tree.checkpoint()?;
             expr(p, 0)?;
-            p.tree.close_at(&c, GROUP)?;
+            p.tree.close_at(&c, Group)?;
 
-            if !p.eat(CLOSE_PAREN)? {
-                p.bump(ERROR)?;
+            if !p.eat(CloseParen)? {
+                p.bump(Error)?;
                 return Ok(());
             }
         }
-        NUMBER => {
-            p.bump(NUMBER)?;
+        Number => {
+            p.bump(Number)?;
         }
         _ => {
-            p.bump(ERROR)?;
+            p.bump(Error)?;
             return Ok(());
         }
     }
@@ -56,13 +53,13 @@ fn expr(p: &mut Parser<'_>, min: u8) -> Result<(), Error> {
             _ => break,
         };
 
-        p.bump(OPERATOR)?;
+        p.bump(Operator)?;
         expr(p, min)?;
         operation = true;
     }
 
     if operation {
-        p.tree.close_at(&c, OPERATION)?;
+        p.tree.close_at(&c, Operation)?;
     }
 
     Ok(())
@@ -80,8 +77,8 @@ pub(crate) fn root(p: &mut Parser<'_>) -> Result<()> {
         // Simple error recovery where we consume until we find an operator
         // which will be consumed as an expression next.
         let c = p.tree.checkpoint()?;
-        p.advance_until(&[NUMBER])?;
-        p.tree.close_at(&c, ERROR)?;
+        p.advance_until(&[Number])?;
+        p.tree.close_at(&c, Error)?;
     }
 
     Ok(())

@@ -2,7 +2,7 @@ use crate::lexer::{Lexer, Token};
 use crate::Syntax;
 use anyhow::Result;
 use syntree::{Builder, Error};
-use Syntax::{EOF, WHITESPACE};
+use Syntax::{Eof, Whitespace};
 
 /// Parser and lexer baked into one.
 pub(crate) struct Parser<'a> {
@@ -23,24 +23,22 @@ impl<'a> Parser<'a> {
 
     /// Peek the next token.
     pub fn peek(&mut self) -> Result<Token, Error> {
-        loop {
-            // Fill up buffer.
-            self.fill()?;
+        // Fill up buffer.
+        self.fill()?;
 
-            if let Some(tok) = self.buf {
-                return Ok(tok);
-            }
-
-            return Ok(Token {
-                len: 0,
-                syntax: EOF,
-            });
+        if let Some(tok) = self.buf {
+            return Ok(tok);
         }
+
+        Ok(Token {
+            len: 0,
+            syntax: Eof,
+        })
     }
 
     /// Test if the parser is currently at EOF.
     pub(crate) fn is_eof(&mut self) -> Result<bool, Error> {
-        Ok(self.peek()?.syntax == EOF)
+        Ok(self.peek()?.syntax == Eof)
     }
 
     /// Try to eat the given sequence of syntax as the given node `what`.
@@ -77,7 +75,7 @@ impl<'a> Parser<'a> {
         loop {
             let t = self.peek()?;
 
-            if t.syntax == EOF || any.iter().any(|s| *s == t.syntax) {
+            if t.syntax == Eof || any.iter().any(|s| *s == t.syntax) {
                 break;
             }
 
@@ -103,7 +101,7 @@ impl<'a> Parser<'a> {
             };
 
             // Consume whitespace transparently.
-            if matches!(tok.syntax, WHITESPACE) {
+            if matches!(tok.syntax, Whitespace) {
                 self.tree.token(tok.syntax, tok.len)?;
                 continue;
             }

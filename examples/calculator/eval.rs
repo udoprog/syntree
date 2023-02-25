@@ -2,7 +2,7 @@ use crate::Syntax;
 use syntree::{pointer, span, Node, Span, Tree};
 use thiserror::Error;
 
-use Syntax::{DIV, GROUP, MINUS, MUL, NUMBER, OPERATION, PLUS, POW};
+use Syntax::{Div, Group, Minus, Mul, Number, Operation, Plus, Pow};
 
 #[derive(Debug, Error)]
 #[error("{kind}")]
@@ -62,21 +62,21 @@ where
 {
     loop {
         return match *node.value() {
-            GROUP => {
+            Group => {
                 node = node
                     .first()
-                    .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
+                    .ok_or(EvalError::new(*node.span(), Missing(Number)))?;
                 continue;
             }
-            NUMBER => source[node.range()]
+            Number => source[node.range()]
                 .parse::<i64>()
                 .map_err(|_| EvalError::new(*node.span(), BadNumber)),
-            OPERATION => {
+            Operation => {
                 let mut it = node.children().skip_tokens();
 
                 let first = it
                     .next()
-                    .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
+                    .ok_or(EvalError::new(*node.span(), Missing(Number)))?;
 
                 let mut base = eval_node(first, source)?;
 
@@ -86,17 +86,17 @@ where
                         .ok_or(EvalError::new(*node.span(), ExpectedOperator))?;
 
                     let (calculate, error): (fn(i64, i64) -> Option<i64>, _) = match *op.value() {
-                        PLUS => (i64::checked_add, Overflow),
-                        MINUS => (i64::checked_sub, Underflow),
-                        MUL => (i64::checked_mul, Overflow),
-                        DIV => (i64::checked_div, DivideByZero),
-                        POW => (pow, Overflow),
+                        Plus => (i64::checked_add, Overflow),
+                        Minus => (i64::checked_sub, Underflow),
+                        Mul => (i64::checked_mul, Overflow),
+                        Div => (i64::checked_div, DivideByZero),
+                        Pow => (pow, Overflow),
                         what => return Err(EvalError::new(*node.span(), UnexpectedOperator(what))),
                     };
 
                     let first = it
                         .next()
-                        .ok_or(EvalError::new(*node.span(), Missing(NUMBER)))?;
+                        .ok_or(EvalError::new(*node.span(), Missing(Number)))?;
                     let b = eval_node(first, source)?;
 
                     base = match calculate(base, b) {
@@ -107,7 +107,7 @@ where
 
                 Ok(base)
             }
-            what => Err(EvalError::new(*node.span(), Expected(NUMBER, what))),
+            what => Err(EvalError::new(*node.span(), Expected(Number, what))),
         };
     }
 }

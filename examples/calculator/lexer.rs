@@ -1,6 +1,6 @@
 use crate::Syntax;
 
-use Syntax::{CLOSE_PAREN, DIV, ERROR, MINUS, MUL, NUMBER, OPEN_PAREN, PLUS, POW, WHITESPACE};
+use Syntax::{CloseParen, Div, Error, Minus, Mul, Number, OpenParen, Plus, Pow, Whitespace};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Token {
@@ -50,44 +50,44 @@ impl<'a> Lexer<'a> {
             c if c.is_whitespace() => {
                 self.step();
                 self.consume_while(char::is_whitespace);
-                WHITESPACE
+                Whitespace
             }
             '+' => {
                 self.step();
-                PLUS
+                Plus
             }
             '-' => {
                 self.step();
-                MINUS
+                Minus
             }
             '*' => {
                 self.step();
-                MUL
+                Mul
             }
             '/' => {
                 self.step();
-                DIV
+                Div
             }
             '^' => {
                 self.step();
-                POW
+                Pow
             }
             '(' => {
                 self.step();
-                OPEN_PAREN
+                OpenParen
             }
             ')' => {
                 self.step();
-                CLOSE_PAREN
+                CloseParen
             }
             '0'..='9' => {
                 self.step();
                 self.consume_while(|c| c.is_ascii_digit());
-                NUMBER
+                Number
             }
             _ => {
                 self.consume_while(|c| !c.is_whitespace());
-                ERROR
+                Error
             }
         };
 

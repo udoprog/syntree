@@ -2,13 +2,13 @@ use anyhow::Result;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Syntax {
-    ROOT,
-    NUMBER,
-    LIT,
-    WHITESPACE,
+    Root,
+    Number,
+    Lit,
+    Whitespace,
 }
 
-use Syntax::{LIT, NUMBER, ROOT, WHITESPACE};
+use Syntax::{Lit, Number, Root, Whitespace};
 
 #[test]
 fn balanced_checkpoint() -> Result<()> {
@@ -16,30 +16,30 @@ fn balanced_checkpoint() -> Result<()> {
 
     let c = tree.checkpoint()?;
 
-    tree.open(NUMBER)?;
-    tree.token(LIT, 2)?;
+    tree.open(Number)?;
+    tree.token(Lit, 2)?;
     tree.close()?;
 
-    tree.token(WHITESPACE, 3)?;
+    tree.token(Whitespace, 3)?;
 
-    tree.open(NUMBER)?;
-    tree.token(LIT, 2)?;
-    tree.token(LIT, 2)?;
+    tree.open(Number)?;
+    tree.token(Lit, 2)?;
+    tree.token(Lit, 2)?;
     tree.close()?;
 
-    tree.close_at(&c, ROOT)?;
+    tree.close_at(&c, Root)?;
 
     let tree = tree.build()?;
 
     let expected = syntree::tree! {
-        ROOT => {
-            NUMBER => {
-                (LIT, 2)
+        Root => {
+            Number => {
+                (Lit, 2)
             },
-            (WHITESPACE, 3),
-            NUMBER => {
-                (LIT, 2),
-                (LIT, 2)
+            (Whitespace, 3),
+            Number => {
+                (Lit, 2),
+                (Lit, 2)
             }
         }
     };

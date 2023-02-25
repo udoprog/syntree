@@ -14,24 +14,24 @@ mod parsing;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 enum Syntax {
-    NUMBER,
-    PLUS,
-    MINUS,
-    DIV,
-    MUL,
-    POW,
-    ERROR,
-    WHITESPACE,
-    OPERATOR,
-    OPEN_PAREN,
-    CLOSE_PAREN,
+    Number,
+    Plus,
+    Minus,
+    Div,
+    Mul,
+    Pow,
+    Whitespace,
+    Operator,
+    OpenParen,
+    CloseParen,
 
     // An operation.
-    OPERATION,
+    Operation,
     // Precedence group.
-    GROUP,
+    Group,
     // Enf of file.
-    EOF,
+    Eof,
+    Error,
 }
 
 fn main() -> Result<()> {
