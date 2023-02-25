@@ -20,35 +20,35 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
 
 /// A pointer width that can be used to reference other nodes.
 ///
-/// This is determined by a primitive unsigned type such as `u32` or `usize.
+/// This is determined by a primitive unsigned types such as `u32` or `usize`.
 pub trait Width: self::sealed::Sealed {
     #[doc(hidden)]
     type Pointer: Pointer;
 }
 
 macro_rules! implement {
-    ($name:ident, $ty:ty, $base:ident) => {
+    ($ty:ident, $non_zero:ident) => {
         impl Width for $ty {
-            type Pointer = self::$name::NonMax;
+            type Pointer = self::$ty::NonMax;
         }
 
         impl self::sealed::Sealed for $ty {}
-        impl self::sealed::Sealed for self::$name::NonMax {}
+        impl self::sealed::Sealed for self::$ty::NonMax {}
 
-        mod $name {
+        mod $ty {
             use core::fmt;
             use core::mem::size_of;
-            use core::num::$base;
+            use core::num::$non_zero;
 
             #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
-            pub struct NonMax($base);
+            pub struct NonMax($non_zero);
 
             impl crate::pointer::Pointer for NonMax {
                 #[inline]
                 unsafe fn new_unchecked(value: usize) -> Self {
                     let value = value as $ty;
-                    Self($base::new_unchecked(value ^ <$ty>::MAX))
+                    Self($non_zero::new_unchecked(value ^ <$ty>::MAX))
                 }
 
                 #[inline]
@@ -63,7 +63,7 @@ macro_rules! implement {
                         value as $ty
                     };
 
-                    match $base::new((value as $ty) ^ <$ty>::MAX) {
+                    match $non_zero::new((value as $ty) ^ <$ty>::MAX) {
                         None => None,
                         Some(value) => Some(Self(value)),
                     }
@@ -85,7 +85,9 @@ macro_rules! implement {
     };
 }
 
-implement!(usize, usize, NonZeroUsize);
-implement!(u16, u16, NonZeroU16);
-implement!(u32, u32, NonZeroU32);
-implement!(u64, u64, NonZeroU64);
+implement!(usize, NonZeroUsize);
+implement!(u8, NonZeroU8);
+implement!(u16, NonZeroU16);
+implement!(u32, NonZeroU32);
+implement!(u64, NonZeroU64);
+implement!(u128, NonZeroU128);

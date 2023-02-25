@@ -18,6 +18,22 @@ pub enum Kind {
 }
 
 /// A syntax tree.
+///
+/// A tree is constructed through a [Builder][crate::Builder] or by modifying an
+/// existing tree through a [ChangeSet][crate::edit::ChangeSet].
+///
+/// # Type parameters and bounds
+///
+/// The three type parameters of the tree determines the following properties:
+/// * `T` is the data stored in the tree.
+/// * `I` determines the numerical bounds of spans stored in the tree through
+///   the [Index] trait, if set to [Empty][crate::span::Empty] the tree does not
+///   store any spans.
+/// * `W` determines the bounds of pointers in the tree through the [Width]
+///   trait, this decides how many elements that can be stored in the tree.
+///
+/// To use the default values, use the [Builder::new][crate::Builder::new]
+/// constructor.
 pub struct Tree<T, I, W>
 where
     I: Index,

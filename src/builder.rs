@@ -15,6 +15,18 @@ pub use self::checkpoint::Checkpoint;
 /// This maintains a stack of nodes being built which has to be balanced with
 /// calls to [`Builder::open`] and [`Builder::close`].
 ///
+/// # Type parameters and bounds
+///
+/// The three type parameters of the tree determines the following properties:
+/// * `T` is the data stored in the tree.
+/// * `I` determines the numerical bounds of spans stored in the tree through
+///   the [Index] trait, if set to [Empty][crate::span::Empty] the tree does not
+///   store any spans.
+/// * `W` determines the bounds of pointers in the tree through the [Width]
+///   trait, this decides how many elements that can be stored in the tree.
+///
+/// To use the default values, use the [Builder::new][Builder::new] constructor.
+///
 /// # Examples
 ///
 /// ```
@@ -60,6 +72,8 @@ where
 impl<T> Builder<T, u32, usize> {
     /// Construct a new tree with a default [`Span`] based on `u32`.
     ///
+    /// For a constructor that can use custom bounds, use [Builder::new_with].
+    ///
     /// # Examples
     ///
     /// ```
@@ -102,6 +116,9 @@ where
     W: Width,
 {
     /// Construct a new tree with a custom span.
+    ///
+    /// To build a tree with default bounds, see [Builder::new]. Also see the
+    /// [Builder] documentation for what the different bounds means.
     ///
     /// # Examples
     ///
