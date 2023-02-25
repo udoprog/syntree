@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{pointer, span, Builder, Error, Tree};
+use syntree::{index, pointer, Builder, Error, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -38,7 +38,8 @@ impl rowan::Language for Lang {
 
 fn syntree_build<I, W>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, I, W>, Error>
 where
-    I: span::Index<Length = usize>,
+    I: index::Index,
+    I::Length: From<usize>,
     W: pointer::Width,
 {
     let mut builder = Builder::<_, _, W>::new_with();
@@ -46,7 +47,7 @@ where
     let c = builder.checkpoint()?;
 
     for s in strings.iter().cycle().take(count) {
-        builder.token(STRING, s.len())?;
+        builder.token(STRING, s.len().into())?;
     }
 
     builder.close_at(&c, ROOT)?;
@@ -86,7 +87,8 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
 
 fn syntree_tree<I, W>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, I, W>, Error>
 where
-    I: span::Index<Length = usize>,
+    I: index::Index,
+    I::Length: From<usize>,
     W: pointer::Width,
 {
     let mut builder = Builder::<_, I, W>::new_with();
@@ -95,9 +97,9 @@ where
 
     for (_, s) in (0..n).zip(strings.iter().cycle()) {
         builder.open(ENTRY)?;
-        builder.token(STRING.into(), s.len())?;
+        builder.token(STRING.into(), s.len().into())?;
         builder.close()?;
-        builder.token(WHITESPACE.into(), 1)?;
+        builder.token(WHITESPACE.into(), 1usize.into())?;
     }
 
     builder.close_at(&c, ROOT)?;
@@ -122,6 +124,13 @@ fn setup(c: &mut Criterion) {
             group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
                 b.iter(|| {
                     syntree_build::<usize, usize>(&strings, *size).expect("failed to build tree")
+                })
+            });
+
+            group.bench_with_input(BenchmarkId::new("syntree-empty", size), &size, |b, size| {
+                b.iter(|| {
+                    syntree_build::<syntree::Empty, usize>(&strings, *size)
+                        .expect("failed to build tree")
                 })
             });
 

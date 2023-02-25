@@ -3,8 +3,9 @@
 use core::fmt;
 use std::io::{Error, Write};
 
+use crate::index::Index;
 use crate::pointer::Width;
-use crate::span::{Index, Span};
+use crate::span::Span;
 use crate::tree::{Kind, Tree};
 
 /// Pretty-print a tree without a source.

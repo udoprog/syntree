@@ -11,9 +11,10 @@ use core::fmt;
 use core::mem::size_of;
 use core::ops::Range;
 
+use crate::index::Index;
 use crate::links::Links;
 use crate::pointer::{Pointer, Width};
-use crate::span::{Index, Span};
+use crate::span::Span;
 use crate::tree::Kind;
 
 pub use self::ancestors::Ancestors;

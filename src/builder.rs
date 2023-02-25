@@ -3,9 +3,10 @@ mod checkpoint;
 use core::mem::replace;
 
 use crate::error::Error;
+use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
 use crate::pointer::{Pointer, Width};
-use crate::span::{Index, Indexes, Length, Span};
+use crate::span::Span;
 use crate::tree::{Kind, Tree};
 
 pub use self::checkpoint::Checkpoint;
@@ -20,8 +21,8 @@ pub use self::checkpoint::Checkpoint;
 /// The three type parameters of the tree determines the following properties:
 /// * `T` is the data stored in the tree.
 /// * `I` determines the numerical bounds of spans stored in the tree through
-///   the [Index] trait, if set to [Empty][crate::span::Empty] the tree does not
-///   store any spans.
+///   the [Index] trait, if set to [Empty][crate::Empty] the tree does not store
+///   any spans.
 /// * `W` determines the bounds of pointers in the tree through the [Width]
 ///   trait, this decides how many elements that can be stored in the tree.
 ///
@@ -123,14 +124,14 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::{span, Tree, Builder};
+    /// use syntree::{Builder, Empty, Tree};
     ///
-    /// let mut tree: Builder<_, span::Empty, usize> = Builder::new_with();
+    /// let mut tree: Builder<_, Empty, usize> = Builder::new_with();
     ///
     /// tree.open("root")?;
     ///
     /// tree.open("child")?;
-    /// tree.token("token", span::Empty)?;
+    /// tree.token("token", Empty)?;
     /// tree.close()?;
     ///
     /// tree.open("child2")?;
@@ -140,7 +141,7 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected: Tree<_, span::Empty, u32> = syntree::tree_with! {
+    /// let expected: Tree<_, Empty, u32> = syntree::tree_with! {
     ///     "root" => {
     ///         "child" => {
     ///             "token"

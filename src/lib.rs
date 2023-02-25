@@ -56,17 +56,17 @@
 //! # Ok::<_, Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! Combined with [`span::Empty`], this allows for building trees without the
+//! Combined with [`Empty`], this allows for building trees without the
 //! overhead of keeping track of spans:
 //!
 //! ```
-//! use syntree::{Builder, span, Tree};
+//! use syntree::{Builder, Empty, Tree};
 //!
-//! let mut tree = Builder::<_, span::Empty, u32>::new_with();
+//! let mut tree = Builder::<_, Empty, u32>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
-//! tree.token("token", span::Empty)?;
+//! tree.token("token", Empty)?;
 //! tree.close()?;
 //! tree.open("child2")?;
 //! tree.close()?;
@@ -74,7 +74,7 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, span::Empty, usize> = syntree::tree_with! {
+//! let expected: Tree<_, Empty, usize> = syntree::tree_with! {
 //!     "root" => {
 //!         "child" => { "token" },
 //!         "child2" => {}
@@ -307,7 +307,11 @@
 //! queried. Something which `rowan` solves for you, but `syntree` leaves as an
 //! exercise to the reader.
 //!
+//! [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
+//! [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
 //! [`close`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.close
+//! [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
+//! [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 //! [`rowan`]: https://docs.rs/rowan/latest/rowan/
@@ -315,10 +319,6 @@
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
-//! [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
-//! [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
-//! [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
-//! [`span::Empty`]: https://docs.rs/syntree/latest/syntree/span/struct.Empty.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [any-syntax]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
 //! [calculator]: https://github.com/udoprog/syntree/blob/main/examples/calculator
@@ -338,15 +338,18 @@
 mod macros;
 mod builder;
 pub mod edit;
+mod empty;
 mod error;
+pub mod index;
 mod links;
 pub mod node;
 pub mod pointer;
 pub mod print;
-pub mod span;
+mod span;
 mod tree;
 
 pub use self::builder::{Builder, Checkpoint};
+pub use self::empty::Empty;
 pub use self::error::Error;
 pub use self::node::Node;
 pub use self::span::Span;

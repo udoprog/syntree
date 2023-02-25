@@ -1,11 +1,12 @@
 use core::fmt;
 use core::ops::Range;
 
+use crate::index::{Index, Indexes};
 use crate::links::Links;
 use crate::node::Node;
 use crate::node::{Children, Walk, WalkEvents};
 use crate::pointer::{Pointer, Width};
-use crate::span::{Index, Indexes, Span};
+use crate::span::Span;
 
 /// The kind of a node in the [Tree].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,8 +28,8 @@ pub enum Kind {
 /// The three type parameters of the tree determines the following properties:
 /// * `T` is the data stored in the tree.
 /// * `I` determines the numerical bounds of spans stored in the tree through
-///   the [Index] trait, if set to [Empty][crate::span::Empty] the tree does not
-///   store any spans.
+///   the [Index] trait, if set to [Empty][crate::Empty] the tree does not store
+///   any spans.
 /// * `W` determines the bounds of pointers in the tree through the [Width]
 ///   trait, this decides how many elements that can be stored in the tree.
 ///

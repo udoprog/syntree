@@ -3,10 +3,11 @@
 use std::collections::HashMap;
 
 use crate::error::Error;
+use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
 use crate::node::Node;
 use crate::pointer::{Pointer, Width};
-use crate::span::{Index, Indexes, Length, Span};
+use crate::span::Span;
 use crate::tree::{Kind, Tree};
 
 #[derive(Debug)]
