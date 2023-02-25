@@ -2,7 +2,7 @@ use core::iter::FusedIterator;
 
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
-use crate::pointer::Pointer;
+use crate::pointer::{Pointer, Width};
 use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
@@ -67,16 +67,26 @@ use crate::tree::Kind;
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Children<'a, T, I, P> {
-    tree: &'a [Links<T, I, P>],
-    first: Option<P>,
-    last: Option<P>,
+pub struct Children<'a, T, I, W>
+where
+    W: Width,
+{
+    tree: &'a [Links<T, I, W::Pointer>],
+    first: Option<W::Pointer>,
+    last: Option<W::Pointer>,
 }
 
-impl<'a, T, I, P> Children<'a, T, I, P> {
+impl<'a, T, I, W> Children<'a, T, I, W>
+where
+    W: Width,
+{
     /// Construct a new child iterator.
     #[inline]
-    pub(crate) const fn new(tree: &'a [Links<T, I, P>], first: Option<P>, last: Option<P>) -> Self {
+    pub(crate) const fn new(
+        tree: &'a [Links<T, I, W::Pointer>],
+        first: Option<W::Pointer>,
+        last: Option<W::Pointer>,
+    ) -> Self {
         Self { tree, first, last }
     }
 
@@ -88,12 +98,7 @@ impl<'a, T, I, P> Children<'a, T, I, P> {
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
-}
 
-impl<T, I, P> Children<'_, T, I, P>
-where
-    P: Pointer,
-{
     /// Get the next node from the iterator. This advances past all non-node
     /// data.
     ///
@@ -121,7 +126,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'_, T, I, P>> {
+    pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
         loop {
             let node = self.next()?;
 
@@ -132,11 +137,11 @@ where
     }
 }
 
-impl<'a, T, I, P> Iterator for Children<'a, T, I, P>
+impl<'a, T, I, W> Iterator for Children<'a, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
-    type Item = Node<'a, T, I, P>;
+    type Item = Node<'a, T, I, W>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -151,9 +156,9 @@ where
     }
 }
 
-impl<T, I, P> DoubleEndedIterator for Children<'_, T, I, P>
+impl<T, I, W> DoubleEndedIterator for Children<'_, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -168,11 +173,12 @@ where
     }
 }
 
-impl<T, I, P> FusedIterator for Children<'_, T, I, P> where P: Pointer {}
+impl<T, I, W> FusedIterator for Children<'_, T, I, W> where W: Width {}
 
-impl<T, I, P> Clone for Children<'_, T, I, P>
+impl<T, I, W> Clone for Children<'_, T, I, W>
 where
-    P: Copy,
+    W: Width,
+    W::Pointer: Copy,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -184,7 +190,10 @@ where
     }
 }
 
-impl<T, I, P> Default for Children<'_, T, I, P> {
+impl<T, I, W> Default for Children<'_, T, I, W>
+where
+    W: Width,
+{
     #[inline]
     fn default() -> Self {
         Self {

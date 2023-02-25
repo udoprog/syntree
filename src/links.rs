@@ -4,7 +4,7 @@ use crate::span::Span;
 use crate::tree::Kind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Links<T, I, P> {
+pub(crate) struct Links<T, I, P> {
     /// The data in the node.
     pub(crate) data: T,
     /// The kind of the node.

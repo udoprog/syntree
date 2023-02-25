@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 
 use crate::links::Links;
-use crate::pointer::Pointer;
+use crate::pointer::{Pointer, Width};
 use crate::Node;
 
 /// An event indicating how a tree is being walked with [`WalkEvents`].
@@ -124,19 +124,25 @@ pub enum Event {
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct WalkEvents<'a, T, I, P> {
+pub struct WalkEvents<'a, T, I, W>
+where
+    W: Width,
+{
     /// The tree being iterated over.
-    tree: &'a [Links<T, I, P>],
+    tree: &'a [Links<T, I, W::Pointer>],
     // The current node.
-    node: Option<(P, Event)>,
+    node: Option<(W::Pointer, Event)>,
     // Current depth being walked.
     depth: usize,
 }
 
-impl<'a, T, I, P> WalkEvents<'a, T, I, P> {
+impl<'a, T, I, W> WalkEvents<'a, T, I, W>
+where
+    W: Width,
+{
     /// Construct a new events walker.
     #[inline]
-    pub(crate) fn new(tree: &'a [Links<T, I, P>], node: Option<P>) -> Self {
+    pub(crate) fn new(tree: &'a [Links<T, I, W::Pointer>], node: Option<W::Pointer>) -> Self {
         Self {
             tree,
             node: node.map(|n| (n, Event::Next)),
@@ -148,13 +154,12 @@ impl<'a, T, I, P> WalkEvents<'a, T, I, P> {
     pub(crate) fn depth(&self) -> usize {
         self.depth
     }
-}
 
-impl<T, I, P> WalkEvents<'_, T, I, P>
-where
-    P: Copy,
-{
-    fn step(&mut self, links: &Links<T, I, P>, event: Event) -> Option<(P, Event)> {
+    fn step(
+        &mut self,
+        links: &Links<T, I, W::Pointer>,
+        event: Event,
+    ) -> Option<(W::Pointer, Event)> {
         if let Event::Up = event {
             if let Some(next) = links.next {
                 return Some((next, Event::Next));
@@ -175,9 +180,9 @@ where
     }
 }
 
-impl<T, I, P> Clone for WalkEvents<'_, T, I, P>
+impl<T, I, W> Clone for WalkEvents<'_, T, I, W>
 where
-    P: Copy,
+    W: Width,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -189,7 +194,10 @@ where
     }
 }
 
-impl<T, I, P> Default for WalkEvents<'_, T, I, P> {
+impl<T, I, W> Default for WalkEvents<'_, T, I, W>
+where
+    W: Width,
+{
     #[inline]
     fn default() -> Self {
         Self {
@@ -200,11 +208,11 @@ impl<T, I, P> Default for WalkEvents<'_, T, I, P> {
     }
 }
 
-impl<'a, T, I, P> Iterator for WalkEvents<'a, T, I, P>
+impl<'a, T, I, W> Iterator for WalkEvents<'a, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
-    type Item = (Event, Node<'a, T, I, P>);
+    type Item = (Event, Node<'a, T, I, W>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (node, event) = self.node.take()?;
@@ -219,4 +227,4 @@ where
     }
 }
 
-impl<T, I, P> FusedIterator for WalkEvents<'_, T, I, P> where P: Pointer {}
+impl<T, I, W> FusedIterator for WalkEvents<'_, T, I, W> where W: Width {}

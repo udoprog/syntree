@@ -55,10 +55,10 @@ fn pow(a: i64, b: i64) -> Option<i64> {
     a.checked_pow(pow)
 }
 
-fn eval_node<I, P>(mut node: Node<'_, Syntax, I, P>, source: &str) -> Result<i64, EvalError<I>>
+fn eval_node<I, W>(mut node: Node<'_, Syntax, I, W>, source: &str) -> Result<i64, EvalError<I>>
 where
     I: span::Index,
-    P: pointer::Pointer,
+    W: pointer::Width,
 {
     loop {
         return match *node.value() {

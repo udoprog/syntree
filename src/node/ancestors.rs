@@ -1,7 +1,7 @@
 use core::iter::FusedIterator;
 
 use crate::node::{Node, SkipTokens};
-use crate::pointer::Pointer;
+use crate::pointer::Width;
 use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::parent`] elements of a node. This
@@ -47,14 +47,20 @@ use crate::tree::Kind;
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
-pub struct Ancestors<'a, T, I, P> {
-    node: Option<Node<'a, T, I, P>>,
+pub struct Ancestors<'a, T, I, W>
+where
+    W: Width,
+{
+    node: Option<Node<'a, T, I, W>>,
 }
 
-impl<'a, T, I, P> Ancestors<'a, T, I, P> {
+impl<'a, T, I, W> Ancestors<'a, T, I, W>
+where
+    W: Width,
+{
     /// Construct a new ancestor iterator.
     #[inline]
-    pub(crate) const fn new(node: Option<Node<'a, T, I, P>>) -> Self {
+    pub(crate) const fn new(node: Option<Node<'a, T, I, W>>) -> Self {
         Self { node }
     }
 
@@ -67,12 +73,7 @@ impl<'a, T, I, P> Ancestors<'a, T, I, P> {
     pub const fn skip_tokens(self) -> SkipTokens<Self> {
         SkipTokens::new(self)
     }
-}
 
-impl<T, I, P> Ancestors<'_, T, I, P>
-where
-    P: Pointer,
-{
     /// Get the next node from the iterator. This advances past all non-node
     /// data.
     ///
@@ -101,7 +102,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'_, T, I, P>> {
+    pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
         loop {
             let node = self.next()?;
 
@@ -112,11 +113,11 @@ where
     }
 }
 
-impl<'a, T, I, P> Iterator for Ancestors<'a, T, I, P>
+impl<'a, T, I, W> Iterator for Ancestors<'a, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
-    type Item = Node<'a, T, I, P>;
+    type Item = Node<'a, T, I, W>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -126,16 +127,22 @@ where
     }
 }
 
-impl<T, I, P> FusedIterator for Ancestors<'_, T, I, P> where P: Pointer {}
+impl<T, I, W> FusedIterator for Ancestors<'_, T, I, W> where W: Width {}
 
-impl<T, I, P> Clone for Ancestors<'_, T, I, P> {
+impl<T, I, W> Clone for Ancestors<'_, T, I, W>
+where
+    W: Width,
+{
     #[inline]
     fn clone(&self) -> Self {
         Self { node: self.node }
     }
 }
 
-impl<T, I, P> Default for Ancestors<'_, T, I, P> {
+impl<T, I, W> Default for Ancestors<'_, T, I, W>
+where
+    W: Width,
+{
     #[inline]
     fn default() -> Self {
         Self { node: None }

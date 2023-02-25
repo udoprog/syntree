@@ -170,14 +170,14 @@ where
     /// Get all root nodes in the tree.
     ///
     /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'_, T, I, W::Pointer> {
+    pub fn children(&self) -> Children<'_, T, I, W> {
         Children::new(&self.tree, self.first, self.last)
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node once.
     ///
     /// See [`Walk`] for documentation.
-    pub fn walk(&self) -> Walk<'_, T, I, W::Pointer> {
+    pub fn walk(&self) -> Walk<'_, T, I, W> {
         Walk::new(self.tree.as_slice(), self.first)
     }
 
@@ -185,7 +185,7 @@ where
     /// indicating how the tree is being traversed.
     ///
     /// See [`WalkEvents`] for documentation.
-    pub fn walk_events(&self) -> WalkEvents<'_, T, I, W::Pointer> {
+    pub fn walk_events(&self) -> WalkEvents<'_, T, I, W> {
         WalkEvents::new(self.tree.as_slice(), self.first)
     }
 
@@ -203,7 +203,7 @@ where
     /// assert_eq!(*root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn first(&self) -> Option<Node<'_, T, I, W::Pointer>> {
+    pub fn first(&self) -> Option<Node<'_, T, I, W>> {
         self.node_at(self.first?)
     }
 
@@ -221,7 +221,7 @@ where
     /// assert_eq!(*root.value(), "root2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn last(&self) -> Option<Node<'_, T, I, W::Pointer>> {
+    pub fn last(&self) -> Option<Node<'_, T, I, W>> {
         self.node_at(self.last?)
     }
 
@@ -259,7 +259,7 @@ where
     }
 
     /// Construct a node at the given location.
-    pub(crate) fn node_at(&self, index: W::Pointer) -> Option<Node<'_, T, I, W::Pointer>> {
+    pub(crate) fn node_at(&self, index: W::Pointer) -> Option<Node<'_, T, I, W>> {
         let cur = self.tree.get(index.get())?;
         Some(Node::new(cur, &self.tree))
     }
@@ -365,7 +365,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I, W::Pointer>> {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I, W>> {
         let start = I::from_usize(span.start)?;
         let end = I::from_usize(span.end)?;
         self.node_with_span_internal(start, end)
@@ -472,11 +472,11 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I, W::Pointer>> {
+    pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I, W>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: I, end: I) -> Option<Node<'_, T, I, W::Pointer>> {
+    fn node_with_span_internal(&self, start: I, end: I) -> Option<Node<'_, T, I, W>> {
         let result = self.indexes.binary_search(start);
 
         let n = match result {
@@ -537,7 +537,9 @@ where
     B: Width,
 {
     fn eq(&self, other: &Tree<T, I, A>) -> bool {
-        struct Item<'a, T, I, P>((usize, Node<'a, T, I, P>));
+        struct Item<'a, T, I, W>((usize, Node<'a, T, I, W>))
+        where
+            W: Width;
 
         // NB: this is needed because the constraints on tuples doesn't allow
         // for `A` and `B` to be different.
@@ -545,6 +547,8 @@ where
         where
             T: PartialEq,
             I: PartialEq,
+            A: Width,
+            B: Width,
         {
             #[inline]
             fn eq(&self, other: &Item<'a, T, I, A>) -> bool {

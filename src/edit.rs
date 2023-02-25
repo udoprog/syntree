@@ -288,25 +288,31 @@ where
 }
 
 /// The state of the skipped subtree.
-struct Skipped<'a, T, I, P> {
-    node: Node<'a, T, I, P>,
+struct Skipped<'a, T, I, W>
+where
+    W: Width,
+{
+    node: Node<'a, T, I, W>,
     first: bool,
 }
 
-struct RefactorWalk<'a, T, I, P> {
-    parents: Vec<(Node<'a, T, I, P>, P)>,
-    prev: Option<P>,
+struct RefactorWalk<'a, T, I, W>
+where
+    W: Width,
+{
+    parents: Vec<(Node<'a, T, I, W>, W::Pointer)>,
+    prev: Option<W::Pointer>,
 }
 
-impl<'a, T, I, P> RefactorWalk<'a, T, I, P>
+impl<'a, T, I, W> RefactorWalk<'a, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
     fn skip_subtree(
         &mut self,
-        node: Node<'a, T, I, P>,
+        node: Node<'a, T, I, W>,
         first: bool,
-    ) -> Option<Skipped<'a, T, I, P>> {
+    ) -> Option<Skipped<'a, T, I, W>> {
         if let Some(next) = node.next() {
             return Some(Skipped { node: next, first });
         }
@@ -317,7 +323,11 @@ where
     }
 
     /// Advance the iteration.
-    fn step(&mut self, node: Node<'a, T, I, P>, node_id: P) -> Option<(Node<'a, T, I, P>, bool)> {
+    fn step(
+        &mut self,
+        node: Node<'a, T, I, W>,
+        node_id: W::Pointer,
+    ) -> Option<(Node<'a, T, I, W>, bool)> {
         if let Some(next) = node.first() {
             self.parents.push((node, node_id));
             return Some((next, true));

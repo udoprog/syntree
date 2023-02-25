@@ -8,6 +8,7 @@ mod sealed {
 }
 
 /// A pointer type that is derived from the pointer [Width].
+#[doc(hidden)]
 pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::Sealed {
     #[doc(hidden)]
     unsafe fn new_unchecked(value: usize) -> Self;

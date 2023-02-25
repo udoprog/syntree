@@ -1,6 +1,7 @@
 use core::iter::FusedIterator;
 
 use crate::node::Node;
+use crate::pointer::Width;
 use crate::tree::Kind;
 
 /// Wrapped around an iterator that excludes [`Kind::Token`] nodes.
@@ -70,9 +71,10 @@ impl<U> SkipTokens<U> {
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, P: 'a> Iterator for SkipTokens<U>
+impl<'a, U, T: 'a, I: 'a, W: 'a> Iterator for SkipTokens<U>
 where
-    U: Iterator<Item = Node<'a, T, I, P>>,
+    W: Width,
+    U: Iterator<Item = Node<'a, T, I, W>>,
 {
     type Item = U::Item;
 
@@ -88,9 +90,10 @@ where
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, P: 'a> DoubleEndedIterator for SkipTokens<U>
+impl<'a, U, T: 'a, I: 'a, W: 'a> DoubleEndedIterator for SkipTokens<U>
 where
-    U: DoubleEndedIterator<Item = Node<'a, T, I, P>>,
+    W: Width,
+    U: DoubleEndedIterator<Item = Node<'a, T, I, W>>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -104,8 +107,10 @@ where
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, P: 'a> FusedIterator for SkipTokens<U> where
-    U: FusedIterator<Item = Node<'a, T, I, P>>
+impl<'a, U, T: 'a, I: 'a, W: 'a> FusedIterator for SkipTokens<U>
+where
+    W: Width,
+    U: FusedIterator<Item = Node<'a, T, I, W>>,
 {
 }
 

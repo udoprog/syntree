@@ -12,7 +12,7 @@ use core::mem::size_of;
 use core::ops::Range;
 
 use crate::links::Links;
-use crate::pointer::Pointer;
+use crate::pointer::{Pointer, Width};
 use crate::span::{Index, Span};
 use crate::tree::Kind;
 
@@ -24,13 +24,22 @@ pub use self::walk::{Walk, WithDepths};
 pub use self::walk_events::{Event, WalkEvents};
 
 /// A node in the tree.
-pub struct Node<'a, T, I, P> {
-    links: &'a Links<T, I, P>,
-    tree: &'a [Links<T, I, P>],
+pub struct Node<'a, T, I, W>
+where
+    W: Width,
+{
+    links: &'a Links<T, I, W::Pointer>,
+    tree: &'a [Links<T, I, W::Pointer>],
 }
 
-impl<'a, T, I, P> Node<'a, T, I, P> {
-    pub(crate) const fn new(links: &'a Links<T, I, P>, tree: &'a [Links<T, I, P>]) -> Self {
+impl<'a, T, I, W> Node<'a, T, I, W>
+where
+    W: Width,
+{
+    pub(crate) const fn new(
+        links: &'a Links<T, I, W::Pointer>,
+        tree: &'a [Links<T, I, W::Pointer>],
+    ) -> Self {
         Self { links, tree }
     }
 
@@ -152,7 +161,7 @@ impl<'a, T, I, P> Node<'a, T, I, P> {
     ///
     /// See [Ancestors] for documentation.
     #[must_use]
-    pub fn ancestors(&self) -> Ancestors<'a, T, I, P> {
+    pub fn ancestors(&self) -> Ancestors<'a, T, I, W> {
         Ancestors::new(Some(*self))
     }
 
@@ -160,20 +169,15 @@ impl<'a, T, I, P> Node<'a, T, I, P> {
     ///
     /// See [Siblings] for documentation.
     #[must_use]
-    pub fn siblings(&self) -> Siblings<'a, T, I, P> {
+    pub fn siblings(&self) -> Siblings<'a, T, I, W> {
         Siblings::new(self.tree, self.links)
     }
-}
 
-impl<'a, T, I, P> Node<'a, T, I, P>
-where
-    P: Copy,
-{
     /// Get an iterator over the children of this node.
     ///
     /// See [Children] for documentation.
     #[must_use]
-    pub fn children(&self) -> Children<'a, T, I, P> {
+    pub fn children(&self) -> Children<'a, T, I, W> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
@@ -182,7 +186,7 @@ where
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk(&self) -> Walk<'a, T, I, P> {
+    pub fn walk(&self) -> Walk<'a, T, I, W> {
         Walk::new(self.tree, self.links.first)
     }
 
@@ -191,14 +195,14 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     #[must_use]
-    pub fn walk_events(&self) -> WalkEvents<'a, T, I, P> {
+    pub fn walk_events(&self) -> WalkEvents<'a, T, I, W> {
         WalkEvents::new(self.tree, self.links.first)
     }
 }
 
-impl<'a, T, I, P> Node<'a, T, I, P>
+impl<'a, T, I, W> Node<'a, T, I, W>
 where
-    P: Pointer,
+    W: Width,
 {
     /// Get immediate parent to this node.
     ///
@@ -231,7 +235,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn parent(&self) -> Option<Node<'a, T, I, P>> {
+    pub fn parent(&self) -> Option<Node<'a, T, I, W>> {
         self.node_at(self.links.parent?)
     }
 
@@ -263,7 +267,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn prev(&self) -> Option<Node<'a, T, I, P>> {
+    pub fn prev(&self) -> Option<Node<'a, T, I, W>> {
         self.node_at(self.links.prev?)
     }
 
@@ -294,7 +298,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn next(&self) -> Option<Node<'a, T, I, P>> {
+    pub fn next(&self) -> Option<Node<'a, T, I, W>> {
         self.node_at(self.links.next?)
     }
 
@@ -325,7 +329,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn first(&self) -> Option<Node<'a, T, I, P>> {
+    pub fn first(&self) -> Option<Node<'a, T, I, W>> {
         self.node_at(self.links.first?)
     }
 
@@ -356,7 +360,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn last(&self) -> Option<Node<'a, T, I, P>> {
+    pub fn last(&self) -> Option<Node<'a, T, I, W>> {
         self.node_at(self.links.last?)
     }
 
@@ -396,9 +400,9 @@ where
     /// assert_eq!(*found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
-    pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, P>>
+    pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, W>>
     where
-        F: FnMut(Node<'a, T, I, P>) -> bool,
+        F: FnMut(Node<'a, T, I, W>) -> bool,
     {
         // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
@@ -430,7 +434,7 @@ where
         }
     }
 
-    fn node_at(&self, id: P) -> Option<Node<'a, T, I, P>> {
+    fn node_at(&self, id: W::Pointer) -> Option<Node<'a, T, I, W>> {
         let cur = self.tree.get(id.get())?;
 
         Some(Self {
@@ -438,12 +442,7 @@ where
             tree: self.tree,
         })
     }
-}
 
-impl<T, I, P> Node<'_, T, I, P>
-where
-    P: Pointer,
-{
     /// Get the identifier of the current node.
     ///
     /// This can be used to register a change in a [`ChangeSet`] later.
@@ -471,19 +470,23 @@ where
     ///
     /// [`ChangeSet`]: crate::edit::ChangeSet
     #[must_use]
-    pub fn id(&self) -> P {
+    pub fn id(&self) -> W::Pointer {
+        // We're relying on the knowledge that the provided links reference is
+        // inside of the tree of links.
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
-        let id = (current - base) / size_of::<Links<T, I, P>>();
+        let id = (current - base) / size_of::<Links<T, I, W::Pointer>>();
+        debug_assert!(id < self.tree.len(), "identifier outside of tree length");
         // SAFETY: It's impossible to construct a node with an offset which is
         // not a legal `NonMax`.
-        unsafe { P::new_unchecked(id) }
+        unsafe { W::Pointer::new_unchecked(id) }
     }
 }
 
-impl<T, I, P> Node<'_, T, I, P>
+impl<T, I, W> Node<'_, T, I, W>
 where
     I: Index,
+    W: Width,
 {
     /// Access the [Span] of the node as a [Range].
     ///
@@ -518,10 +521,11 @@ where
     }
 }
 
-impl<T, I, P> fmt::Debug for Node<'_, T, I, P>
+impl<T, I, W> fmt::Debug for Node<'_, T, I, W>
 where
     T: fmt::Debug,
     I: fmt::Debug,
+    W: Width,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
@@ -532,17 +536,22 @@ where
     }
 }
 
-impl<T, I, P> Clone for Node<'_, T, I, P> {
+impl<T, I, W> Clone for Node<'_, T, I, W>
+where
+    W: Width,
+{
     #[inline]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T, I, P> Copy for Node<'_, T, I, P> {}
+impl<T, I, W> Copy for Node<'_, T, I, W> where W: Width {}
 
 impl<T, I, A, B> PartialEq<Node<'_, T, I, A>> for Node<'_, T, I, B>
 where
+    A: Width,
+    B: Width,
     T: PartialEq,
     I: PartialEq,
 {
@@ -553,9 +562,10 @@ where
     }
 }
 
-impl<T, I, P> Eq for Node<'_, T, I, P>
+impl<T, I, W> Eq for Node<'_, T, I, W>
 where
     T: Eq,
     I: Eq,
+    W: Width,
 {
 }
