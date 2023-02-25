@@ -351,6 +351,6 @@ mod tree;
 pub use self::builder::{Builder, Checkpoint};
 pub use self::empty::Empty;
 pub use self::error::Error;
-pub use self::node::Node;
+pub use self::node::node_impl::Node;
 pub use self::span::Span;
 pub use self::tree::{Kind, Tree};

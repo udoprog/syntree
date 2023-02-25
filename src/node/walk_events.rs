@@ -1,8 +1,8 @@
 use std::iter::FusedIterator;
 
 use crate::links::Links;
+use crate::node::Node;
 use crate::pointer::{Pointer, Width};
-use crate::Node;
 
 /// An event indicating how a tree is being walked with [`WalkEvents`].
 ///

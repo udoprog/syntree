@@ -1,9 +1,9 @@
 use std::iter::FusedIterator;
 
 use crate::links::Links;
+use crate::node::Node;
 use crate::node::{Event, SkipTokens, WalkEvents};
 use crate::pointer::Width;
-use crate::Node;
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
