@@ -7,7 +7,7 @@ use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
-use crate::tree::{Kind, Tree};
+use crate::tree::Tree;
 
 pub use self::checkpoint::Checkpoint;
 
@@ -192,7 +192,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn open(&mut self, data: T) -> Result<W::Pointer, Error> {
-        let id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
+        let id = self.insert(data, Span::point(self.cursor))?;
         self.parents.push(id);
         Ok(id)
     }
@@ -280,7 +280,7 @@ where
             self.tree.span_mut().end = self.cursor;
         }
 
-        let id = self.insert(value, Kind::Token, Span::new(start, self.cursor))?;
+        let id = self.insert(value, Span::new(start, self.cursor))?;
         self.sibling = Some(id);
 
         if !len.is_empty() {
@@ -484,7 +484,7 @@ where
         let next_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, Kind::Node, Span::point(self.cursor))?;
+            let new_id = self.insert(data, Span::point(self.cursor))?;
             self.sibling = Some(new_id);
             debug_assert_eq!(new_id, id, "new id should match the expected id");
             return Ok(new_id);
@@ -506,7 +506,6 @@ where
 
         let added = Links {
             data,
-            kind: Kind::Node,
             span,
             prev,
             parent,
@@ -601,7 +600,7 @@ where
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, kind: Kind, span: Span<I>) -> Result<W::Pointer, Error> {
+    fn insert(&mut self, data: T, span: Span<I>) -> Result<W::Pointer, Error> {
         let new = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
@@ -609,7 +608,6 @@ where
 
         self.tree.push(Links {
             data,
-            kind,
             span,
             parent,
             prev,

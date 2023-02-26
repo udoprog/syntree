@@ -6,7 +6,7 @@ use std::io::{Error, Write};
 use crate::index::Index;
 use crate::pointer::Width;
 use crate::span::Span;
-use crate::tree::{Kind, Tree};
+use crate::tree::Tree;
 
 /// Pretty-print a tree without a source.
 ///
@@ -145,17 +145,12 @@ where
         let data = node.value();
         let span = node.span();
 
-        match node.kind() {
-            Kind::Token => {
-                if let Some(source) = source(span) {
-                    writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source, n = n)?;
-                } else {
-                    writeln!(o, "{:n$}{:?}@{} +", "", data, span, n = n)?;
-                }
-            }
-            Kind::Node => {
-                writeln!(o, "{:n$}{:?}@{}", "", data, span, n = n)?;
-            }
+        if node.has_children() {
+            writeln!(o, "{:n$}{:?}@{}", "", data, span, n = n)?;
+        } else if let Some(source) = source(span) {
+            writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source, n = n)?;
+        } else {
+            writeln!(o, "{:n$}{:?}@{} +", "", data, span, n = n)?;
         }
     }
 

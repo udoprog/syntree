@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 
 use crate::error::Error;
-use crate::index::{Index, Indexes, Length};
+use crate::index::{Index, Indexes};
 use crate::links::Links;
 use crate::node::Node;
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
-use crate::tree::{Kind, Tree};
+use crate::tree::Tree;
 
 #[derive(Debug)]
 pub(crate) enum Change {
@@ -226,22 +226,15 @@ where
                 prev
             };
 
-            let span = match node.kind() {
-                Kind::Node => Span::point(cursor),
-                Kind::Token => {
-                    let len = node.span().len();
-
-                    if !len.is_empty() {
-                        output.indexes_mut().push(cursor, node_id);
-                        let start = cursor;
-                        cursor = cursor
-                            .checked_add_len(node.span().len())
-                            .ok_or(Error::Overflow)?;
-                        Span::new(start, cursor)
-                    } else {
-                        Span::point(cursor)
-                    }
-                }
+            let span = if !node.has_children() && !node.span().is_empty() {
+                output.indexes_mut().push(cursor, node_id);
+                let start = cursor;
+                cursor = cursor
+                    .checked_add_len(node.span().len())
+                    .ok_or(Error::Overflow)?;
+                Span::new(start, cursor)
+            } else {
+                Span::point(cursor)
             };
 
             let parent = refactor.parents.last().map(|n| n.1);
@@ -257,7 +250,6 @@ where
 
             output.push(Links {
                 data: node.value().clone(),
-                kind: node.kind(),
                 span,
                 parent,
                 prev,

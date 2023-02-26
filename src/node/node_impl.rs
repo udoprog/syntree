@@ -7,7 +7,6 @@ use crate::links::Links;
 use crate::node::{Ancestors, Children, Siblings, Walk, WalkEvents};
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
-use crate::tree::Kind;
 
 /// A node in the tree.
 pub struct Node<'a, T, I, W>
@@ -56,16 +55,13 @@ where
         &self.links.data
     }
 
-    /// Access the kind of the node.
+    /// Check if the current node has children or not.
     ///
-    /// Terminating nodes are [`Kind::Token`] and intermediary nodes are
-    /// [`Kind::Node`].
+    /// Nodes without children are also known as tokens.
     ///
     /// # Examples
     ///
     /// ```
-    /// use syntree::Kind;
-    ///
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         ("number", 5),
@@ -74,14 +70,13 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(root.kind(), Kind::Node);
-    ///
-    /// assert!(root.children().all(|n| matches!(n.kind(), Kind::Token)));
+    /// assert!(root.has_children());
+    /// assert!(root.children().all(|n| !n.has_children()));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub const fn kind(&self) -> Kind {
-        self.links.kind
+    pub const fn has_children(&self) -> bool {
+        self.links.first.is_some()
     }
 
     /// Get the span of the current node. The span of a node is the complete
@@ -125,14 +120,14 @@ where
     ///
     /// ```
     /// let mut tree = syntree::tree! {
-    ///     "root" => {},
+    ///     "root",
     ///     "root2" => {
-    ///         ("token", 5)
+    ///         ("token2", 5)
     ///     }
     /// };
     ///
-    /// let first = tree.first().ok_or("missing first root node")?;
-    /// let last = first.next().ok_or("missing last root node")?;
+    /// let first = tree.first().ok_or("missing root")?;
+    /// let last = first.next().ok_or("missing root2")?;
     ///
     /// assert!(first.is_empty());
     /// assert!(!last.is_empty());
@@ -360,8 +355,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::Kind;
-    ///
     /// let tree = syntree::tree! {
     ///     "root" => {
     ///         "child1" => {
@@ -381,7 +374,7 @@ where
     /// let node = tree.node_with_range(3..3).ok_or("missing 0")?;
     /// assert_eq!(*node.value(), "child4");
     ///
-    /// let found = node.find_preceding(|n| n.span().end == 3 && matches!(n.kind(), Kind::Node));
+    /// let found = node.find_preceding(|n| n.span().end == 3 && n.has_children());
     /// let found = found.expect("expected preceeding node");
     /// assert_eq!(*found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -516,7 +509,6 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
             .field("data", &self.links.data)
-            .field("kind", &self.links.kind)
             .field("span", &self.links.span)
             .finish()
     }
@@ -542,9 +534,7 @@ where
     I: PartialEq,
 {
     fn eq(&self, other: &Node<'_, T, I, A>) -> bool {
-        self.links.data == other.links.data
-            && self.links.kind == other.links.kind
-            && self.links.span == other.links.span
+        self.links.data == other.links.data && self.links.span == other.links.span
     }
 }
 

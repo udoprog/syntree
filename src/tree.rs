@@ -8,16 +8,6 @@ use crate::node::{Children, Walk, WalkEvents};
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
 
-/// The kind of a node in the [Tree].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Kind {
-    /// A node.
-    Node,
-    /// The token and a corresponding span.
-    Token,
-}
-
 /// A syntax tree.
 ///
 /// A tree is constructed through a [Builder][crate::Builder] or by modifying an
@@ -48,9 +38,9 @@ where
     /// cursor each time it is modified and allow for binary searching for
     /// sequences of nodes which corresponds to the given index.
     indexes: I::Indexes<W::Pointer>,
-    /// The first element in the tree.
+    /// The first node in the tree.
     first: Option<W::Pointer>,
-    /// The last element in the tree.
+    /// The last node in the tree.
     last: Option<W::Pointer>,
 }
 
@@ -257,7 +247,7 @@ where
         self.tree.get_mut(id.get())
     }
 
-    /// Push a new element onto the tree.
+    /// Push a new node into the tree with the specified links.
     pub(crate) fn push(&mut self, links: Links<T, I, W::Pointer>) {
         self.tree.push(links);
     }

@@ -3,7 +3,6 @@ use core::iter::FusedIterator;
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
 use crate::pointer::{Pointer, Width};
-use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -16,9 +15,13 @@ use crate::tree::Kind;
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
-///             "child2" => {}
+///             "child2" => {
+///                 "token1"
+///             }
 ///         },
-///         "child3" => {}
+///         "child3" => {
+///             "token2"
+///         }
 ///     }
 /// };
 ///
@@ -35,12 +38,18 @@ use crate::tree::Kind;
 /// let mut tree = syntree::tree! {
 ///     "root" => {
 ///         "child1" => {
-///             "child2" => {}
+///             "child2" => {
+///                 "token1"
+///             }
 ///         },
-///         "child3" => {}
+///         "child3" => {
+///             "token2"
+///         }
 ///     },
 ///     "root2" => {
-///         "child4" => {}
+///         "child4" => {
+///             "token3"
+///         }
 ///     }
 /// };
 ///
@@ -76,8 +85,8 @@ where
         }
     }
 
-    /// Construct a [`SkipTokens`] iterator from the remainder of this
-    /// iterator. This filters out [`Kind::Token`] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
+    /// This filters out childless nodes, also known as tokens.
     ///
     /// See [`SkipTokens`] for documentation.
     #[must_use]
@@ -92,13 +101,19 @@ where
     ///
     /// ```
     /// let tree = syntree::tree! {
-    ///     ("t1", 1),
-    ///     "child1" => {},
-    ///     ("t2", 1),
-    ///     "child2" => {},
-    ///     ("t3", 1),
-    ///     "child3" => {},
-    ///     ("t4", 1)
+    ///     ("token1", 1),
+    ///     "child1" => {
+    ///         "token2"
+    ///     },
+    ///     ("token3", 1),
+    ///     "child2" => {
+    ///         "token4"
+    ///     },
+    ///     ("token5", 1),
+    ///     "child3" => {
+    ///         "token6"
+    ///     },
+    ///     ("token7", 1)
     /// };
     ///
     /// let first = tree.first().ok_or("missing first")?;
@@ -115,13 +130,7 @@ where
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
-        loop {
-            let node = self.next()?;
-
-            if matches!(node.kind(), Kind::Node) {
-                return Some(node);
-            }
-        }
+        self.find(|n| n.has_children())
     }
 }
 
