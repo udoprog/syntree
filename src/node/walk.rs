@@ -85,8 +85,8 @@ where
         WithDepths { iter: self }
     }
 
-    /// Construct a [`SkipTokens`] iterator from the remainder of this
-    /// iterator. This filters out [`Kind::Token`][crate::Kind::Token] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
+    /// This filters out childless nodes, also known as tokens.
     ///
     /// See [`SkipTokens`] for documentation.
     #[inline]
@@ -95,7 +95,7 @@ where
         SkipTokens::new(self)
     }
 
-    /// Get the next element with a corresponding depth.
+    /// Get the next node with a corresponding depth.
     ///
     /// Alternatively you can use [`WithDepths`] through [`Walk::with_depths`].
     ///
@@ -167,13 +167,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let (e, node) = self.iter.next()?;
-
-            if !matches!(e, Event::Up) {
-                return Some(node);
-            }
-        }
+        Some(self.iter.find(|(e, _)| !matches!(e, Event::Up))?.1)
     }
 }
 

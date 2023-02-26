@@ -1,8 +1,10 @@
 use crate::index::{Index, Indexes, Length};
 
-/// The empty span implementation.
+/// The empty [Index] implementation.
 ///
-/// This can be used in combination with [`Builder::new_with`].
+/// This can be used in combination with [`Builder::new_with`] to ensure that
+/// that tree does not store any information on spans, reducing overhead if this
+/// is not necessary.
 ///
 /// [`Builder::new_with`]: crate::Builder::new_with
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,11 +46,6 @@ impl Index for Empty {
 
     #[inline]
     fn len_to(self, _: Self) -> Self {
-        Empty
-    }
-
-    #[inline]
-    fn saturating_sub(self, _: Self) -> Self {
         Empty
     }
 

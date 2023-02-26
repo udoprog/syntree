@@ -26,68 +26,6 @@ the [calculator example][calculator].
 
 <br>
 
-## Compact or empty spans
-
-Spans by default uses `u32`-based indexes and `usize`-based pointers, this
-can be changed from its default using the [`Builder::new_with`] constructor:
-
-```rust
-use syntree::{Builder, Span, Tree};
-
-let mut tree = Builder::<_, usize, u16>::new_with();
-
-tree.open("root")?;
-tree.open("child")?;
-tree.token("token", 100)?;
-tree.close()?;
-tree.open("child2")?;
-tree.close()?;
-tree.close()?;
-
-let tree = tree.build()?;
-
-let expected: Tree<_, usize, u32> = syntree::tree_with! {
-    "root" => {
-        "child" => { ("token", 100) },
-        "child2" => {}
-    }
-};
-
-assert_eq!(tree, expected);
-assert_eq!(tree.span(), Span::new(0, 100));
-```
-
-Combined with [`Empty`], this allows for building trees without the
-overhead of keeping track of spans:
-
-```rust
-use syntree::{Builder, Empty, Tree};
-
-let mut tree = Builder::<_, Empty, u32>::new_with();
-
-tree.open("root")?;
-tree.open("child")?;
-tree.token("token", Empty)?;
-tree.close()?;
-tree.open("child2")?;
-tree.close()?;
-tree.close()?;
-
-let tree = tree.build()?;
-
-let expected: Tree<_, Empty, usize> = syntree::tree_with! {
-    "root" => {
-        "child" => { "token" },
-        "child2" => {}
-    }
-};
-
-assert_eq!(tree, expected);
-assert!(tree.span().is_empty());
-```
-
-<br>
-
 ## Syntax trees
 
 This crate provides a way to efficiently model [abstract syntax trees]. The
@@ -194,6 +132,68 @@ its `Lit` children. Including the ones within `Nested`.
 Trees are usually constructed by parsing an input. This library encourages
 the use of a [handwritten pratt parser][pratt]. See the [calculator
 example][calculator] for a complete use case.
+
+<br>
+
+## Compact or empty spans
+
+Spans by default uses `u32`-based indexes and `usize`-based pointers, this
+can be changed from its default using the [`Builder::new_with`] constructor:
+
+```rust
+use syntree::{Builder, Span, Tree};
+
+let mut tree = Builder::<_, usize, u16>::new_with();
+
+tree.open("root")?;
+tree.open("child")?;
+tree.token("token", 100)?;
+tree.close()?;
+tree.open("child2")?;
+tree.close()?;
+tree.close()?;
+
+let tree = tree.build()?;
+
+let expected: Tree<_, usize, u32> = syntree::tree_with! {
+    "root" => {
+        "child" => { ("token", 100) },
+        "child2" => {}
+    }
+};
+
+assert_eq!(tree, expected);
+assert_eq!(tree.span(), Span::new(0, 100));
+```
+
+Combined with [`Empty`], this allows for building trees without the
+overhead of keeping track of spans:
+
+```rust
+use syntree::{Builder, Empty, Tree};
+
+let mut tree = Builder::<_, Empty, u32>::new_with();
+
+tree.open("root")?;
+tree.open("child")?;
+tree.token("token", Empty)?;
+tree.close()?;
+tree.open("child2")?;
+tree.close()?;
+tree.close()?;
+
+let tree = tree.build()?;
+
+let expected: Tree<_, Empty, usize> = syntree::tree_with! {
+    "root" => {
+        "child" => { "token" },
+        "child2" => {}
+    }
+};
+
+assert_eq!(tree, expected);
+assert!(tree.span().is_empty());
+```
 
 <br>
 

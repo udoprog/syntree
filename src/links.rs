@@ -1,14 +1,11 @@
 //! Central struct to keep track of all internal linking of a tree.
 
 use crate::span::Span;
-use crate::tree::Kind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Links<T, I, P> {
     /// The data in the node.
     pub(crate) data: T,
-    /// The kind of the node.
-    pub(crate) kind: Kind,
     /// Span of the node.
     pub(crate) span: Span<I>,
     /// Parent node. These exists because they are needed when performing range

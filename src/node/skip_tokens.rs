@@ -2,9 +2,8 @@ use core::iter::FusedIterator;
 
 use crate::node::Node;
 use crate::pointer::Width;
-use crate::tree::Kind;
 
-/// Wrapped around an iterator that excludes [`Kind::Token`] nodes.
+/// Wrapped around an iterator that excludes nodes without children.
 ///
 /// See [`Siblings::skip_tokens`] or [`Walk::skip_tokens`].
 ///
@@ -13,17 +12,23 @@ use crate::tree::Kind;
 ///
 /// # Examples
 ///
-/// Filtering [`Kind::Token`] elements from a [`Siblings`] iterator:
+/// Filtering childless nodes from a [`Siblings`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
 ///     ("token1", 1),
-///     "child1" => {},
-///     ("token2", 1),
-///     "child2" => {},
+///     "child1" => {
+///         "token2"
+///     },
 ///     ("token3", 1),
-///     "child3" => {},
-///     ("token4", 1)
+///     "child2" => {
+///         "toke4"
+///     },
+///     ("token5", 1),
+///     "child3" => {
+///         "token6"
+///     },
+///     ("token7", 1)
 /// };
 ///
 /// let mut it = tree.children().skip_tokens();
@@ -35,17 +40,21 @@ use crate::tree::Kind;
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// Filtering [`Kind::Token`] elements from a [`Walk`] iterator:
+/// Filtering tokens from a [`Walk`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
 ///     "child1" => {
-///         "child2" => {},
-///         ("token1", 1),
-///         "child3" => {},
+///         "child2" => {
+///             "token1"
+///         },
+///         ("token2", 1),
+///         "child3" => {
+///             "token3"
+///         },
 ///     },
 ///     "child4" => {
-///         ("token2", 1)
+///         ("token4", 1)
 ///     }
 /// };
 ///
@@ -80,13 +89,22 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let node = self.iter.next()?;
+        self.iter.find(|n| n.has_children())
+    }
 
-            if !matches!(node.kind(), Kind::Token) {
-                return Some(node);
-            }
-        }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
+
+    #[inline]
+    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        self.iter.find(move |n| n.has_children() && predicate(n))
     }
 }
 
@@ -97,13 +115,16 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        loop {
-            let node = self.iter.next_back()?;
+        self.iter.rfind(|n| n.has_children())
+    }
 
-            if !matches!(node.kind(), Kind::Token) {
-                return Some(node);
-            }
-        }
+    #[inline]
+    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        self.iter.rfind(move |n| n.has_children() && predicate(n))
     }
 }
 

@@ -14,10 +14,7 @@ pub struct Span<I> {
     pub end: I,
 }
 
-impl<I> Span<I>
-where
-    I: Index,
-{
+impl<I> Span<I> {
     /// Construct a new span.
     ///
     /// # Examples
@@ -45,7 +42,10 @@ where
     /// assert_eq!(Span::point(4u32), Span::new(4u32, 4u32));
     /// ```
     #[must_use]
-    pub const fn point(at: I) -> Self {
+    pub const fn point(at: I) -> Self
+    where
+        I: Copy,
+    {
         Self { start: at, end: at }
     }
 
@@ -67,13 +67,61 @@ where
     /// ```
     #[must_use]
     #[inline]
-    pub fn join(&self, other: &Self) -> Self {
+    pub fn join(&self, other: &Self) -> Self
+    where
+        I: Copy + Ord,
+    {
         Self {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
     }
 
+    /// Test if the span is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert!(Span::new(0u32, 0u32).is_empty());
+    /// assert!(!Span::new(0u32, 10u32).is_empty());
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn is_empty(&self) -> bool
+    where
+        I: Eq,
+    {
+        self.end == self.start
+    }
+
+    /// Test if span contains the given index.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// assert!(!Span::new(2u32, 2u32).contains(&2));
+    /// assert!(Span::new(2u32, 3u32).contains(&2));
+    /// assert!(!Span::new(2u32, 3u32).contains(&3));
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn contains<U>(self, index: &U) -> bool
+    where
+        I: PartialOrd<U>,
+        U: PartialOrd<I> + ?Sized,
+    {
+        &self.start <= index && index < &self.end
+    }
+}
+
+impl<I> Span<I>
+where
+    I: Index,
+{
     /// Coerce into a [`ops::Range`] which is useful for slicing.
     ///
     /// # Examples
@@ -104,39 +152,6 @@ where
     #[inline]
     pub fn len(&self) -> I::Length {
         self.start.len_to(self.end)
-    }
-
-    /// Test if the span is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::Span;
-    ///
-    /// assert!(Span::new(0u32, 0u32).is_empty());
-    /// assert!(!Span::new(0u32, 10u32).is_empty());
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.end == self.start
-    }
-
-    /// Test if span contains the given index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::Span;
-    ///
-    /// assert!(!Span::new(2u32, 2u32).contains(2));
-    /// assert!(Span::new(2u32, 3u32).contains(2));
-    /// assert!(!Span::new(2u32, 3u32).contains(3));
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn contains(self, index: I) -> bool {
-        self.start <= index && index < self.end
     }
 }
 

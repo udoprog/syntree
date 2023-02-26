@@ -23,12 +23,15 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
 /// This is determined by a primitive unsigned types such as `u32` or `usize`.
 pub trait Width: self::sealed::Sealed {
     #[doc(hidden)]
+    const EMPTY: Self;
+    #[doc(hidden)]
     type Pointer: Pointer;
 }
 
 macro_rules! implement {
     ($ty:ident, $non_zero:ident) => {
         impl Width for $ty {
+            const EMPTY: Self = 0;
             type Pointer = self::$ty::NonMax;
         }
 

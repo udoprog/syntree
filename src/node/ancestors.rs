@@ -2,7 +2,6 @@ use core::iter::FusedIterator;
 
 use crate::node::{Node, SkipTokens};
 use crate::pointer::Width;
-use crate::tree::Kind;
 
 /// An iterator that iterates over the [`Node::parent`] elements of a node. This
 /// is used for iterating over the ancestors of a node.
@@ -64,8 +63,8 @@ where
         Self { node }
     }
 
-    /// Construct a [`SkipTokens`] iterator from the remainder of this
-    /// iterator. This filters out [`Kind::Token`] elements.
+    /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
+    /// This filters out childless nodes, also known as tokens.
     ///
     /// See [`SkipTokens`] for documentation.
     #[inline]
@@ -103,13 +102,7 @@ where
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
-        loop {
-            let node = self.next()?;
-
-            if matches!(node.kind(), Kind::Node) {
-                return Some(node);
-            }
-        }
+        self.find(|n| n.has_children())
     }
 }
 
