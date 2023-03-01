@@ -24,7 +24,26 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
 pub trait Width: self::sealed::Sealed {
     #[doc(hidden)]
     const EMPTY: Self;
-    #[doc(hidden)]
+
+    /// The pointer type associated with a specific width.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::pointer::Width;
+    ///
+    /// let tree = syntree::tree! {
+    ///     "root1",
+    ///     "root2",
+    /// };
+    ///
+    /// let root1: <usize as Width>::Pointer = tree.first().ok_or("missing root")?.id();
+    /// let root2: <usize as Width>::Pointer = tree.last().ok_or("missing root")?.id();
+    ///
+    /// assert_ne!(root1, root2);
+    ///
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
     type Pointer: Pointer;
 }
 
@@ -32,11 +51,11 @@ macro_rules! implement {
     ($ty:ident, $non_zero:ident) => {
         impl Width for $ty {
             const EMPTY: Self = 0;
-            type Pointer = self::$ty::NonMax;
+            type Pointer = self::$ty::Pointer;
         }
 
         impl self::sealed::Sealed for $ty {}
-        impl self::sealed::Sealed for self::$ty::NonMax {}
+        impl self::sealed::Sealed for self::$ty::Pointer {}
 
         mod $ty {
             use core::fmt;
@@ -45,9 +64,9 @@ macro_rules! implement {
 
             #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
-            pub struct NonMax($non_zero);
+            pub struct Pointer($non_zero);
 
-            impl crate::pointer::Pointer for NonMax {
+            impl crate::pointer::Pointer for Pointer {
                 #[inline]
                 unsafe fn new_unchecked(value: usize) -> Self {
                     let value = value as $ty;
@@ -78,7 +97,16 @@ macro_rules! implement {
                 }
             }
 
-            impl fmt::Debug for NonMax {
+            impl Default for Pointer {
+                #[inline]
+                fn default() -> Self {
+                    // SAFETY: we know that max is a legal value and that it
+                    // corresponds to zero.
+                    unsafe { Self($non_zero::new_unchecked(<$ty>::MAX)) }
+                }
+            }
+
+            impl fmt::Debug for Pointer {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     (self.0.get() ^ <$ty>::MAX).fmt(f)
