@@ -99,10 +99,10 @@ where
     }
 
     #[inline]
-    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> bool,
+        F: FnMut(&Self::Item) -> bool,
     {
         self.iter.find(move |n| n.has_children() && predicate(n))
     }
@@ -119,10 +119,10 @@ where
     }
 
     #[inline]
-    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> bool,
+        F: FnMut(&Self::Item) -> bool,
     {
         self.iter.rfind(move |n| n.has_children() && predicate(n))
     }
