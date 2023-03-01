@@ -164,6 +164,41 @@ where
         }
     }
 
+    /// Get a reference to the current cursor position of the syntax tree.
+    ///
+    /// The cursor position is the position in which it's been advanced so far
+    /// as a result of calls to [Builder::token] and indicates the current
+    /// starting index of the next span.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// assert_eq!(*tree.cursor(), 0);
+    /// tree.open("child")?;
+    /// assert_eq!(*tree.cursor(), 0);
+    /// tree.token("lit", 4)?;
+    /// assert_eq!(*tree.cursor(), 4);
+    /// tree.close()?;
+    /// assert_eq!(*tree.cursor(), 4);
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "child" => {
+    ///         ("lit", 4)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    #[inline]
+    pub const fn cursor(&self) -> &I {
+        &self.cursor
+    }
+
     /// Start a node with the given `data`.
     ///
     /// This pushes a new link with the given type onto the stack which links
