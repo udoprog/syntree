@@ -26,7 +26,7 @@ impl From<usize> for Empty {
 impl Index for Empty {
     const EMPTY: Self = Empty;
 
-    type Indexes<P> = Empty where P: Copy;
+    type Indexes<P> = Empty;
     type Length = Empty;
 
     #[inline]
@@ -74,7 +74,7 @@ impl<I, P> Indexes<I, P> for Empty {
     }
 
     #[inline]
-    fn get(&self, _: usize) -> Option<P> {
+    fn get(&self, _: usize) -> Option<&P> {
         None
     }
 }

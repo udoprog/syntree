@@ -491,7 +491,7 @@ where
             Err(n) => n,
         };
 
-        let mut node = self.node_at(self.indexes.get(n)?)?;
+        let mut node = self.node_at(*self.indexes.get(n)?)?;
 
         while let Some(parent) = node.parent() {
             node = parent;

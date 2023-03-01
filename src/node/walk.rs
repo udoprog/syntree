@@ -228,7 +228,6 @@ impl<T, I, W> FusedIterator for WithDepths<'_, T, I, W> where W: Width {}
 impl<T, I, W> Clone for WithDepths<'_, T, I, W>
 where
     W: Width,
-    W::Pointer: Copy,
 {
     #[inline]
     fn clone(&self) -> Self {

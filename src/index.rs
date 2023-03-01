@@ -9,11 +9,8 @@ mod sealed {
     impl Sealed for usize {}
     impl Sealed for crate::empty::Empty {}
 
-    impl<I, P> Sealed for Vec<crate::index::TreeIndex<I, P>> where I: crate::index::Index {}
+    impl<I, P> Sealed for Vec<crate::index::TreeIndex<I, P>> {}
 }
-
-/// Ensure u32 is smaller or equal to usize.
-const _: () = assert!(core::mem::size_of::<u32>() <= core::mem::size_of::<usize>());
 
 /// A type that can be used when referring to an index in a tree.
 ///
@@ -27,9 +24,7 @@ pub trait Index: Sized + Copy + cmp::Ord + cmp::Eq + self::sealed::Sealed {
     const EMPTY: Self;
 
     #[doc(hidden)]
-    type Indexes<P>: Indexes<Self, P>
-    where
-        P: Copy;
+    type Indexes<P>: Indexes<Self, P>;
 
     #[doc(hidden)]
     type Length: Length;
@@ -58,16 +53,19 @@ pub trait Indexes<I, P>: self::sealed::Sealed {
     fn push(&mut self, cursor: I, id: P);
 
     #[doc(hidden)]
-    fn binary_search(&self, index: I) -> Result<usize, usize>;
+    fn binary_search(&self, index: I) -> Result<usize, usize>
+    where
+        I: Ord;
 
     #[doc(hidden)]
-    fn get(&self, index: usize) -> Option<P>;
+    fn get(&self, index: usize) -> Option<&P>;
 }
 
 #[doc(hidden)]
 pub trait Length: Copy + self::sealed::Sealed {
     #[doc(hidden)]
     const EMPTY: Self;
+
     #[doc(hidden)]
     fn is_empty(&self) -> bool;
 }
@@ -81,12 +79,16 @@ impl Length for usize {
     }
 }
 
+/// Ensure u32 is smaller or equal to usize.
+const _: () = assert!(core::mem::size_of::<u32>() <= core::mem::size_of::<usize>());
+
 impl Index for u32 {
     const EMPTY: Self = 0;
 
-    type Indexes<P> = Vec<TreeIndex<Self, P>> where P: Copy;
+    type Indexes<P> = Vec<TreeIndex<Self, P>>;
     type Length = usize;
 
+    #[inline]
     fn is_empty(&self) -> bool {
         *self == 0
     }
@@ -115,7 +117,7 @@ impl Index for u32 {
 impl Index for usize {
     const EMPTY: Self = 0;
 
-    type Indexes<P> = Vec<TreeIndex<Self, P>> where P: Copy;
+    type Indexes<P> = Vec<TreeIndex<Self, P>>;
     type Length = usize;
 
     #[inline]
@@ -151,11 +153,7 @@ pub struct TreeIndex<I, P> {
     pub(crate) id: P,
 }
 
-impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>>
-where
-    I: Index,
-    P: Copy,
-{
+impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>> {
     const EMPTY: Self = Self::new();
 
     #[inline]
@@ -164,12 +162,15 @@ where
     }
 
     #[inline]
-    fn binary_search(&self, index: I) -> Result<usize, usize> {
+    fn binary_search(&self, index: I) -> Result<usize, usize>
+    where
+        I: Ord,
+    {
         self.binary_search_by(|f| f.index.cmp(&index))
     }
 
     #[inline]
-    fn get(&self, index: usize) -> Option<P> {
-        Some(<[_]>::get(self, index)?.id)
+    fn get(&self, index: usize) -> Option<&P> {
+        Some(&<[_]>::get(self, index)?.id)
     }
 }
