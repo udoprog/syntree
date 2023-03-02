@@ -19,10 +19,14 @@ fn main() -> Result<()> {
         "root2" => {}
     };
 
+    println!("# Tree");
+    print::print(std::io::stdout(), &tree)?;
+
+    println!("# Walk");
+
     for n in tree.first().into_iter().flat_map(|n| n.walk()) {
-        dbg!(n.value());
+        println!("{:?}", n.value());
     }
 
-    print::print(std::io::stdout(), &tree)?;
     Ok(())
 }

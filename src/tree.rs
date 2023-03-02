@@ -232,11 +232,6 @@ where
         self.node_at(self.last?)
     }
 
-    /// The first id currently being set.
-    pub(crate) fn first_id(&self) -> Option<W::Pointer> {
-        self.first
-    }
-
     /// Get the tree links mutably.
     pub(crate) fn links_mut(&mut self) -> (&mut Option<W::Pointer>, &mut Option<W::Pointer>) {
         (&mut self.first, &mut self.last)

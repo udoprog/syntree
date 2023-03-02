@@ -60,10 +60,11 @@ where
 {
     /// Data in the tree being built.
     tree: Tree<T, I, W>,
-    /// References to parent nodes of the current node being constructed.
-    parents: Vec<W::Pointer>,
     /// The last checkpoint that was handed out.
     checkpoint: Option<Checkpoint<W::Pointer>>,
+    /// Reference the current parent to the node being built.
+    /// It itself has its parent set in the tree, so that is what is used to traverse ancestors of a node.
+    parent: Option<W::Pointer>,
     /// Reference to last sibling inserted.
     sibling: Option<W::Pointer>,
     /// The current cursor.
@@ -157,7 +158,7 @@ where
     pub const fn new_with() -> Self {
         Builder {
             tree: Tree::new_with(),
-            parents: Vec::new(),
+            parent: None,
             checkpoint: None,
             sibling: None,
             cursor: I::EMPTY,
@@ -228,7 +229,7 @@ where
     /// ```
     pub fn open(&mut self, data: T) -> Result<W::Pointer, Error> {
         let id = self.insert(data, Span::point(self.cursor))?;
-        self.parents.push(id);
+        self.parent = Some(id);
         Ok(id)
     }
 
@@ -259,20 +260,22 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn close(&mut self) -> Result<(), Error> {
-        let head = self.parents.pop().ok_or(Error::CloseError)?;
+        let head = self.parent.take().ok_or(Error::CloseError)?;
         self.sibling = Some(head);
 
-        if let Some(&parent) = self.parents.last() {
-            let node = self
-                .tree
-                .get_mut(head)
-                .ok_or_else(|| Error::MissingNode(head.get()))?;
-            let end = node.span.end;
-            let parent = self
-                .tree
+        let node = self
+            .tree
+            .get_mut(head)
+            .ok_or_else(|| Error::MissingNode(head.get()))?;
+
+        if let Some(parent) = node.parent {
+            self.tree
                 .get_mut(parent)
-                .ok_or(Error::MissingNode(parent.get()))?;
-            parent.span.end = end;
+                .ok_or_else(|| Error::MissingNode(parent.get()))?
+                .span
+                .end = node.span.end;
+
+            self.parent = Some(parent);
         }
 
         Ok(())
@@ -360,6 +363,43 @@ where
 
     /// Get a checkpoint corresponding to the current position in the tree.
     ///
+    /// # Mixing checkpoints
+    ///
+    /// Note that using checkpoints from a different tree doesn't have a
+    /// well-specified behavior - it might seemingly work or it might raise an
+    /// error during closing such as [`Error::MissingNode`].
+    ///
+    /// The following *is not* well-defined, here we're using a checkpoint for a
+    /// different tree but it "just happens" to work because both trees have
+    /// identical internal topologies:
+    ///
+    /// ```
+    /// use syntree::{Builder, Error};
+    ///
+    /// let mut a = Builder::new();
+    /// let mut b = Builder::new();
+    ///
+    /// let c = b.checkpoint()?;
+    ///
+    /// a.open("child")?;
+    /// a.close()?;
+    ///
+    /// b.open("child")?;
+    /// b.close()?;
+    ///
+    /// // Checkpoint use from different tree.
+    /// a.close_at(&c, "root")?;
+    ///
+    /// let unexpected = syntree::tree! {
+    ///     "root" => {
+    ///         "child"
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(a.build()?, unexpected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    ///
     /// # Errors
     ///
     /// Errors with [`Error::Overflow`] in case we run out of node
@@ -403,7 +443,7 @@ where
             }
         }
 
-        let c = Checkpoint::new(node, self.parents.last().copied());
+        let c = Checkpoint::new(node, self.parent);
         self.checkpoint = Some(c.clone());
         Ok(c)
     }
@@ -414,6 +454,9 @@ where
     ///
     /// The checkpoint being closed *must* be a sibling. Otherwise a
     /// [`Error::CloseAtError`] will be raised.
+    ///
+    /// This might also sporadically error with [`Error::MissingNode`], in case
+    /// a checkpoint is used that was constructed from another tree.
     ///
     /// # Examples
     ///
@@ -512,20 +555,24 @@ where
     pub fn close_at(&mut self, c: &Checkpoint<W::Pointer>, data: T) -> Result<W::Pointer, Error> {
         let (id, parent) = c.get();
 
-        if parent.as_ref() != self.parents.last() {
+        if parent != self.parent {
             return Err(Error::CloseAtError);
         }
 
-        let next_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+        let new_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
             let new_id = self.insert(data, Span::point(self.cursor))?;
+
+            if new_id != id {
+                return Err(Error::MissingNode(new_id.get()));
+            }
+
             self.sibling = Some(new_id);
-            debug_assert_eq!(new_id, id, "new id should match the expected id");
             return Ok(new_id);
         };
 
-        let parent = replace(&mut links.parent, Some(next_id));
+        let parent = replace(&mut links.parent, Some(new_id));
         let prev = replace(&mut links.prev, None);
 
         // Restructuring is necessary to calculate the full span of the newly
@@ -533,49 +580,48 @@ where
         // inserted node.
         let (last, span) = if let Some(next) = links.next {
             let span = links.span;
-            let (last, end) = restructure_close_at(&mut self.tree, next_id, next)?;
-            (Some(last), Span::new(span.start, end))
+            let (last, end) = restructure_close_at(&mut self.tree, new_id, next)?;
+            (last, Span::new(span.start, end))
         } else {
-            (Some(id), links.span)
+            (id, links.span)
         };
 
-        let added = Links {
+        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
+            if parent.first == Some(id) {
+                parent.first = Some(new_id);
+            }
+
+            if parent.last == Some(id) {
+                parent.last = Some(new_id);
+            }
+        }
+
+        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
+            prev.next = Some(new_id);
+        }
+
+        // If we're replacing the first node of the tree, the newly inserted
+        // node should be set as the first node.
+        let (first, _) = self.tree.links_mut();
+
+        if *first == Some(id) {
+            *first = Some(new_id);
+        }
+
+        // Do necessary accounting.
+        self.tree.push(Links {
             data,
             span,
             prev,
             parent,
             next: None,
             first: Some(id),
-            last,
-        };
+            last: Some(last),
+        });
 
-        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
-            if parent.first == Some(id) {
-                parent.first = Some(next_id);
-            }
-
-            if parent.last == Some(id) {
-                parent.last = Some(next_id);
-            }
-        }
-
-        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
-            prev.next = Some(next_id);
-        }
-
-        // If we're replacing the first node of the tree, the newly inserted
-        // node should be set as the first node.
-        if self.tree.first_id() == Some(id) {
-            let (first, _) = self.tree.links_mut();
-            *first = Some(next_id);
-        }
-
-        // Do necessary accounting.
-        self.tree.push(added);
-        self.sibling = Some(next_id);
-
-        c.set(next_id, parent);
-        Ok(next_id)
+        self.sibling = Some(new_id);
+        c.set(new_id, parent);
+        Ok(new_id)
     }
 
     /// Build a [Tree] from the current state of the builder.
@@ -627,7 +673,7 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn build(self) -> Result<Tree<T, I, W>, Error> {
-        if !self.parents.is_empty() {
+        if self.parent.is_some() {
             return Err(Error::BuildError);
         }
 
@@ -639,19 +685,18 @@ where
         let new = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
-        let parent = self.parents.last().copied();
 
         self.tree.push(Links {
             data,
             span,
-            parent,
+            parent: self.parent,
             prev,
             next: None,
             first: None,
             last: None,
         });
 
-        if let Some(id) = parent {
+        if let Some(id) = self.parent {
             if let Some(node) = self.tree.links_at_mut(id) {
                 if node.first.is_none() {
                     node.first = Some(new);
@@ -690,7 +735,7 @@ where
     fn clone(&self) -> Self {
         Self {
             tree: self.tree.clone(),
-            parents: self.parents.clone(),
+            parent: self.parent,
             checkpoint: self.checkpoint.clone(),
             sibling: self.sibling,
             cursor: self.cursor,
