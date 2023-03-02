@@ -58,8 +58,7 @@ pub enum Error {
     /// tree.open("child")?;
     /// tree.token("token", 3)?;
     ///
-    /// let result = tree.close_at(&c, "operation");
-    /// assert_eq!(result, Err(Error::CloseAtError));
+    /// assert_eq!(tree.close_at(&c, "operation"), Err(Error::CloseAtError));
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     CloseAtError,
@@ -68,12 +67,52 @@ pub enum Error {
     /// This only happens under extreme circumstances or if a feature is enabled
     /// which narrows the width of an identifier to the degree that this error
     /// is easier to accomplish.
+    ///
+    /// # Examples
+    ///
+    /// This is an example where we're trying to build a really small tree using
+    /// u8 pointers:
+    ///
+    /// ```
+    /// use syntree::{Builder, Error};
+    ///
+    /// let mut tree: Builder<_, u32, u8> = Builder::new_with();
+    ///
+    /// for d in 0..u8::MAX {
+    ///     tree.token(d, 1)?;
+    /// }
+    ///
+    /// assert_eq!(tree.token(255, 1), Err(Error::Overflow));
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
     Overflow,
     /// The node of the given id is missing.
+    ///
+    /// # Examples
+    ///
+    /// The following showcases what could happen if you mix checkpoints from
+    /// two compatible trees:
+    ///
+    /// ```
+    /// use syntree::{Builder, Error};
+    ///
+    /// let mut a = Builder::new();
+    /// let mut b = Builder::new();
+    ///
+    /// b.open("child")?;
+    /// b.close()?;
+    ///
+    /// let c = b.checkpoint()?;
+    ///
+    /// assert_eq!(a.close_at(&c, "operation"), Err(Error::MissingNode(0)));
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
     MissingNode(usize),
-    /// Missing next.
+    #[doc(hidden)]
+    #[deprecated = "unused error variant"]
     MissingCloseAtLinksNext,
-    /// Missing sibling.
+    #[doc(hidden)]
+    #[deprecated = "unused error variant"]
     MissingCloseAtSibling,
 }
 
@@ -97,14 +136,12 @@ impl fmt::Display for Error {
             Error::Overflow => {
                 write!(f, "numerical overflow")
             }
-            Error::MissingNode(pointer) => {
-                write!(f, "missing node with id `{}`", pointer)
+            Error::MissingNode(p) => {
+                write!(f, "missing node with id `{p}`")
             }
-            Error::MissingCloseAtLinksNext => {
-                write!(f, "missing links next while closing checkpoint")
-            }
-            Error::MissingCloseAtSibling => {
-                write!(f, "missing current sibling while closing checkpoint")
+            #[allow(deprecated)]
+            Error::MissingCloseAtLinksNext | Error::MissingCloseAtSibling => {
+                write!(f, "unused error variant")
             }
         }
     }

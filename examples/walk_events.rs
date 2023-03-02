@@ -19,10 +19,15 @@ fn main() -> Result<()> {
         "root2" => {}
     };
 
-    for (event, n) in tree.walk_events() {
-        println!("{:?}: {:?}", event, n.value());
-    }
+    println!("# Tree");
 
     print::print(std::io::stdout(), &tree)?;
+
+    println!("# Walk Events");
+
+    for (e, n) in tree.walk_events() {
+        println!("{e:?}: {:?}", n.value());
+    }
+
     Ok(())
 }
