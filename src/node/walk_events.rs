@@ -217,11 +217,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let (node, event) = self.node.take()?;
         let links = self.tree.get(node.get())?;
-
-        if let Some(id) = self.step(links, event) {
-            self.node = Some(id);
-        }
-
+        self.node = self.step(links, event);
         let node = Node::new(links, self.tree);
         Some((event, node))
     }
