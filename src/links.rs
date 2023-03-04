@@ -20,3 +20,24 @@ pub(crate) struct Links<T, I, P> {
     /// Last child node.
     pub(crate) last: Option<P>,
 }
+
+// These tests might not always pass, due to alignment. But it's nice to ensure
+#[test]
+fn test_size() {
+    macro_rules! test {
+        ($data:ty, $index:ty, $width:ty, $max_align:expr) => {
+            assert!(
+                (
+                    std::mem::size_of::<Links<$data, $index, <$width as crate::pointer::Width>::Pointer>>() as isize
+                    -
+                    (std::mem::size_of::<$data>() as isize + ((<$index>::BITS * 2) / 8) as isize + ((<$width>::BITS * 5) / 8) as isize)
+                ).abs() <= $max_align
+            );
+        }
+    }
+
+    test!([u8; 8], u32, u16, 4);
+    test!([u8; 8], u32, u32, 4);
+    test!([u8; 8], u32, u64, 4);
+    test!([u8; 8], u32, u128, 4);
+}
