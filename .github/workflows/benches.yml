@@ -10,9 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
+      - run: rustup toolchain install nightly --profile minimal
+      - run: rustup default nightly
       - run: cargo bench --all --package benches -- --output-format bencher | tee output.txt
       - uses: actions/cache@v1
         with:
