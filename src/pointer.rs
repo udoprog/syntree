@@ -147,6 +147,12 @@ macro_rules! implement {
         /// # Ok::<_, Box<dyn std::error::Error>>(())
         /// ```
         impl crate::pointer::Pointer for $e {
+            /// Unsafely construct a pointer value.
+            ///
+            /// # Safety
+            ///
+            /// Caller must ensure that the value is a legal value for the
+            /// target pointer type.
             #[inline]
             unsafe fn new_unchecked(value: usize) -> Self {
                 let value = value as $ty;

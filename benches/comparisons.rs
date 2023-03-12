@@ -5,6 +5,7 @@ use syntree::{index, pointer, Builder, Error, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
+#[allow(clippy::upper_case_acronyms)]
 enum Syntax {
     STRING,
     ENTRY,
@@ -75,7 +76,7 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
 
     for (_, s) in (0..n).zip(strings.iter().cycle()) {
         builder.start_node(ENTRY.into());
-        builder.token(STRING.into(), &**s);
+        builder.token(STRING.into(), s);
         builder.finish_node();
         builder.token(WHITESPACE.into(), " ");
     }
@@ -97,9 +98,9 @@ where
 
     for (_, s) in (0..n).zip(strings.iter().cycle()) {
         builder.open(ENTRY)?;
-        builder.token(STRING.into(), s.len().into())?;
+        builder.token(STRING, s.len().into())?;
         builder.close()?;
-        builder.token(WHITESPACE.into(), 1usize.into())?;
+        builder.token(WHITESPACE, 1usize.into())?;
     }
 
     builder.close_at(&c, ROOT)?;
