@@ -87,7 +87,7 @@ where
     ///     }
     /// };
     ///
-    /// let lit = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).ok_or("missing lit")?;
+    /// let lit = tree.first().and_then(|n| n.first()?.first()).ok_or("missing lit")?;
     /// assert_eq!(*lit.value(), "lit");
     ///
     /// let mut it = lit.ancestors();
@@ -98,10 +98,17 @@ where
     /// }
     ///
     /// assert_eq!(out, ["child", "root"]);
+    ///
+    /// let mut it = lit.ancestors();
+    ///
+    /// let child = it.next_node().ok_or("missing child")?;
+    /// let root = it.next_node().ok_or("missing root")?;
+    ///
+    /// assert_eq!([*child.value(), *root.value()], ["child", "root"]);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {
         self.find(|n| n.has_children())
     }
 }

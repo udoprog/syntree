@@ -130,10 +130,18 @@ where
     /// }
     ///
     /// assert_eq!(out, ["child1", "child2", "child3"]);
+    ///
+    /// let mut it = tree.children();
+    ///
+    /// let c1 = it.next_node().ok_or("missing child1")?;
+    /// let c2 = it.next_node().ok_or("missing child2")?;
+    /// let c3 = it.next_node().ok_or("missing child3")?;
+    ///
+    /// assert_eq!([*c1.value(), *c2.value(), *c3.value()], ["child1", "child2", "child3"]);
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'_, T, I, W>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {
         self.find(|n| n.has_children())
     }
 }
