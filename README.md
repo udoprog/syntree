@@ -18,7 +18,7 @@ to be an efficient replacement for it (read more below).
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.14.3"
+syntree = "0.14.4"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
