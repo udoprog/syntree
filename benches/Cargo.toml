@@ -9,7 +9,7 @@ criterion = "0.3"
 rand = "0.8.4"
 
 # benchmark targets
-syntree = {path = ".."}
+syntree = { path = ".." }
 rowan = "0.15.10"
 
 [[bench]]
