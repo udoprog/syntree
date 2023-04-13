@@ -5,12 +5,12 @@ edition = "2021"
 publish = false
 
 [dev-dependencies]
-criterion = "0.3"
-rand = "0.8.4"
+criterion = "0.4.0"
+rand = "0.8.5"
 
 # benchmark targets
 syntree = { path = ".." }
-rowan = "0.15.10"
+rowan = "0.15.11"
 
 [[bench]]
 name = "comparisons"
