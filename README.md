@@ -75,10 +75,10 @@ store the original source* in the syntax tree. Instead, the user of the
 library is responsible for providing it as necessary. Like when calling
 [`print_with_source`].
 
-The API for constructing a syntax tree is provided through [`Builder`]
-which provides streaming builder methods. Internally the builder is
-represented as a contiguous slab of memory. Once a tree is built the
-structure of the tree can be queried through the [`Tree`] type.
+The API for constructing a syntax tree is provided through [`Builder`] which
+implements streaming builder methods. Internally the builder is represented
+as a contiguous slab of memory. Once a tree is built the structure of the
+tree can be queried through the [`Tree`] type.
 
 Note that [`syntree::tree!`] is only a helper which simplifies building
 trees for examples. It corresponds exactly to performing [`open`],
@@ -166,8 +166,8 @@ assert_eq!(tree, expected);
 assert_eq!(tree.span(), Span::new(0, 100));
 ```
 
-Combined with [`Empty`], this allows for building trees without the
-overhead of keeping track of spans:
+Combined with [`Empty`], this allows for building trees without spans, if
+that is something you want to do:
 
 ```rust
 use syntree::{Builder, Empty, Tree};
@@ -207,9 +207,8 @@ reconcile directly in `rowan`.
 `repr(u16)` as part of the syntax tree. I think this decision is reasonable,
 but it precludes you from designing trees which contain anything else other
 than source references without having to perform some form of indirect
-lookup on the side. This is something I need in order to move [Rune] to
-lossless syntax trees (see [the representation of `Kind::Str`
-variant][kind-str]).
+lookup. This is something needed in order to move [Rune] to lossless syntax
+trees (see [the representation of `Kind::Str` variant][kind-str]).
 
 To exemplify this scenario consider the following syntax:
 
@@ -217,7 +216,7 @@ To exemplify this scenario consider the following syntax:
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
     /// A string referenced somewhere else using the provided ID.
-    Synthetic(Option<usize>),
+    Synthetic(usize),
     /// A literal string from the source.
     Lit,
     /// Whitespace.
@@ -233,9 +232,9 @@ some source location (as it should because it was expanded from one!). It
 also directly represents that it's *not* a literal string referencing a
 source location.
 
-In [Rune] this became apparent once we started [expanding
+In [Rune] this became needed once we started [expanding
 macros][rune-macros]. Because macros expand to things which do not reference
-source locations so we need some other way to include what the tokens
+source locations so we need some other mechanism to include what the tokens
 represent in the syntax trees.
 
 You can try a *very* simple lex-time variable expander in the
@@ -251,13 +250,13 @@ Which would output:
 Tree:
 Lit@0..5 "Hello"
 Whitespace@5..6 " "
-Synthetic(Some(0))@6..12 "$world"
+Synthetic(0)@6..12 "$world"
 Eval:
 0 = "Hello"
 1 = "Earth"
 ```
 
-So in essense `syntree` doesn't believe you need to store strings in the
+So in essence `syntree` doesn't believe you need to store strings in the
 tree itself. Even if you want to deduplicate string storage. All of that can
 be done on the side and encoded into the syntax tree as you wish.
 

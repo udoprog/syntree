@@ -10,7 +10,7 @@ use syntree::{print, Builder};
 #[derive(Debug, Clone, Copy)]
 enum Syntax {
     /// A string referenced somewhere else using the provided ID.
-    Synthetic(Option<usize>),
+    Synthetic(usize),
     /// A literal string from the source.
     Literal,
     /// Whitespace.
@@ -62,7 +62,11 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
                 eat(&mut it, |c| c.is_ascii_lowercase());
                 let end = it.peek().map_or(len, |(n, _)| *n);
                 let id = &source[(start + 1)..end];
-                Synthetic(storage.lookup(id))
+
+                match storage.lookup(id) {
+                    Some(id) => Synthetic(id),
+                    None => Error,
+                }
             }
             'A'..='Z' | 'a'..='z' => {
                 eat(&mut it, |c| c.is_ascii_alphabetic());
@@ -112,7 +116,7 @@ fn main() -> Result<()> {
 
     for node in tree.children() {
         let string = match *node.value() {
-            Synthetic(id) => match id.and_then(|id| storage.get(id)) {
+            Synthetic(id) => match storage.get(id) {
                 Some(string) => string,
                 None => {
                     println!("{} = {} (not found)", count, &source[node.range()]);
