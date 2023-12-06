@@ -9,7 +9,7 @@ documentation = "https://docs.rs/syntree"
 readme = "README.md"
 homepage = "https://github.com/udoprog/syntree"
 repository = "https://github.com/udoprog/syntree"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 keywords = ["language", "syntax-tree"]
 categories = ["parsing"]
 
