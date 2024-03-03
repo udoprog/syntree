@@ -1,7 +1,5 @@
 mod checkpoint;
 
-use core::mem::replace;
-
 use crate::error::Error;
 use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
@@ -572,8 +570,8 @@ where
             return Ok(new_id);
         };
 
-        let parent = replace(&mut links.parent, Some(new_id));
-        let prev = replace(&mut links.prev, None);
+        let parent = links.parent.replace(new_id);
+        let prev: Option<<W as Width>::Pointer> = links.prev.take();
 
         // Restructuring is necessary to calculate the full span of the newly
         // inserted node and update parent references to point to the newly
