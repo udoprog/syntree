@@ -9,7 +9,7 @@ jobs:
   benches:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: rustup toolchain install nightly --profile minimal
       - run: rustup default nightly
       - run: cargo bench --all --package benches -- --output-format bencher | tee output.txt
