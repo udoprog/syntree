@@ -1,5 +1,7 @@
 //! Types associated with performing immutable editing of a tree.
 
+use alloc::vec::Vec;
+
 use std::collections::HashMap;
 
 use crate::error::Error;

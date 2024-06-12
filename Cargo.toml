@@ -17,6 +17,11 @@ categories = ["parsing"]
 # dependencies in there which would otherwise hog down testing this crate.
 autobenches = false
 
+[features]
+default = ["alloc", "std"]
+alloc = []
+std = []
+
 [dev-dependencies]
 anyhow = "1.0.70"
 thiserror = "1.0.40"

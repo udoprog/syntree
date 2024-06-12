@@ -1,4 +1,4 @@
-use std::iter::FusedIterator;
+use core::iter::FusedIterator;
 
 use crate::links::Links;
 use crate::node::Node;

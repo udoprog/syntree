@@ -2,7 +2,11 @@
 
 use core::cmp;
 
+use alloc::vec::Vec;
+
 mod sealed {
+    use alloc::vec::Vec;
+
     pub trait Sealed {}
 
     impl Sealed for u32 {}

@@ -331,11 +331,23 @@
 
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![no_std]
+
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(not(feature = "alloc"))]
+compile_error!("The `syntree` crate currently requires that the `alloc` feature is enabled");
 
 #[macro_use]
 mod macros;
 mod builder;
+
+#[cfg(feature = "std")]
 pub mod edit;
+
 mod empty;
 mod error;
 pub mod index;
