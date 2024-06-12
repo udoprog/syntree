@@ -1,6 +1,10 @@
 //! Helper utilities for pretty-printing trees.
 
+#![cfg(feature = "std")]
+#![cfg_attr(docsrs, doc(cfg(feature = "std")))]
+
 use core::fmt;
+
 use std::io::{Error, Write};
 
 use crate::index::Index;

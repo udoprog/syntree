@@ -30,6 +30,20 @@ jobs:
     - run: cargo test --workspace --doc
       if: matrix.rust == 'stable'
 
+  features:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        args:
+          - ""
+          - "--no-default-features --features alloc"
+          - "--no-default-features --features alloc,std"
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo build ${{matrix.args}}
+
   clippy:
     runs-on: ubuntu-latest
     steps:

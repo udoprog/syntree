@@ -116,6 +116,7 @@ pub enum Error {
     MissingCloseAtSibling,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {

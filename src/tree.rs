@@ -1,6 +1,8 @@
 use core::fmt;
 use core::ops::Range;
 
+use alloc::vec::Vec;
+
 use crate::index::{Index, Indexes};
 use crate::links::Links;
 use crate::node::Node;
@@ -61,6 +63,7 @@ where
     }
 
     /// Construct a new tree with the given capacity.
+    #[cfg(feature = "std")]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             tree: Vec::with_capacity(capacity),

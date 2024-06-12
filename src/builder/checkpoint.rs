@@ -1,5 +1,6 @@
 use core::cell::Cell;
-use std::rc::Rc;
+
+use alloc::rc::Rc;
 
 /// The identifier of a node as returned by functions such as
 /// [`Builder::checkpoint`].
