@@ -60,8 +60,9 @@ where
     tree: Tree<T, I, W>,
     /// The last checkpoint that was handed out.
     checkpoint: Option<Checkpoint<W::Pointer>>,
-    /// Reference the current parent to the node being built.
-    /// It itself has its parent set in the tree, so that is what is used to traverse ancestors of a node.
+    /// Reference the current parent to the node being built. It itself has its
+    /// parent set in the tree, so that is what is used to traverse ancestors of
+    /// a node.
     parent: Option<W::Pointer>,
     /// Reference to last sibling inserted.
     sibling: Option<W::Pointer>,
