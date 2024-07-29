@@ -542,7 +542,7 @@ where
     B: Width,
 {
     fn eq(&self, other: &Tree<T, I, A>) -> bool {
-        struct Item<'a, T, I, W>((usize, Node<'a, T, I, W>))
+        struct Item<'a, T, I, W>((isize, Node<'a, T, I, W>))
         where
             W: Width;
 

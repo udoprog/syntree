@@ -21,24 +21,49 @@ use crate::pointer::Width;
 ///             "c4" => {},
 ///         },
 ///         "c5" => {},
-///         "c6" => {}
+///         "c6" => {
+///            "c7" => {},
+///         }
 ///     }
 /// };
 ///
 /// // Walk the entire tree.
-/// assert!(
-///     tree.walk().map(|n| *n.value()).eq(["root", "c1", "c2", "c3", "c4", "c5", "c6"])
+/// assert_eq!(
+///     tree.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
 /// );
 ///
 /// // Walk from the root.
 /// let root = tree.first().ok_or("missing root node")?;
-/// assert!(
-///     root.walk().map(|n| *n.value()).eq(["c1", "c2", "c3", "c4", "c5", "c6"])
+///
+/// assert_eq!(
+///     root.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["root", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
 /// );
 ///
-/// // Walk from second child of the root. Note that the node itself is correctly excluded.
-/// let c5 = root.first().and_then(|n| n.next()).ok_or("missing second child")?;
-/// assert_eq!(c5.walk().map(|n| *n.value()).collect::<Vec<_>>(), Vec::<&str>::new());
+/// // Walk from c1 and visit siblings.
+/// let c1 = root.first().ok_or("missing c1 node")?;
+///
+/// assert_eq!(
+///     c1.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
+/// );
+///
+/// // Walk from c4 and visit parent siblings.
+/// let c4 = c1.last().ok_or("missing c1 node")?;
+///
+/// assert_eq!(
+///     c4.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["c4", "c5", "c6", "c7"],
+/// );
+///
+/// // Walk from c5 and visit siblings.
+/// let c5 = c1.next().ok_or("missing c5 node")?;
+///
+/// assert_eq!(
+///     c5.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     ["c5", "c6", "c7"],
+/// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
 pub struct Walk<'a, T, I, W>
@@ -123,7 +148,7 @@ where
     /// ```
     #[inline]
     #[must_use]
-    pub fn next_with_depth(&mut self) -> Option<(usize, Node<'a, T, I, W>)> {
+    pub fn next_with_depth(&mut self) -> Option<(isize, Node<'a, T, I, W>)> {
         loop {
             let depth = self.iter.depth();
             let (event, node) = self.iter.next()?;
@@ -167,7 +192,13 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        Some(self.iter.find(|(e, _)| !matches!(e, Event::Up))?.1)
+        loop {
+            let (event, node) = self.iter.next()?;
+
+            if !matches!(event, Event::Up) {
+                return Some(node);
+            }
+        }
     }
 }
 
@@ -193,14 +224,30 @@ impl<T, I, W> FusedIterator for Walk<'_, T, I, W> where W: Width {}
 ///
 /// assert_eq!(
 ///     tree.walk().with_depths().map(|(d, n)| (d, *n.value())).collect::<Vec<_>>(),
-///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3"), (2, "c4"), (1, "c5"), (1, "c6")]
+///     [
+///         (0, "root"),
+///         (1, "c1"),
+///         (2, "c2"),
+///         (2, "c3"),
+///         (2, "c4"),
+///         (1, "c5"),
+///         (1, "c6")
+///     ]
 /// );
 ///
 /// let root = tree.first().ok_or("missing root node")?;
 ///
 /// assert_eq!(
 ///     root.walk().with_depths().map(|(d, n)| (d, *n.value())).collect::<Vec<_>>(),
-///     [(0, "c1"), (1, "c2"), (1, "c3"), (1, "c4"), (0, "c5"), (0, "c6")]
+///     [
+///         (0, "root"),
+///         (1, "c1"),
+///         (2, "c2"),
+///         (2, "c3"),
+///         (2, "c4"),
+///         (1, "c5"),
+///         (1, "c6")
+///     ]
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
@@ -215,7 +262,7 @@ impl<'a, T, I, W> Iterator for WithDepths<'a, T, I, W>
 where
     W: Width,
 {
-    type Item = (usize, Node<'a, T, I, W>);
+    type Item = (isize, Node<'a, T, I, W>);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

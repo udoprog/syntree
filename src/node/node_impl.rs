@@ -181,7 +181,7 @@ where
     /// See [Walk] for documentation.
     #[must_use]
     pub fn walk(&self) -> Walk<'a, T, I, W> {
-        Walk::new(self.tree, self.links.first)
+        Walk::new(self.tree, Some(self.id()))
     }
 
     /// Walk the node forwards in a depth-first fashion emitting events
@@ -190,7 +190,7 @@ where
     /// See [`WalkEvents`] for documentation.
     #[must_use]
     pub fn walk_events(&self) -> WalkEvents<'a, T, I, W> {
-        WalkEvents::new(self.tree, self.links.first)
+        WalkEvents::new(self.tree, Some(self.id()))
     }
 }
 
