@@ -61,13 +61,15 @@ pub enum Event {
 /// assert_eq!(
 ///     root.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
 ///     [
-///         (Next, "c1"),
+///         (Next, "root"),
+///         (Down, "c1"),
 ///         (Down, "c2"),
 ///         (Next, "c3"),
 ///         (Next, "c4"),
 ///         (Up, "c1"),
 ///         (Next, "c5"),
 ///         (Next, "c6"),
+///         (Up, "root"),
 ///     ]
 /// );
 ///
@@ -75,7 +77,16 @@ pub enum Event {
 ///
 /// assert_eq!(
 ///     c1.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
-///     [(Next, "c2"), (Next, "c3"), (Next, "c4")]
+///     [
+///         (Next, "c1"),
+///         (Down, "c2"),
+///         (Next, "c3"),
+///         (Next, "c4"),
+///         (Up, "c1"),
+///         (Next, "c5"),
+///         (Next, "c6"),
+///         (Up, "root"),
+///     ]
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
 /// ```
@@ -133,7 +144,7 @@ where
     // The current node.
     node: Option<(W::Pointer, Event)>,
     // Current depth being walked.
-    depth: usize,
+    depth: isize,
 }
 
 impl<'a, T, I, W> WalkEvents<'a, T, I, W>
@@ -142,16 +153,20 @@ where
 {
     /// Construct a new events walker.
     #[inline]
-    pub(crate) fn new(tree: &'a [Links<T, I, W::Pointer>], node: Option<W::Pointer>) -> Self {
+    pub(crate) fn new(
+        tree: &'a [Links<T, I, W::Pointer>],
+        node: Option<W::Pointer>,
+        e: Event,
+    ) -> Self {
         Self {
             tree,
-            node: node.map(|n| (n, Event::Next)),
+            node: node.map(|n| (n, e)),
             depth: 0,
         }
     }
 
     /// Get current depth.
-    pub(crate) fn depth(&self) -> usize {
+    pub(crate) fn depth(&self) -> isize {
         self.depth
     }
 

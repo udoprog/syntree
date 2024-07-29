@@ -5,8 +5,8 @@ use alloc::vec::Vec;
 
 use crate::index::{Index, Indexes};
 use crate::links::Links;
-use crate::node::Node;
 use crate::node::{Children, Walk, WalkEvents};
+use crate::node::{Event, Node};
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
 
@@ -184,11 +184,20 @@ where
         Children::new(&self.tree, self.first, self.last)
     }
 
-    /// Walk the tree forwards in a depth-first fashion visiting every node once.
+    /// Walk the tree forwards in a depth-first fashion visiting every node
+    /// once.
     ///
     /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, I, W> {
-        Walk::new(self.tree.as_slice(), self.first)
+        Walk::new(self.tree.as_slice(), self.first, Event::Next)
+    }
+
+    /// Walk up the tree forwards in a depth-first fashion visiting every node
+    /// once.
+    ///
+    /// See [`Walk`] for documentation.
+    pub fn walk_up(&self) -> Walk<'_, T, I, W> {
+        Walk::new(self.tree.as_slice(), self.first, Event::Up)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -196,7 +205,7 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T, I, W> {
-        WalkEvents::new(self.tree.as_slice(), self.first)
+        WalkEvents::new(self.tree.as_slice(), self.first, Event::Next)
     }
 
     /// Get the first child node in the tree.
@@ -542,7 +551,7 @@ where
     B: Width,
 {
     fn eq(&self, other: &Tree<T, I, A>) -> bool {
-        struct Item<'a, T, I, W>((usize, Node<'a, T, I, W>))
+        struct Item<'a, T, I, W>((isize, Node<'a, T, I, W>))
         where
             W: Width;
 

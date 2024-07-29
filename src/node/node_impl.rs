@@ -4,7 +4,7 @@ use core::ops::Range;
 
 use crate::index::Index;
 use crate::links::Links;
-use crate::node::{Ancestors, Children, Siblings, Walk, WalkEvents};
+use crate::node::{Ancestors, Children, Event, Siblings, Walk, WalkEvents};
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
 
@@ -181,7 +181,16 @@ where
     /// See [Walk] for documentation.
     #[must_use]
     pub fn walk(&self) -> Walk<'a, T, I, W> {
-        Walk::new(self.tree, self.links.first)
+        Walk::new(self.tree, Some(self.id()), Event::Next)
+    }
+
+    /// Walk up the subtree forward starting by walking up from the current
+    /// node.
+    ///
+    /// See [Walk] for documentation.
+    #[must_use]
+    pub fn walk_up(&self) -> Walk<'a, T, I, W> {
+        Walk::new(self.tree, Some(self.id()), Event::Up)
     }
 
     /// Walk the node forwards in a depth-first fashion emitting events
@@ -190,7 +199,7 @@ where
     /// See [`WalkEvents`] for documentation.
     #[must_use]
     pub fn walk_events(&self) -> WalkEvents<'a, T, I, W> {
-        WalkEvents::new(self.tree, self.links.first)
+        WalkEvents::new(self.tree, Some(self.id()), Event::Next)
     }
 }
 

@@ -145,16 +145,16 @@ where
     W: Width,
 {
     for (depth, node) in tree.walk().with_depths() {
-        let n = depth * 2;
+        let n = (depth * 2) as usize;
         let data = node.value();
         let span = node.span();
 
         if node.has_children() {
-            writeln!(o, "{:n$}{:?}@{}", "", data, span, n = n)?;
+            writeln!(o, "{:n$}{:?}@{}", "", data, span)?;
         } else if let Some(source) = source(span) {
-            writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source, n = n)?;
+            writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source)?;
         } else {
-            writeln!(o, "{:n$}{:?}@{} +", "", data, span, n = n)?;
+            writeln!(o, "{:n$}{:?}@{} +", "", data, span)?;
         }
     }
 
