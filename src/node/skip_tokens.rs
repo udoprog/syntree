@@ -34,7 +34,7 @@ use crate::pointer::Width;
 /// let mut it = tree.children().skip_tokens();
 ///
 /// assert_eq!(
-///     it.map(|n| *n.value()).collect::<Vec<_>>(),
+///     it.map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3"]
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -61,7 +61,7 @@ use crate::pointer::Width;
 /// let mut it = tree.walk().skip_tokens();
 ///
 /// assert_eq!(
-///     it.map(|n| *n.value()).collect::<Vec<_>>(),
+///     it.map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3", "child4"]
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())

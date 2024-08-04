@@ -173,7 +173,7 @@ where
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, I, W>) -> Result<Tree<T, I, W>, Error>
     where
-        T: Clone,
+        T: Copy,
         I: Index,
     {
         let mut output = Tree::<T, I, W>::with_capacity(tree.capacity());
@@ -251,7 +251,7 @@ where
             }
 
             output.push(Links {
-                data: node.value().clone(),
+                data: node.value(),
                 span,
                 parent,
                 prev,

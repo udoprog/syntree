@@ -115,7 +115,7 @@ fn main() -> Result<()> {
     let mut count = 0usize;
 
     for node in tree.children() {
-        let string = match *node.value() {
+        let string = match node.value() {
             Synthetic(id) => match storage.get(id) {
                 Some(string) => string,
                 None => {

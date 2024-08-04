@@ -54,18 +54,26 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     ///
     /// let number = root.first().ok_or("missing number")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     ///
     /// let ident = number.next().ok_or("missing ident")?;
-    /// assert_eq!(*ident.value(), "ident");
+    /// assert_eq!(ident.value(), "ident");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn value(&self) -> &'a T {
-        &self.links.data
+    pub fn value(&self) -> T
+    where
+        T: Copy,
+    {
+        self.links.data
+    }
+
+    /// Replace the value of the node with a new one, returning the old value.
+    pub fn replace(&self, value: T) -> T where T: Copy {
+
     }
 
     /// Check if the current node has children or not.
@@ -228,14 +236,14 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     /// assert!(root.parent().is_none());
     ///
     /// let number = root.first().ok_or("missing number")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     ///
     /// let root = number.parent().ok_or("missing parent")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -260,14 +268,14 @@ where
     /// };
     ///
     /// let number = tree.first().and_then(|n| n.first()).ok_or("missing number")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     /// assert!(number.prev().is_none());
     ///
     /// let ident = number.next().ok_or("missing ident")?;
-    /// assert_eq!(*ident.value(), "ident");
+    /// assert_eq!(ident.value(), "ident");
     ///
     /// let number = ident.prev().ok_or("missing number")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -292,13 +300,13 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     ///
     /// let number = root.first().ok_or("missing second root")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     ///
     /// let ident = number.next().ok_or("missing second root")?;
-    /// assert_eq!(*ident.value(), "ident");
+    /// assert_eq!(ident.value(), "ident");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -326,10 +334,10 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     ///
     /// let number = root.first().ok_or("missing number")?;
-    /// assert_eq!(*number.value(), "number");
+    /// assert_eq!(number.value(), "number");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -357,10 +365,10 @@ where
     /// };
     ///
     /// let root2 = tree.last().ok_or("missing root2")?;
-    /// assert_eq!(*root2.value(), "root2");
+    /// assert_eq!(root2.value(), "root2");
     ///
     /// let whitespace = root2.last().ok_or("missing whitespace")?;
-    /// assert_eq!(*whitespace.value(), "whitespace");
+    /// assert_eq!(whitespace.value(), "whitespace");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -395,11 +403,11 @@ where
     /// };
     ///
     /// let node = tree.node_with_range(3..3).ok_or("missing 0")?;
-    /// assert_eq!(*node.value(), "child4");
+    /// assert_eq!(node.value(), "child4");
     ///
     /// let found = node.find_preceding(|n| n.span().end == 3 && n.has_children());
     /// let found = found.expect("expected preceeding node");
-    /// assert_eq!(*found.value(), "child2");
+    /// assert_eq!(found.value(), "child2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, W>>

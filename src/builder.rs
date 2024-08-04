@@ -530,13 +530,13 @@ where
     /// let tree = tree.build()?;
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
-    /// assert_eq!(*child.value(), "child");
+    /// assert_eq!(child.value(), "child");
     ///
     /// let lit = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).ok_or("expected lit")?;
-    /// assert_eq!(*lit.value(), "lit");
+    /// assert_eq!(lit.value(), "lit");
     ///
     /// let root = lit.ancestors().last().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     /// assert_eq!(root.parent(), None);
     ///
     /// let expected = syntree::tree! {

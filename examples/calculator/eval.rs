@@ -61,7 +61,7 @@ where
     W: pointer::Width,
 {
     loop {
-        return match *node.value() {
+        return match node.value() {
             Group => {
                 node = node
                     .first()
@@ -85,7 +85,7 @@ where
                         .first()
                         .ok_or(EvalError::new(*node.span(), ExpectedOperator))?;
 
-                    let (calculate, error): (fn(i64, i64) -> Option<i64>, _) = match *op.value() {
+                    let (calculate, error): (fn(i64, i64) -> Option<i64>, _) = match op.value() {
                         Plus => (i64::checked_add, Overflow),
                         Minus => (i64::checked_sub, Underflow),
                         Mul => (i64::checked_mul, Overflow),

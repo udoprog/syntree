@@ -42,7 +42,7 @@ pub enum Event {
 /// };
 ///
 /// assert_eq!(
-///     tree.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
+///     tree.walk_events().map(|(e, n)| (e, n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "root"),
 ///         (Down, "c1"),
@@ -59,7 +59,7 @@ pub enum Event {
 /// let root = tree.first().ok_or("missing root")?;
 ///
 /// assert_eq!(
-///     root.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
+///     root.walk_events().map(|(e, n)| (e, n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "root"),
 ///         (Down, "c1"),
@@ -76,7 +76,7 @@ pub enum Event {
 /// let c1 = root.first().ok_or("missing c1")?;
 ///
 /// assert_eq!(
-///     c1.walk_events().map(|(e, n)| (e, *n.value())).collect::<Vec<_>>(),
+///     c1.walk_events().map(|(e, n)| (e, n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (Next, "c1"),
 ///         (Down, "c2"),
@@ -119,10 +119,10 @@ pub enum Event {
 ///         }
 ///         Down => {
 ///             depth += 1;
-///             nodes.push((depth, *node.value()));
+///             nodes.push((depth, node.value()));
 ///         }
 ///         Next => {
-///             nodes.push((depth, *node.value()));
+///             nodes.push((depth, node.value()));
 ///         }
 ///     }
 /// }
