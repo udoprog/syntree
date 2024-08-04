@@ -184,12 +184,13 @@ where
         Walk::new(self.tree, Some(self.id()), Event::Next)
     }
 
-    /// Walk up the subtree forward starting by walking up from the current
-    /// node.
+    /// Walk from the current node forwards and upwards through the tree.
+    ///
+    /// This does not include the current node in the walk.
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk_up(&self) -> Walk<'a, T, I, W> {
+    pub fn walk_from(&self) -> Walk<'a, T, I, W> {
         Walk::new(self.tree, Some(self.id()), Event::Up)
     }
 
