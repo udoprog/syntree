@@ -83,6 +83,7 @@ use crate::pointer::Width;
 /// ```
 pub struct Walk<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     iter: WalkEvents<'a, T, I, W>,
@@ -90,6 +91,7 @@ where
 
 impl<'a, T, I, W> Walk<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// Construct a new walk.
@@ -181,6 +183,7 @@ where
 
 impl<T, I, W> Clone for Walk<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -193,6 +196,7 @@ where
 
 impl<T, I, W> Default for Walk<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -205,6 +209,7 @@ where
 
 impl<'a, T, I, W> Iterator for Walk<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     type Item = Node<'a, T, I, W>;
@@ -221,7 +226,12 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Walk<'_, T, I, W> where W: Width {}
+impl<T, I, W> FusedIterator for Walk<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once. This is constructed with [`Walk::with_depths`].
@@ -272,6 +282,7 @@ impl<T, I, W> FusedIterator for Walk<'_, T, I, W> where W: Width {}
 /// ```
 pub struct WithDepths<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     iter: Walk<'a, T, I, W>,
@@ -279,6 +290,7 @@ where
 
 impl<'a, T, I, W> Iterator for WithDepths<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     type Item = (isize, Node<'a, T, I, W>);
@@ -289,10 +301,16 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for WithDepths<'_, T, I, W> where W: Width {}
+impl<T, I, W> FusedIterator for WithDepths<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
 
 impl<T, I, W> Clone for WithDepths<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -305,6 +323,7 @@ where
 
 impl<T, I, W> Default for WithDepths<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]

@@ -29,6 +29,7 @@ use crate::span::Span;
 /// constructor.
 pub struct Tree<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -48,6 +49,7 @@ where
 
 impl<T, I, W> Tree<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -506,7 +508,7 @@ where
 
 impl<T, I, W> Clone for Tree<T, I, W>
 where
-    T: Clone,
+    T: Copy,
     I: Index,
     I::Indexes<W::Pointer>: Clone,
     W: Width,
@@ -526,6 +528,7 @@ where
 
 impl<T, I, W> Default for Tree<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -537,7 +540,7 @@ where
 
 impl<T, I, A, B> PartialEq<Tree<T, I, A>> for Tree<T, I, B>
 where
-    T: PartialEq,
+    T: Copy + PartialEq,
     I: Index + PartialEq,
     A: Width,
     B: Width,
@@ -545,13 +548,14 @@ where
     fn eq(&self, other: &Tree<T, I, A>) -> bool {
         struct Item<'a, T, I, W>((isize, Node<'a, T, I, W>))
         where
+            T: Copy,
             W: Width;
 
         // NB: this is needed because the constraints on tuples doesn't allow
         // for `A` and `B` to be different.
         impl<'a, T, I, A, B> PartialEq<Item<'a, T, I, A>> for Item<'a, T, I, B>
         where
-            T: PartialEq,
+            T: Copy + PartialEq,
             I: PartialEq,
             A: Width,
             B: Width,
@@ -571,7 +575,7 @@ where
 
 impl<T, I, W> Eq for Tree<T, I, W>
 where
-    T: Eq,
+    T: Copy + Eq,
     I: Index + Eq,
     W: Width,
 {
@@ -579,19 +583,20 @@ where
 
 impl<T, I, W> fmt::Debug for Tree<T, I, W>
 where
-    T: fmt::Debug,
+    T: Copy + fmt::Debug,
     I: Index + fmt::Debug,
     W: Width,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct List<'a, T, I, W>(&'a Tree<T, I, W>)
         where
+            T: Copy,
             I: Index,
             W: Width;
 
         impl<T, I, W> fmt::Debug for List<'_, T, I, W>
         where
-            T: fmt::Debug,
+            T: Copy + fmt::Debug,
             I: Index + fmt::Debug,
             W: Width,
         {

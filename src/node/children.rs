@@ -70,6 +70,7 @@ use crate::pointer::{Pointer, Width};
 /// ```
 pub struct Children<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     tree: &'a [Links<T, I, W::Pointer>],
@@ -79,6 +80,7 @@ where
 
 impl<'a, T, I, W> Children<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// Construct a new child iterator.
@@ -148,6 +150,7 @@ where
 
 impl<'a, T, I, W> Iterator for Children<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     type Item = Node<'a, T, I, W>;
@@ -167,6 +170,7 @@ where
 
 impl<T, I, W> DoubleEndedIterator for Children<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -182,10 +186,16 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Children<'_, T, I, W> where W: Width {}
+impl<T, I, W> FusedIterator for Children<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
 
 impl<T, I, W> Clone for Children<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -200,6 +210,7 @@ where
 
 impl<T, I, W> Default for Children<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]

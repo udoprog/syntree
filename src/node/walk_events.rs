@@ -137,6 +137,7 @@ pub enum Event {
 /// ```
 pub struct WalkEvents<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// The tree being iterated over.
@@ -149,6 +150,7 @@ where
 
 impl<'a, T, I, W> WalkEvents<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// Construct a new events walker.
@@ -197,6 +199,7 @@ where
 
 impl<T, I, W> Clone for WalkEvents<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -211,6 +214,7 @@ where
 
 impl<T, I, W> Default for WalkEvents<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -225,6 +229,7 @@ where
 
 impl<'a, T, I, W> Iterator for WalkEvents<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     type Item = (Event, Node<'a, T, I, W>);
@@ -238,4 +243,9 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for WalkEvents<'_, T, I, W> where W: Width {}
+impl<T, I, W> FusedIterator for WalkEvents<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}

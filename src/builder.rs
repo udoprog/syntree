@@ -1,5 +1,7 @@
 mod checkpoint;
 
+use core::cell::Cell;
+
 use crate::error::Error;
 use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
@@ -53,6 +55,7 @@ pub use self::checkpoint::Checkpoint;
 #[derive(Debug)]
 pub struct Builder<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -70,7 +73,10 @@ where
     cursor: I,
 }
 
-impl<T> Builder<T, u32, usize> {
+impl<T> Builder<T, u32, usize>
+where
+    T: Copy,
+{
     /// Construct a new tree with a default [`Span`] based on `u32`.
     ///
     /// For a constructor that can use custom bounds, use [Builder::new_with].
@@ -113,6 +119,7 @@ impl<T> Builder<T, u32, usize> {
 
 impl<T, I, W> Builder<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -609,7 +616,7 @@ where
 
         // Do necessary accounting.
         self.tree.push(Links {
-            data,
+            data: Cell::new(data),
             span,
             prev,
             parent,
@@ -686,7 +693,7 @@ where
         let prev = self.sibling.take();
 
         self.tree.push(Links {
-            data,
+            data: Cell::new(data),
             span,
             parent: self.parent,
             prev,
@@ -724,7 +731,7 @@ where
 
 impl<T, I, W> Clone for Builder<T, I, W>
 where
-    T: Clone,
+    T: Copy,
     I: Index,
     I::Indexes<W::Pointer>: Clone,
     W: Width,
@@ -744,6 +751,7 @@ where
 
 impl<T, I, W> Default for Builder<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -762,6 +770,7 @@ fn restructure_close_at<T, I, W>(
     next: W::Pointer,
 ) -> Result<(W::Pointer, I), Error>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {

@@ -82,6 +82,7 @@ impl<U> SkipTokens<U> {
 
 impl<'a, U, T: 'a, I: 'a, W: 'a> Iterator for SkipTokens<U>
 where
+    T: Copy,
     W: Width,
     U: Iterator<Item = Node<'a, T, I, W>>,
 {
@@ -110,6 +111,7 @@ where
 
 impl<'a, U, T: 'a, I: 'a, W: 'a> DoubleEndedIterator for SkipTokens<U>
 where
+    T: Copy,
     W: Width,
     U: DoubleEndedIterator<Item = Node<'a, T, I, W>>,
 {
@@ -130,6 +132,7 @@ where
 
 impl<'a, U, T: 'a, I: 'a, W: 'a> FusedIterator for SkipTokens<U>
 where
+    T: Copy,
     W: Width,
     U: FusedIterator<Item = Node<'a, T, I, W>>,
 {
