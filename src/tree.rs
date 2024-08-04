@@ -211,7 +211,7 @@ where
     /// };
     ///
     /// let root = tree.first().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root");
+    /// assert_eq!(root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn first(&self) -> Option<Node<'_, T, I, W>> {
@@ -229,7 +229,7 @@ where
     /// };
     ///
     /// let root = tree.last().ok_or("missing root")?;
-    /// assert_eq!(*root.value(), "root2");
+    /// assert_eq!(root.value(), "root2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     pub fn last(&self) -> Option<Node<'_, T, I, W>> {
@@ -324,31 +324,31 @@ where
     /// };
     ///
     /// let node = tree.node_with_range(0..0).ok_or("missing 0")?;
-    /// assert_eq!(*node.value(), "child1");
+    /// assert_eq!(node.value(), "child1");
     ///
     /// let node = tree.node_with_range(0..3).ok_or("missing 0")?;
-    /// assert_eq!(*node.value(), "child1");
+    /// assert_eq!(node.value(), "child1");
     ///
     /// let node = tree.node_with_range(3..3).ok_or("missing 3")?;
-    /// assert_eq!(*node.value(), "nested1");
+    /// assert_eq!(node.value(), "nested1");
     ///
     /// let node = tree.node_with_range(3..7).ok_or("missing 3..7")?;
-    /// assert_eq!(*node.value(), "nested1");
+    /// assert_eq!(node.value(), "nested1");
     ///
     /// let node = tree.node_with_range(7..7).ok_or("missing 7")?;
-    /// assert_eq!(*node.value(), "child2");
+    /// assert_eq!(node.value(), "child2");
     ///
     /// let node = tree.node_with_range(7..8).ok_or("missing 7..8")?;
-    /// assert_eq!(*node.value(), "child2");
+    /// assert_eq!(node.value(), "child2");
     ///
     /// let node = tree.node_with_range(8..8).ok_or("missing 8")?;
-    /// assert_eq!(*node.value(), "child3");
+    /// assert_eq!(node.value(), "child3");
     ///
     /// let node = tree.node_with_range(8..13).ok_or("missing 9")?;
-    /// assert_eq!(*node.value(), "child3");
+    /// assert_eq!(node.value(), "child3");
     ///
     /// let node = tree.node_with_range(2..4).ok_or("missing 2..4")?;
-    /// assert_eq!(*node.value(), "root");
+    /// assert_eq!(node.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
@@ -367,7 +367,7 @@ where
     /// let tree = tree.build()?;
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
-    /// assert_eq!(*child.value(), "child");
+    /// assert_eq!(child.value(), "child");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
@@ -406,31 +406,31 @@ where
     /// };
     ///
     /// let node = tree.node_with_span(Span::point(0)).ok_or("missing 0")?;
-    /// assert_eq!(*node.value(), "child1");
+    /// assert_eq!(node.value(), "child1");
     ///
     /// let node = tree.node_with_span(Span::new(0, 3)).ok_or("missing 0")?;
-    /// assert_eq!(*node.value(), "child1");
+    /// assert_eq!(node.value(), "child1");
     ///
     /// let node = tree.node_with_span(Span::point(3)).ok_or("missing 3")?;
-    /// assert_eq!(*node.value(), "nested1");
+    /// assert_eq!(node.value(), "nested1");
     ///
     /// let node = tree.node_with_span(Span::new(3, 7)).ok_or("missing 3..7")?;
-    /// assert_eq!(*node.value(), "nested1");
+    /// assert_eq!(node.value(), "nested1");
     ///
     /// let node = tree.node_with_span(Span::point(7)).ok_or("missing 7")?;
-    /// assert_eq!(*node.value(), "child2");
+    /// assert_eq!(node.value(), "child2");
     ///
     /// let node = tree.node_with_span(Span::new(7, 8)).ok_or("missing 7..8")?;
-    /// assert_eq!(*node.value(), "child2");
+    /// assert_eq!(node.value(), "child2");
     ///
     /// let node = tree.node_with_span(Span::point(8)).ok_or("missing 8")?;
-    /// assert_eq!(*node.value(), "child3");
+    /// assert_eq!(node.value(), "child3");
     ///
     /// let node = tree.node_with_span(Span::new(8, 13)).ok_or("missing 9")?;
-    /// assert_eq!(*node.value(), "child3");
+    /// assert_eq!(node.value(), "child3");
     ///
     /// let node = tree.node_with_span(Span::new(2, 4)).ok_or("missing 2..4")?;
-    /// assert_eq!(*node.value(), "root");
+    /// assert_eq!(node.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     ///
@@ -456,25 +456,25 @@ where
     /// let tree = tree.build()?;
     ///
     /// let child = tree.node_with_span(Span::point(0)).ok_or("missing at point 5")?;
-    /// assert_eq!(*child.value(), "child1");
+    /// assert_eq!(child.value(), "child1");
     ///
     /// let child = tree.node_with_span(Span::new(0, 3)).ok_or("missing at 0..3")?;
-    /// assert_eq!(*child.value(), "child1");
+    /// assert_eq!(child.value(), "child1");
     ///
     /// let child = tree.node_with_span(Span::new(3, 5)).ok_or("missing at 3..5")?;
-    /// assert_eq!(*child.value(), "child2");
+    /// assert_eq!(child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::new(4, 5)).ok_or("missing at 4..5")?;
-    /// assert_eq!(*child.value(), "child2");
+    /// assert_eq!(child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::new(3, 4)).ok_or("missing at 3..4")?;
-    /// assert_eq!(*child.value(), "child2");
+    /// assert_eq!(child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::point(3)).ok_or("missing at point 5")?;
-    /// assert_eq!(*child.value(), "child2");
+    /// assert_eq!(child.value(), "child2");
     ///
     /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
-    /// assert_eq!(*child.value(), "root");
+    /// assert_eq!(child.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]

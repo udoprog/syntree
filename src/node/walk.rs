@@ -29,7 +29,7 @@ use crate::pointer::Width;
 ///
 /// // Walk the entire tree.
 /// assert_eq!(
-///     tree.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     tree.walk().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["root", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
 /// );
 ///
@@ -37,7 +37,7 @@ use crate::pointer::Width;
 /// let root = tree.first().ok_or("missing root node")?;
 ///
 /// assert_eq!(
-///     root.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     root.walk().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["root", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
 /// );
 ///
@@ -45,12 +45,12 @@ use crate::pointer::Width;
 /// let c1 = root.first().ok_or("missing c1 node")?;
 ///
 /// assert_eq!(
-///     c1.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c1.walk().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
 /// );
 ///
 /// assert_eq!(
-///     c1.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c1.walk_from().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c5", "c6", "c7"],
 /// );
 ///
@@ -58,12 +58,12 @@ use crate::pointer::Width;
 /// let c4 = c1.last().ok_or("missing c1 node")?;
 ///
 /// assert_eq!(
-///     c4.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c4.walk().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c4", "c5", "c6", "c7"],
 /// );
 ///
 /// assert_eq!(
-///     c4.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c4.walk_from().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c5", "c6", "c7"],
 /// );
 ///
@@ -71,12 +71,12 @@ use crate::pointer::Width;
 /// let c5 = c1.next().ok_or("missing c5 node")?;
 ///
 /// assert_eq!(
-///     c5.walk().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c5.walk().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c5", "c6", "c7"],
 /// );
 ///
 /// assert_eq!(
-///     c5.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c5.walk_from().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c6", "c7"],
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -118,7 +118,7 @@ where
     ///     }
     /// };
     ///
-    /// let mut it = tree.walk().with_depths().map(|(d, n)| (d, *n.value()));
+    /// let mut it = tree.walk().with_depths().map(|(d, n)| (d, n.value()));
     /// assert!(it.eq([(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]));
     ///
     /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -159,7 +159,7 @@ where
     ///
     /// let mut it = tree.walk();
     /// let it = iter::from_fn(move || it.next_with_depth());
-    /// let it = it.map(|(d, n)| (d, *n.value()));
+    /// let it = it.map(|(d, n)| (d, n.value()));
     ///
     /// assert!(it.eq([(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]));
     ///
@@ -242,7 +242,7 @@ impl<T, I, W> FusedIterator for Walk<'_, T, I, W> where W: Width {}
 /// };
 ///
 /// assert_eq!(
-///     tree.walk().with_depths().map(|(d, n)| (d, *n.value())).collect::<Vec<_>>(),
+///     tree.walk().with_depths().map(|(d, n)| (d, n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (0, "root"),
 ///         (1, "c1"),
@@ -257,7 +257,7 @@ impl<T, I, W> FusedIterator for Walk<'_, T, I, W> where W: Width {}
 /// let root = tree.first().ok_or("missing root node")?;
 ///
 /// assert_eq!(
-///     root.walk().with_depths().map(|(d, n)| (d, *n.value())).collect::<Vec<_>>(),
+///     root.walk().with_depths().map(|(d, n)| (d, n.value())).collect::<Vec<_>>(),
 ///     [
 ///         (0, "root"),
 ///         (1, "c1"),

@@ -20,7 +20,7 @@ use crate::tree::Tree;
 /// # Examples
 ///
 /// ```
-/// #[derive(Debug)]
+/// #[derive(Debug, Clone, Copy)]
 /// enum Syntax {
 ///     NUMBER,
 ///     WHITESPACE,
@@ -66,7 +66,7 @@ use crate::tree::Tree;
 pub fn print<O, T, I, W>(o: O, tree: &Tree<T, I, W>) -> Result<(), Error>
 where
     O: Write,
-    T: fmt::Debug,
+    T: Copy + fmt::Debug,
     I: Index + fmt::Display,
     W: Width,
 {
@@ -78,7 +78,7 @@ where
 /// # Examples
 ///
 /// ```
-/// #[derive(Debug)]
+/// #[derive(Debug, Clone, Copy)]
 /// enum Syntax {
 ///     NUMBER,
 ///     WHITESPACE,
@@ -126,7 +126,7 @@ where
 pub fn print_with_source<O, T, I, W>(o: O, tree: &Tree<T, I, W>, source: &str) -> Result<(), Error>
 where
     O: Write,
-    T: fmt::Debug,
+    T: Copy + fmt::Debug,
     I: Index + fmt::Display,
     W: Width,
 {
@@ -140,7 +140,7 @@ fn print_with_lookup<'a, O, T, I, W>(
 ) -> Result<(), Error>
 where
     O: Write,
-    T: fmt::Debug,
+    T: Copy + fmt::Debug,
     I: Index + fmt::Display,
     W: Width,
 {

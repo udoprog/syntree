@@ -19,8 +19,8 @@ fn main() -> Result<()> {
     let tree = tree.build()?;
     let mut it = tree.children();
 
-    assert_eq!(it.next().map(|n| *n.value()), Some("root1"));
-    assert_eq!(it.next().map(|n| *n.value()), Some("root2"));
+    assert_eq!(it.next().map(|n| n.value()), Some("root1"));
+    assert_eq!(it.next().map(|n| n.value()), Some("root2"));
     assert!(it.next().is_none());
     Ok(())
 }
