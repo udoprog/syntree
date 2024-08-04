@@ -1,5 +1,7 @@
 //! Types associated with performing immutable editing of a tree.
 
+use core::cell::Cell;
+
 use alloc::vec::Vec;
 
 use std::collections::HashMap;
@@ -72,6 +74,7 @@ pub(crate) enum Change {
 /// ```
 pub struct ChangeSet<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -82,6 +85,7 @@ where
 
 impl<T, I, W> ChangeSet<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -94,6 +98,7 @@ where
 
 impl<T, I, W> ChangeSet<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -173,7 +178,6 @@ where
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, I, W>) -> Result<Tree<T, I, W>, Error>
     where
-        T: Copy,
         I: Index,
     {
         let mut output = Tree::<T, I, W>::with_capacity(tree.capacity());
@@ -251,7 +255,7 @@ where
             }
 
             output.push(Links {
-                data: node.value(),
+                data: Cell::new(node.value()),
                 span,
                 parent,
                 prev,
@@ -270,6 +274,7 @@ where
 
 impl<T, I, W> Default for ChangeSet<T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -285,6 +290,7 @@ where
 /// The state of the skipped subtree.
 struct Skipped<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     node: Node<'a, T, I, W>,
@@ -293,6 +299,7 @@ where
 
 struct RefactorWalk<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     parents: Vec<(Node<'a, T, I, W>, W::Pointer)>,
@@ -301,6 +308,7 @@ where
 
 impl<'a, T, I, W> RefactorWalk<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     fn skip_subtree(

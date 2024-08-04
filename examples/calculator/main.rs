@@ -1,15 +1,16 @@
 /// A simple calculator only capable of addition and subtraction.
+mod eval;
+mod grammar;
+mod lexer;
+mod parsing;
+
+use std::io::Write;
+
 use anyhow::Result;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use codespan_reporting::files::SimpleFile;
 use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-use std::io::Write;
-
-mod eval;
-mod grammar;
-mod lexer;
-mod parsing;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]

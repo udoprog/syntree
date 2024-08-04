@@ -1,7 +1,8 @@
 //! Example converted from https://github.com/rust-analyzer/rowan/blob/master/examples/math.rs
 
-use anyhow::Result;
 use std::iter::Peekable;
+
+use anyhow::Result;
 use syntree::{print, Builder, Error, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

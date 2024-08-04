@@ -11,6 +11,8 @@ This crate provides a tree structure which always is contiguously stored and
 manipulated in memory. It provides similar APIs as [`rowan`] and is intended
 to be an efficient replacement for it (read more below).
 
+Anything can be stored in the tree as long as it implements `Copy`.
+
 <br>
 
 ## Usage

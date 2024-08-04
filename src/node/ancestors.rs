@@ -48,6 +48,7 @@ use crate::pointer::Width;
 /// ```
 pub struct Ancestors<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     node: Option<Node<'a, T, I, W>>,
@@ -55,6 +56,7 @@ where
 
 impl<'a, T, I, W> Ancestors<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// Construct a new ancestor iterator.
@@ -115,6 +117,7 @@ where
 
 impl<'a, T, I, W> Iterator for Ancestors<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     type Item = Node<'a, T, I, W>;
@@ -127,10 +130,16 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Ancestors<'_, T, I, W> where W: Width {}
+impl<T, I, W> FusedIterator for Ancestors<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
 
 impl<T, I, W> Clone for Ancestors<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -141,6 +150,7 @@ where
 
 impl<T, I, W> Default for Ancestors<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]

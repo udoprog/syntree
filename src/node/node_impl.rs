@@ -24,6 +24,7 @@ use crate::span::Span;
 /// constructor.
 pub struct Node<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     links: &'a Links<T, I, W::Pointer>,
@@ -32,6 +33,7 @@ where
 
 impl<'a, T, I, W> Node<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     pub(crate) const fn new(
@@ -64,16 +66,36 @@ where
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn value(&self) -> T
-    where
-        T: Copy,
-    {
-        self.links.data
+    pub fn value(&self) -> T {
+        self.links.data.get()
     }
 
     /// Replace the value of the node with a new one, returning the old value.
-    pub fn replace(&self, value: T) -> T where T: Copy {
-
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         ("number", 5),
+    ///         ("ident", 3),
+    ///     }
+    /// };
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.value(), "root");
+    ///
+    /// let number = root.first().ok_or("missing number")?;
+    /// assert_eq!(number.value(), "number");
+    /// assert_eq!(number.replace("other"), "number");
+    /// assert_eq!(number.value(), "other");
+    ///
+    /// let ident = number.next().ok_or("missing ident")?;
+    /// assert_eq!(ident.value(), "ident");
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn replace(&self, value: T) -> T {
+        self.links.data.replace(value)
     }
 
     /// Check if the current node has children or not.
@@ -214,6 +236,7 @@ where
 
 impl<'a, T, I, W> Node<'a, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     /// Get immediate parent to this node.
@@ -495,6 +518,7 @@ where
 
 impl<T, I, W> Node<'_, T, I, W>
 where
+    T: Copy,
     I: Index,
     W: Width,
 {
@@ -533,13 +557,13 @@ where
 
 impl<T, I, W> fmt::Debug for Node<'_, T, I, W>
 where
-    T: fmt::Debug,
+    T: Copy + fmt::Debug,
     I: fmt::Debug,
     W: Width,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
-            .field("data", &self.links.data)
+            .field("data", &self.links.data.get())
             .field("span", &self.links.span)
             .finish()
     }
@@ -547,6 +571,7 @@ where
 
 impl<T, I, W> Clone for Node<'_, T, I, W>
 where
+    T: Copy,
     W: Width,
 {
     #[inline]
@@ -555,23 +580,28 @@ where
     }
 }
 
-impl<T, I, W> Copy for Node<'_, T, I, W> where W: Width {}
+impl<T, I, W> Copy for Node<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
 
 impl<T, I, A, B> PartialEq<Node<'_, T, I, A>> for Node<'_, T, I, B>
 where
     A: Width,
     B: Width,
-    T: PartialEq,
+    T: Copy + PartialEq,
     I: PartialEq,
 {
     fn eq(&self, other: &Node<'_, T, I, A>) -> bool {
-        self.links.data == other.links.data && self.links.span == other.links.span
+        self.links.data.get() == other.links.data.get() && self.links.span == other.links.span
     }
 }
 
 impl<T, I, W> Eq for Node<'_, T, I, W>
 where
-    T: Eq,
+    T: Copy + Eq,
     I: Eq,
     W: Width,
 {
