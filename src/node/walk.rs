@@ -50,7 +50,7 @@ use crate::pointer::Width;
 /// );
 ///
 /// assert_eq!(
-///     c1.walk_up().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c1.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["c5", "c6", "c7"],
 /// );
 ///
@@ -63,7 +63,7 @@ use crate::pointer::Width;
 /// );
 ///
 /// assert_eq!(
-///     c4.walk_up().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c4.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["c5", "c6", "c7"],
 /// );
 ///
@@ -76,7 +76,7 @@ use crate::pointer::Width;
 /// );
 ///
 /// assert_eq!(
-///     c5.walk_up().map(|n| *n.value()).collect::<Vec<_>>(),
+///     c5.walk_from().map(|n| *n.value()).collect::<Vec<_>>(),
 ///     ["c6", "c7"],
 /// );
 /// # Ok::<_, Box<dyn std::error::Error>>(())

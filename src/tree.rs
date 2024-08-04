@@ -192,14 +192,6 @@ where
         Walk::new(self.tree.as_slice(), self.first, Event::Next)
     }
 
-    /// Walk up the tree forwards in a depth-first fashion visiting every node
-    /// once.
-    ///
-    /// See [`Walk`] for documentation.
-    pub fn walk_up(&self) -> Walk<'_, T, I, W> {
-        Walk::new(self.tree.as_slice(), self.first, Event::Up)
-    }
-
     /// Walk the tree forwards in a depth-first fashion emitting events
     /// indicating how the tree is being traversed.
     ///
