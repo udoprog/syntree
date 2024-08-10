@@ -216,8 +216,9 @@ where
     /// assert_eq!(root.value(), "root");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[inline]
     pub fn first(&self) -> Option<Node<'_, T, I, W>> {
-        self.node_at(self.first?)
+        self.get(self.first?)
     }
 
     /// Get the last child node in the tree.
@@ -234,8 +235,9 @@ where
     /// assert_eq!(root.value(), "root2");
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```
+    #[inline]
     pub fn last(&self) -> Option<Node<'_, T, I, W>> {
-        self.node_at(self.last?)
+        self.get(self.last?)
     }
 
     /// Get the tree links mutably.
@@ -266,9 +268,38 @@ where
         self.tree.get_mut(index.get())
     }
 
-    /// Construct a node at the given location.
-    pub(crate) fn node_at(&self, index: W::Pointer) -> Option<Node<'_, T, I, W>> {
-        let cur = self.tree.get(index.get())?;
+    /// Get the ndoe at the given index.
+    ///
+    /// Note that an id might be re-used across different trees. This behavior
+    /// is never unsafe, but is not well-defined.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "number" => {
+    ///             ("lit", 5)
+    ///         },
+    ///         "ident" => {
+    ///             ("lit", 3)
+    ///         }
+    ///     },
+    ///     "root2" => {
+    ///         ("whitespace", 5)
+    ///     }
+    /// };
+    ///
+    /// let node = tree.first().and_then(|n| n.last()).ok_or("missing ident")?;
+    /// assert_eq!(node.value(), "ident");
+    ///
+    /// let id = node.id();
+    /// let node = tree.get(id).ok_or("missing ident")?;
+    /// assert_eq!(node.value(), "ident");
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn get(&self, id: W::Pointer) -> Option<Node<'_, T, I, W>> {
+        let cur = self.tree.get(id.get())?;
         Some(Node::new(cur, &self.tree))
     }
 
@@ -492,7 +523,7 @@ where
             Err(n) => n,
         };
 
-        let mut node = self.node_at(*self.indexes.get(n)?)?;
+        let mut node = self.get(*self.indexes.get(n)?)?;
 
         while let Some(parent) = node.parent() {
             node = parent;

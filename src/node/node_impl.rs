@@ -478,6 +478,9 @@ where
 
     /// Get the identifier of the current node.
     ///
+    /// Note that an id might be re-used across different trees. This behavior
+    /// is never unsafe, but is not well-defined.
+    ///
     /// This can be used to register a change in a [`ChangeSet`] later.
     ///
     /// ```
