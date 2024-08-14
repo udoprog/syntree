@@ -206,11 +206,45 @@ where
         &self.cursor
     }
 
+    /// Set the cursor position of the syntax tree.
+    ///
+    /// This is used to implicitly set spans when using spanless constructions
+    /// methods.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// assert_eq!(*tree.cursor(), 0);
+    /// tree.open("child")?;
+    /// assert_eq!(*tree.cursor(), 0);
+    /// tree.token("lit", 4)?;
+    /// assert_eq!(*tree.cursor(), 4);
+    /// tree.close()?;
+    /// assert_eq!(*tree.cursor(), 4);
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     "child" => {
+    ///         ("lit", 4)
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn set_cursor(&mut self, cursor: I) {
+        self.cursor = cursor;
+    }
+
     /// Start a node with the given `data`.
     ///
     /// This pushes a new link with the given type onto the stack which links
     /// itself onto the last sibling node that ben introduced either through
-    /// [`Builder::close`] or [`Builder::close_at`].
+    /// [`Builder::close`], [`Builder::close_at`], or
+    /// [`Builder::close_at_with`].
     ///
     /// # Errors
     ///
@@ -235,6 +269,55 @@ where
     /// ```
     pub fn open(&mut self, data: T) -> Result<W::Pointer, Error> {
         let id = self.insert(data, Span::point(self.cursor))?;
+        self.parent = Some(id);
+        Ok(id)
+    }
+
+    /// Start a node with the given `data` and span.
+    ///
+    /// This pushes a new link with the given type onto the stack which links
+    /// itself onto the last sibling node that ben introduced either through
+    /// [`Builder::close`], [`Builder::close_at`] or [`Builder::close_at_with`].
+    ///
+    /// This does not advance the cursor position, in order to fix tree
+    /// construction use [`Builder::set_cursor`].
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node
+    /// identifiers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("root")?;
+    ///
+    /// tree.open_with("child", Span::new(0, 3))?;
+    /// tree.close()?;
+    ///
+    /// tree.open_with("child", Span::new(3, 6))?;
+    /// tree.close()?;
+    ///
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     ("root", (0, 6)) => {
+    ///         ("child", (0, 3)) => {},
+    ///         ("child", (3, 6)) => {}
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn open_with(&mut self, data: T, span: Span<I>) -> Result<W::Pointer, Error> {
+        let id = self.insert(data, span)?;
         self.parent = Some(id);
         Ok(id)
     }
@@ -267,23 +350,25 @@ where
     /// ```
     pub fn close(&mut self) -> Result<(), Error> {
         let head = self.parent.take().ok_or(Error::CloseError)?;
+
         self.sibling = Some(head);
 
-        let node = self
+        let &mut Links { parent, span, .. } = self
             .tree
             .get_mut(head)
             .ok_or_else(|| Error::MissingNode(head.get()))?;
 
-        if let Some(parent) = node.parent {
-            self.tree
-                .get_mut(parent)
-                .ok_or_else(|| Error::MissingNode(parent.get()))?
-                .span
-                .end = node.span.end;
+        if let Some(id) = parent {
+            let parent = self
+                .tree
+                .get_mut(id)
+                .ok_or_else(|| Error::MissingNode(id.get()))?;
 
-            self.parent = Some(parent);
+            parent.span = parent.span.join(&span);
+            self.parent = Some(id);
         }
 
+        self.cursor = span.end;
         Ok(())
     }
 
@@ -331,6 +416,77 @@ where
             self.tree.indexes_mut().push(self.cursor, id);
         }
 
+        Ok(id)
+    }
+
+    /// Insert a token with a custom span.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Overflow`] in case we run out of node identifiers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open_with("child", Span::new(0, 10))?;
+    /// tree.token_with("lit", Span::new(2, 4))?;
+    /// tree.token_with("lit2", Span::new(4, 6))?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     ("child", (0, 10)) => {
+    ///         ("lit", (2, 4)),
+    ///         ("lit2", (4, 6)),
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// Tokens with spans forces the cursor to be set to the end of the span.
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("child")?;
+    /// tree.token_with("lit", Span::new(2, 4))?;
+    /// tree.token_with("lit2", Span::new(4, 6))?;
+    /// tree.token("lit3", 6)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let expected = syntree::tree! {
+    ///     ("child", (0, 6)) => {
+    ///         ("lit", (2, 4)),
+    ///         ("lit2", (4, 6)),
+    ///         ("lit3", (6, 12)),
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(tree, expected);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn token_with(&mut self, value: T, span: Span<I>) -> Result<W::Pointer, Error> {
+        let id = self.insert(value, span)?;
+
+        self.sibling = Some(id);
+        self.tree.indexes_mut().push(span.start, id);
+
+        if let Some(parent) = self.parent.and_then(|id| self.tree.get_mut(id)) {
+            parent.span = parent.span.join(&span);
+        }
+
+        self.cursor = span.end;
         Ok(id)
     }
 
@@ -579,7 +735,7 @@ where
         };
 
         let parent = links.parent.replace(new_id);
-        let prev: Option<<W as Width>::Pointer> = links.prev.take();
+        let prev = links.prev.take();
 
         // Restructuring is necessary to calculate the full span of the newly
         // inserted node and update parent references to point to the newly
@@ -590,6 +746,113 @@ where
             (last, Span::new(span.start, end))
         } else {
             (id, links.span)
+        };
+
+        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
+            if parent.first == Some(id) {
+                parent.first = Some(new_id);
+            }
+
+            if parent.last == Some(id) {
+                parent.last = Some(new_id);
+            }
+        }
+
+        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
+            prev.next = Some(new_id);
+        }
+
+        // If we're replacing the first node of the tree, the newly inserted
+        // node should be set as the first node.
+        let (first, _) = self.tree.links_mut();
+
+        if *first == Some(id) {
+            *first = Some(new_id);
+        }
+
+        // Do necessary accounting.
+        self.tree.push(Links {
+            data: Cell::new(data),
+            span,
+            prev,
+            parent,
+            next: None,
+            first: Some(id),
+            last: Some(last),
+        });
+
+        self.sibling = Some(new_id);
+        c.set(new_id, parent);
+        Ok(new_id)
+    }
+
+    /// Insert a node with a custom length.
+    ///
+    /// # Errors
+    ///
+    /// The checkpoint being closed *must* be a sibling. Otherwise a
+    /// [`Error::CloseAtError`] will be raised.
+    ///
+    /// This might also sporadically error with [`Error::MissingNode`], in case
+    /// a checkpoint is used that was constructed from another tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// let c = tree.checkpoint()?;
+    /// tree.token_with("lit", Span::new(1, 3))?;
+    /// tree.close_at_with(&c, "custom", Span::new(0, 6))?;
+    /// tree.token_with("lit2", Span::new(6, 8))?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let root = tree.first().ok_or("missing root")?;
+    /// assert_eq!(root.value(), "custom");
+    /// assert_eq!(root.span().start, 0);
+    /// assert_eq!(root.span().end, 6);
+    ///
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn close_at_with(
+        &mut self,
+        c: &Checkpoint<W::Pointer>,
+        data: T,
+        span: Span<I>,
+    ) -> Result<W::Pointer, Error> {
+        let (id, parent) = c.get();
+
+        if parent != self.parent {
+            return Err(Error::CloseAtError);
+        }
+
+        let new_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+
+        let Some(links) = self.tree.get_mut(id) else {
+            let new_id = self.insert(data, span)?;
+
+            if new_id != id {
+                return Err(Error::MissingNode(new_id.get()));
+            }
+
+            self.sibling = Some(new_id);
+            return Ok(new_id);
+        };
+
+        let parent = links.parent.replace(new_id);
+        let prev = links.prev.take();
+
+        // Restructuring is necessary to calculate the full span of the newly
+        // inserted node and update parent references to point to the newly
+        // inserted node.
+        let last = if let Some(next) = links.next {
+            let (last, _) = restructure_close_at(&mut self.tree, new_id, next)?;
+            last
+        } else {
+            id
         };
 
         if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
