@@ -50,8 +50,17 @@
 macro_rules! tree {
     (@o $b:ident,) => {};
 
+    (@o $b:ident, ($expr:expr, ($start:expr, $end:expr)) $(,)?) => {{
+        $b.token_with($expr, $crate::Span::new($start, $end))?;
+    }};
+
     (@o $b:ident, ($expr:expr, $len:expr) $(,)?) => {{
         $b.token($expr, $len)?;
+    }};
+
+    (@o $b:ident, ($expr:expr, ($start:expr, $end:expr)), $($rest:tt)*) => {{
+        $b.token_with($expr, $crate::Span::new($start, $end))?;
+        $crate::tree!(@o $b, $($rest)*);
     }};
 
     (@o $b:ident, ($expr:expr, $len:expr), $($rest:tt)*) => {{
@@ -68,10 +77,23 @@ macro_rules! tree {
         $crate::tree!(@o $b, $($rest)*);
     }};
 
+    (@o $b:ident, ($expr:expr, ($start:expr, $end:expr)) => { $($tt:tt)* } $(,)?) => {{
+        $b.open_with($expr, $crate::Span::new($start, $end))?;
+        $crate::tree!(@o $b, $($tt)*);
+        $b.close()?;
+    }};
+
     (@o $b:ident, $expr:expr => { $($tt:tt)* } $(,)?) => {{
         $b.open($expr)?;
         $crate::tree!(@o $b, $($tt)*);
         $b.close()?;
+    }};
+
+    (@o $b:ident, ($expr:expr, ($start:expr, $end:expr)) => { $($tt:tt)* }, $($rest:tt)*) => {{
+        $b.open_with($expr, $crate::Span::new($start, $end))?;
+        $crate::tree!(@o $b, $($tt)*);
+        $b.close()?;
+        $crate::tree!(@o $b, $($rest)*);
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* }, $($rest:tt)*) => {{
