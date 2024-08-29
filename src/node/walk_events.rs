@@ -168,7 +168,8 @@ where
     }
 
     /// Get current depth.
-    pub(crate) fn depth(&self) -> isize {
+    #[inline]
+    pub(crate) const fn depth(&self) -> isize {
         self.depth
     }
 
