@@ -106,6 +106,47 @@ where
         }
     }
 
+    /// Convert this iterator into one that limits the walk to inside the
+    /// current node, visiting every node exactly once.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tree = syntree::tree! {
+    ///     "n1" => {
+    ///         "n3" => {
+    ///             "n4" => {},
+    ///             "n5" => {},
+    ///         }
+    ///     },
+    ///     "n6" => {
+    ///         "n7"
+    ///     }
+    /// };
+    ///
+    /// let values = tree.walk().map(|n| n.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+    ///
+    /// let n1 = tree.first().ok_or("missing n1")?;
+    ///
+    /// let values = n1.walk().map(|n| n.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+    ///
+    /// let values = n1.walk().inside().map(|n| n.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["n1", "n3", "n4", "n5"]);
+    ///
+    /// let values = n1.walk_from().inside().map(|n| n.value()).collect::<Vec<_>>();
+    /// let empty: [&str; 0] = [];
+    /// assert_eq!(values, empty);
+    ///
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn inside(self) -> Inside<'a, T, I, W> {
+        Inside { iter: self.iter }
+    }
+
     /// Convert this iterator into one which includes depths.
     ///
     /// # Examples
@@ -128,7 +169,7 @@ where
     #[inline]
     #[must_use]
     pub fn with_depths(self) -> WithDepths<'a, T, I, W> {
-        WithDepths { iter: self }
+        WithDepths { iter: self.iter }
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
@@ -285,7 +326,7 @@ where
     T: Copy,
     W: Width,
 {
-    iter: Walk<'a, T, I, W>,
+    iter: WalkEvents<'a, T, I, W>,
 }
 
 impl<'a, T, I, W> Iterator for WithDepths<'a, T, I, W>
@@ -297,7 +338,14 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next_with_depth()
+        loop {
+            let depth = self.iter.depth();
+            let (event, node) = self.iter.next()?;
+
+            if !matches!(event, Event::Up) {
+                return Some((depth, node));
+            }
+        }
     }
 }
 
@@ -329,7 +377,106 @@ where
     #[inline]
     fn default() -> Self {
         Self {
-            iter: Walk::default(),
+            iter: WalkEvents::default(),
+        }
+    }
+}
+
+/// An iterator that limits the walk to inside the current node, visiting every
+/// node exactly once. This is constructed with [`Walk::inside`].
+///
+/// # Examples
+///
+/// ```
+/// let tree = syntree::tree! {
+///     "n1" => {
+///         "n3" => {
+///             "n4" => {},
+///             "n5" => {},
+///         }
+///     },
+///     "n6" => {
+///         "n7"
+///     }
+/// };
+///
+/// let values = tree.walk().map(|n| n.value()).collect::<Vec<_>>();
+/// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+///
+/// let n1 = tree.first().ok_or("missing n1")?;
+///
+/// let values = n1.walk().map(|n| n.value()).collect::<Vec<_>>();
+/// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+///
+/// let values = n1.walk().inside().map(|n| n.value()).collect::<Vec<_>>();
+/// assert_eq!(values, ["n1", "n3", "n4", "n5"]);
+///
+/// let values = n1.walk_from().inside().map(|n| n.value()).collect::<Vec<_>>();
+/// let empty: [&str; 0] = [];
+/// assert_eq!(values, empty);
+///
+/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// ```
+pub struct Inside<'a, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+    iter: WalkEvents<'a, T, I, W>,
+}
+
+impl<'a, T, I, W> Iterator for Inside<'a, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+    type Item = Node<'a, T, I, W>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let (event, node) = self.iter.next()?;
+
+            if self.iter.depth() == 0 {
+                self.iter = WalkEvents::default();
+            }
+
+            if !matches!(event, Event::Up) {
+                return Some(node);
+            }
+        }
+    }
+}
+
+impl<T, I, W> FusedIterator for Inside<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+}
+
+impl<T, I, W> Clone for Inside<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            iter: self.iter.clone(),
+        }
+    }
+}
+
+impl<T, I, W> Default for Inside<'_, T, I, W>
+where
+    T: Copy,
+    W: Width,
+{
+    #[inline]
+    fn default() -> Self {
+        Self {
+            iter: WalkEvents::default(),
         }
     }
 }
