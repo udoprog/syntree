@@ -437,7 +437,7 @@ where
         loop {
             let (event, node) = self.iter.next()?;
 
-            if self.iter.depth() == 0 {
+            if self.iter.depth() <= 0 {
                 self.iter = WalkEvents::default();
             }
 
