@@ -44,7 +44,7 @@
 /// };
 ///
 /// assert_eq!(expected, tree);
-/// # Ok::<_,  Box<dyn std::error::Error>>(())
+/// # Ok::<_,  Box<dyn core::error::Error>>(())
 /// ```
 #[macro_export]
 macro_rules! tree {
@@ -136,7 +136,7 @@ macro_rules! tree {
 /// };
 ///
 /// assert_eq!(tree, expected);
-/// # Ok::<_,  Box<dyn std::error::Error>>(())
+/// # Ok::<_,  Box<dyn core::error::Error>>(())
 /// ```
 #[macro_export]
 macro_rules! tree_with {

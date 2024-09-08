@@ -27,7 +27,7 @@ use crate::pointer::{Pointer, Width};
 ///
 /// let mut it = tree.first().and_then(|n| n.next()).map(|n| n.siblings()).unwrap_or_default();
 /// assert_eq!(it.next().map(|n| n.value()), None);
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// See [`Node::siblings`].
@@ -59,7 +59,7 @@ use crate::pointer::{Pointer, Width};
 ///     root.siblings().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["root", "root2"]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Siblings<'a, T, I, W>
 where
@@ -136,7 +136,7 @@ where
     /// let c3 = it.next_node().ok_or("missing child3")?;
     ///
     /// assert_eq!([c1.value(), c2.value(), c3.value()], ["child1", "child2", "child3"]);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {

@@ -99,7 +99,7 @@ where
     /// };
     ///
     /// assert_eq!(tree.span(), Span::new(0, 13));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub const fn span(&self) -> &Span<I> {
         &self.span
@@ -131,7 +131,7 @@ where
     /// };
     ///
     /// assert_eq!(tree.len(), 5);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn len(&self) -> usize {
         self.tree.len()
@@ -146,7 +146,7 @@ where
     /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn is_empty(&self) -> bool {
         self.tree.is_empty()
@@ -173,7 +173,7 @@ where
     /// };
     ///
     /// assert!(tree.capacity() >= 5);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn capacity(&self) -> usize {
         self.tree.capacity()
@@ -214,7 +214,7 @@ where
     ///
     /// let root = tree.first().ok_or("missing root")?;
     /// assert_eq!(root.value(), "root");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub fn first(&self) -> Option<Node<'_, T, I, W>> {
@@ -233,7 +233,7 @@ where
     ///
     /// let root = tree.last().ok_or("missing root")?;
     /// assert_eq!(root.value(), "root2");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub fn last(&self) -> Option<Node<'_, T, I, W>> {
@@ -296,7 +296,7 @@ where
     /// let id = node.id();
     /// let node = tree.get(id).ok_or("missing ident")?;
     /// assert_eq!(node.value(), "ident");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn get(&self, id: W::Pointer) -> Option<Node<'_, T, I, W>> {
         let cur = self.tree.get(id.get())?;
@@ -323,7 +323,7 @@ where
     /// };
     ///
     /// assert_eq!(tree.range(), 0..13);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn range(&self) -> Range<usize> {
@@ -382,7 +382,7 @@ where
     ///
     /// let node = tree.node_with_range(2..4).ok_or("missing 2..4")?;
     /// assert_eq!(node.value(), "root");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// Range queries work as expected with checkpoints:
@@ -401,7 +401,7 @@ where
     ///
     /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
     /// assert_eq!(child.value(), "child");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I, W>> {
@@ -464,7 +464,7 @@ where
     ///
     /// let node = tree.node_with_span(Span::new(2, 4)).ok_or("missing 2..4")?;
     /// assert_eq!(node.value(), "root");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// Range queries work as expected with checkpoints:
@@ -508,7 +508,7 @@ where
     ///
     /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
     /// assert_eq!(child.value(), "root");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I, W>> {

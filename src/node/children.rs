@@ -25,7 +25,7 @@ use crate::pointer::{Pointer, Width};
 ///
 /// let mut it = tree.first().and_then(|n| n.last()).map(|n| n.children()).unwrap_or_default();
 /// assert_eq!(it.next().map(|n| n.value()), None);
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// See [`Tree::children`][crate::Tree::children] or [`Node::children`].
@@ -66,7 +66,7 @@ use crate::pointer::{Pointer, Width};
 ///     root.children().rev().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child3", "child1"]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Children<'a, T, I, W>
 where
@@ -140,7 +140,7 @@ where
     /// let c3 = it.next_node().ok_or("missing child3")?;
     ///
     /// assert_eq!([c1.value(), c2.value(), c3.value()], ["child1", "child2", "child3"]);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {

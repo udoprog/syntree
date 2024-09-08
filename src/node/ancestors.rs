@@ -20,7 +20,7 @@ use crate::pointer::Width;
 ///
 /// let mut it = tree.first().and_then(|n| n.first()).and_then(|n| n.first()).map(|n| n.ancestors()).unwrap_or_default();
 /// assert!(it.next().is_none());
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// See [`Node::ancestors`].
@@ -44,7 +44,7 @@ use crate::pointer::Width;
 ///     child2.ancestors().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child2", "child1", "root"]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Ancestors<'a, T, I, W>
 where
@@ -107,7 +107,7 @@ where
     /// let root = it.next_node().ok_or("missing root")?;
     ///
     /// assert_eq!([child.value(), root.value()], ["child", "root"]);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {

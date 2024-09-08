@@ -47,7 +47,7 @@ use crate::tree::Tree;
 /// syntree::print::print(&mut s, &tree)?;
 /// # let s = String::from_utf8(s)?;
 /// # assert_eq!(s, "NUMBER@0..3\n  NUMBER@0..3 +\nWHITESPACE@3..4 +\nOPERATOR@4..5\n  PLUS@4..5 +\nWHITESPACE@5..6 +\nNUMBER@6..8\n  NUMBER@6..8 +\n");
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// This would write:
@@ -107,7 +107,7 @@ where
 /// syntree::print::print_with_source(&mut s, &tree, source)?;
 /// # let s = String::from_utf8(s)?;
 /// # assert_eq!(s, "NUMBER@0..3\n  NUMBER@0..3 \"128\"\nWHITESPACE@3..4 \" \"\nOPERATOR@4..5\n  PLUS@4..5 \"+\"\nWHITESPACE@5..6 \" \"\nNUMBER@6..8\n  NUMBER@6..8 \"64\"\n");
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// This would write:

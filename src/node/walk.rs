@@ -79,7 +79,7 @@ use crate::pointer::Width;
 ///     c5.walk_from().map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["c6", "c7"],
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Walk<'a, T, I, W>
 where
@@ -139,7 +139,7 @@ where
     /// let empty: [&str; 0] = [];
     /// assert_eq!(values, empty);
     ///
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     #[must_use]
@@ -164,7 +164,7 @@ where
     /// let mut it = tree.walk().with_depths().map(|(d, n)| (d, n.value()));
     /// assert!(it.eq([(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]));
     ///
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     #[must_use]
@@ -206,7 +206,7 @@ where
     ///
     /// assert!(it.eq([(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]));
     ///
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     #[must_use]
@@ -319,7 +319,7 @@ where
 ///         (1, "c6")
 ///     ]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct WithDepths<'a, T, I, W>
 where
@@ -415,7 +415,7 @@ where
 /// let empty: [&str; 0] = [];
 /// assert_eq!(values, empty);
 ///
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Inside<'a, T, I, W>
 where

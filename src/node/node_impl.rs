@@ -63,7 +63,7 @@ where
     ///
     /// let ident = number.next().ok_or("missing ident")?;
     /// assert_eq!(ident.value(), "ident");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn value(&self) -> T {
@@ -92,7 +92,7 @@ where
     ///
     /// let ident = number.next().ok_or("missing ident")?;
     /// assert_eq!(ident.value(), "ident");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn replace(&self, value: T) -> T {
         self.links.data.replace(value)
@@ -115,7 +115,7 @@ where
     /// let root = tree.first().ok_or("missing root")?;
     /// assert!(root.has_children());
     /// assert!(root.children().all(|n| !n.has_children()));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub const fn has_children(&self) -> bool {
@@ -149,7 +149,7 @@ where
     ///
     /// let root2 = root.next().ok_or("missing second root")?;
     /// assert_eq!(root2.span(), Span::new(8, 13));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub const fn span(&self) -> &Span<I> {
@@ -174,7 +174,7 @@ where
     ///
     /// assert!(first.is_empty());
     /// assert!(!last.is_empty());
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -267,7 +267,7 @@ where
     ///
     /// let root = number.parent().ok_or("missing parent")?;
     /// assert_eq!(root.value(), "root");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn parent(&self) -> Option<Node<'a, T, I, W>> {
@@ -299,7 +299,7 @@ where
     ///
     /// let number = ident.prev().ok_or("missing number")?;
     /// assert_eq!(number.value(), "number");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn prev(&self) -> Option<Node<'a, T, I, W>> {
@@ -330,7 +330,7 @@ where
     ///
     /// let ident = number.next().ok_or("missing second root")?;
     /// assert_eq!(ident.value(), "ident");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn next(&self) -> Option<Node<'a, T, I, W>> {
@@ -361,7 +361,7 @@ where
     ///
     /// let number = root.first().ok_or("missing number")?;
     /// assert_eq!(number.value(), "number");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn first(&self) -> Option<Node<'a, T, I, W>> {
@@ -392,7 +392,7 @@ where
     ///
     /// let whitespace = root2.last().ok_or("missing whitespace")?;
     /// assert_eq!(whitespace.value(), "whitespace");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub fn last(&self) -> Option<Node<'a, T, I, W>> {
@@ -431,7 +431,7 @@ where
     /// let found = node.find_preceding(|n| n.span().end == 3 && n.has_children());
     /// let found = found.expect("expected preceeding node");
     /// assert_eq!(found.value(), "child2");
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, W>>
     where
@@ -501,7 +501,7 @@ where
     /// assert_eq!(root.id(), root_id);
     /// assert_eq!(child.id(), child_id);
     /// assert_eq!(child2.id(), child2_id);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// [`ChangeSet`]: crate::edit::ChangeSet
@@ -549,7 +549,7 @@ where
     ///
     /// let root2 = root.next().ok_or("missing second root")?;
     /// assert_eq!(root2.range(), 8..13);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     #[inline]

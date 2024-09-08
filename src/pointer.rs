@@ -25,7 +25,7 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
     /// assert_eq!(v.get(), 0);
     /// let v = PointerU32::new(42).ok_or("out of bounds")?;
     /// assert_eq!(v.get(), 42);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     fn new(value: usize) -> Option<Self>;
 
@@ -40,7 +40,7 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
     /// assert_eq!(v.get(), 0);
     /// let v = PointerU32::new(42).ok_or("out of bounds")?;
     /// assert_eq!(v.get(), 42);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     fn get(self) -> usize;
 }
@@ -69,7 +69,7 @@ pub trait Width: self::sealed::Sealed {
     ///
     /// assert_ne!(root1, root2);
     ///
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     type Pointer: Pointer;
 }
@@ -106,7 +106,7 @@ macro_rules! implement {
             /// assert_eq!(v.get(), 0);
             #[doc = concat!(" let v = ", stringify!($e), "::new(42).ok_or(\"out of bounds\")?;")]
             /// assert_eq!(v.get(), 42);
-            /// # Ok::<_, Box<dyn std::error::Error>>(())
+            /// # Ok::<_, Box<dyn core::error::Error>>(())
             /// ```
             #[inline]
             pub fn new(value: usize) -> Option<Self> {
@@ -126,7 +126,7 @@ macro_rules! implement {
             /// assert_eq!(v.get(), 0);
             #[doc = concat!(" let v = ", stringify!($e), "::new(42).ok_or(\"out of bounds\")?;")]
             /// assert_eq!(v.get(), 42);
-            /// # Ok::<_, Box<dyn std::error::Error>>(())
+            /// # Ok::<_, Box<dyn core::error::Error>>(())
             /// ```
             #[inline]
             pub fn get(self) -> usize {
@@ -144,7 +144,7 @@ macro_rules! implement {
         /// assert_eq!(v.get(), 0);
         #[doc = concat!(" let v = ", stringify!($e), "::new(42).ok_or(\"out of bounds\")?;")]
         /// assert_eq!(v.get(), 42);
-        /// # Ok::<_, Box<dyn std::error::Error>>(())
+        /// # Ok::<_, Box<dyn core::error::Error>>(())
         /// ```
         impl crate::pointer::Pointer for $e {
             /// Unsafely construct a pointer value.

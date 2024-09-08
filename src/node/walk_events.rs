@@ -88,7 +88,7 @@ pub enum Event {
 ///         (Up, "root"),
 ///     ]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// Example showcasing how we can use events to keep track of the depth in which
@@ -133,7 +133,7 @@ pub enum Event {
 ///     nodes,
 ///     [(0, "root"), (1, "c1"), (2, "c2"), (2, "c3")]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct WalkEvents<'a, T, I, W>
 where

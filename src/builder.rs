@@ -50,7 +50,7 @@ pub use self::checkpoint::Checkpoint;
 /// };
 ///
 /// assert_eq!(tree, expected);
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 #[derive(Debug)]
 pub struct Builder<T, I, W>
@@ -109,7 +109,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub const fn new() -> Self {
@@ -158,7 +158,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
     pub const fn new_with() -> Self {
@@ -199,7 +199,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     pub const fn cursor(&self) -> &I {
@@ -233,7 +233,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn set_cursor(&mut self, cursor: I) {
         self.cursor = cursor;
@@ -265,7 +265,7 @@ where
     /// tree.close()?;
     ///
     /// tree.close()?;
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn open(&mut self, data: T) -> Result<W::Pointer, Error> {
         let id = self.insert(data, Span::point(self.cursor))?;
@@ -314,7 +314,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn open_with(&mut self, data: T, span: Span<I>) -> Result<W::Pointer, Error> {
         let id = self.insert(data, span)?;
@@ -346,7 +346,7 @@ where
     /// tree.close()?;
     ///
     /// tree.close()?;
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn close(&mut self) -> Result<(), Error> {
         let head = self.parent.take().ok_or(Error::CloseError)?;
@@ -399,7 +399,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn token(&mut self, value: T, len: I::Length) -> Result<W::Pointer, Error> {
         let start = self.cursor;
@@ -447,7 +447,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// Tokens with spans forces the cursor to be set to the end of the span.
@@ -474,7 +474,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn token_with(&mut self, value: T, span: Span<I>) -> Result<W::Pointer, Error> {
         let id = self.insert(value, span)?;
@@ -517,7 +517,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn token_empty(&mut self, value: T) -> Result<W::Pointer, Error> {
         self.token(value, I::Length::EMPTY)
@@ -559,7 +559,7 @@ where
     /// };
     ///
     /// assert_eq!(a.build()?, unexpected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// # Errors
@@ -594,7 +594,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn checkpoint(&mut self) -> Result<Checkpoint<W::Pointer>, Error> {
         let node = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
@@ -638,7 +638,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// More complex example:
@@ -675,7 +675,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// Adding a token after a checkpoint:
@@ -712,7 +712,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn close_at(&mut self, c: &Checkpoint<W::Pointer>, data: T) -> Result<W::Pointer, Error> {
         let (id, parent) = c.get();
@@ -815,7 +815,7 @@ where
     /// assert_eq!(root.span().start, 0);
     /// assert_eq!(root.span().end, 6);
     ///
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn close_at_with(
         &mut self,
@@ -921,7 +921,7 @@ where
     /// };
     ///
     /// assert_eq!(tree, expected);
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
     /// If a tree is unbalanced during construction, building will fail with an error:
@@ -939,7 +939,7 @@ where
     ///
     /// // "number" is left open.
     /// assert!(matches!(tree.build(), Err(Error::BuildError)));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn build(self) -> Result<Tree<T, I, W>, Error> {
         if self.parent.is_some() {

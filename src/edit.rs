@@ -70,7 +70,7 @@ pub(crate) enum Change {
 ///         }
 ///     }
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct ChangeSet<T, I, W>
 where
@@ -133,7 +133,7 @@ where
     ///         }
     ///     }
     /// );
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn remove(&mut self, id: W::Pointer) {
         self.changes.insert(id, Change::Delete);
@@ -174,7 +174,7 @@ where
     ///         }
     ///     }
     /// );
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, I, W>) -> Result<Tree<T, I, W>, Error>
     where

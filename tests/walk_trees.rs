@@ -1,5 +1,5 @@
 #[test]
-fn walk_trees1() -> Result<(), Box<dyn std::error::Error>> {
+fn walk_trees1() -> Result<(), Box<dyn core::error::Error>> {
     let tree = syntree::tree! {
         "n1" => {
             "n2",
@@ -26,7 +26,7 @@ fn walk_trees1() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn walk_trees2() -> Result<(), Box<dyn std::error::Error>> {
+fn walk_trees2() -> Result<(), Box<dyn core::error::Error>> {
     let tree = syntree::tree! {
         "n1" => {
             "n2",

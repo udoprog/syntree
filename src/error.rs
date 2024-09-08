@@ -19,7 +19,7 @@ pub enum Error {
     ///
     /// // Syntax::Root and Syntax::Child is left open.
     /// assert_eq!(tree.close(), Err(Error::CloseError));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     CloseError,
     /// Error raised by [Builder::build][crate::Builder::build] if the
@@ -40,7 +40,7 @@ pub enum Error {
     ///
     /// // Syntax::Number is left open.
     /// assert_eq!(tree.build(), Err(Error::BuildError));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     BuildError,
     /// Error raised by [Builder::close_at][crate::Builder::close_at] if
@@ -59,7 +59,7 @@ pub enum Error {
     /// tree.token("token", 3)?;
     ///
     /// assert_eq!(tree.close_at(&c, "operation"), Err(Error::CloseAtError));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     CloseAtError,
     /// Numerical overflow.
@@ -83,7 +83,7 @@ pub enum Error {
     /// }
     ///
     /// assert_eq!(tree.token(255, 1), Err(Error::Overflow));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     Overflow,
     /// The node of the given id is missing.
@@ -105,7 +105,7 @@ pub enum Error {
     /// let c = b.checkpoint()?;
     ///
     /// assert_eq!(a.close_at(&c, "operation"), Err(Error::MissingNode(0)));
-    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     MissingNode(usize),
     #[doc(hidden)]
@@ -116,8 +116,7 @@ pub enum Error {
     MissingCloseAtSibling,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

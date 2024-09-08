@@ -37,7 +37,7 @@ use crate::pointer::Width;
 ///     it.map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3"]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// Filtering tokens from a [`Walk`] iterator:
@@ -64,7 +64,7 @@ use crate::pointer::Width;
 ///     it.map(|n| n.value()).collect::<Vec<_>>(),
 ///     ["child1", "child2", "child3", "child4"]
 /// );
-/// # Ok::<_, Box<dyn std::error::Error>>(())
+/// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// [`Siblings`]: crate::node::Siblings

@@ -123,7 +123,7 @@
 //!
 //! let number = tree.first().ok_or("missing number")?;
 //! assert_eq!(number.span(), Span::new(0, 5));
-//! # Ok::<_, Box<dyn std::error::Error>>(())
+//! # Ok::<_, Box<dyn core::error::Error>>(())
 //! ```
 //!
 //! Note how the resulting [`Span`] for `Number` corresponds to the full span of
@@ -164,7 +164,7 @@
 //!
 //! assert_eq!(tree, expected);
 //! assert_eq!(tree.span(), Span::new(0, 100));
-//! # Ok::<_, Box<dyn std::error::Error>>(())
+//! # Ok::<_, Box<dyn core::error::Error>>(())
 //! ```
 //!
 //! Combined with [`Empty`], this allows for building trees without spans, if
@@ -194,7 +194,7 @@
 //!
 //! assert_eq!(tree, expected);
 //! assert!(tree.span().is_empty());
-//! # Ok::<_, Box<dyn std::error::Error>>(())
+//! # Ok::<_, Box<dyn core::error::Error>>(())
 //! ```
 //!
 //! <br>
