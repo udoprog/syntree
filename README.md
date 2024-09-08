@@ -20,7 +20,7 @@ Anything can be stored in the tree as long as it implements `Copy`.
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.17.4"
+syntree = "0.17.5"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
