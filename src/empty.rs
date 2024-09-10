@@ -1,3 +1,5 @@
+use core::convert::Infallible;
+
 use crate::index::{Index, Indexes, Length};
 
 /// The empty [Index] implementation.
@@ -64,8 +66,12 @@ impl From<Empty> for usize {
 impl<I, P> Indexes<I, P> for Empty {
     const EMPTY: Self = Self;
 
+    type Error = Infallible;
+
     #[inline]
-    fn push(&mut self, _: I, _: P) {}
+    fn push(&mut self, _: I, _: P) -> Result<(), Self::Error> {
+        Ok(())
+    }
 
     #[inline]
     fn get(&self, _: usize) -> Option<&P> {

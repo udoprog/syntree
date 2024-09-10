@@ -1,9 +1,10 @@
+use core::convert::Infallible;
 use core::fmt;
 
 /// Errors raised while building a tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Error<E = Infallible> {
     /// Error raised by [Builder::close][crate::Builder::close] if there
     /// currently is no node being built.
     ///
@@ -115,17 +116,36 @@ pub enum Error {
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     MissingNode(usize),
-    #[doc(hidden)]
-    #[deprecated = "unused error variant"]
-    MissingCloseAtLinksNext,
-    #[doc(hidden)]
-    #[deprecated = "unused error variant"]
-    MissingCloseAtSibling,
+    /// An error raised by the particular [Flavor] in use.
+    ///
+    /// [Flavor]: crate::Flavor
+    Flavor(E),
 }
 
-impl core::error::Error for Error {}
+impl<E> From<E> for Error<E> {
+    #[inline]
+    fn from(error: E) -> Self {
+        Error::Flavor(error)
+    }
+}
 
-impl fmt::Display for Error {
+impl<E> core::error::Error for Error<E>
+where
+    E: 'static + core::error::Error,
+{
+    #[inline]
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Error::Flavor(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl<E> fmt::Display for Error<E>
+where
+    E: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::CloseError => {
@@ -146,10 +166,7 @@ impl fmt::Display for Error {
             Error::MissingNode(p) => {
                 write!(f, "missing node with id `{p}`")
             }
-            #[allow(deprecated)]
-            Error::MissingCloseAtLinksNext | Error::MissingCloseAtSibling => {
-                write!(f, "unused error variant")
-            }
+            Error::Flavor(error) => error.fmt(f),
         }
     }
 }

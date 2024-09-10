@@ -274,7 +274,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open(&mut self, data: T) -> Result<F::Pointer, Error> {
+    pub fn open(&mut self, data: T) -> Result<F::Pointer, Error<F::Error>> {
         let id = self.insert(data, Span::point(self.cursor))?;
         self.parent = Some(id);
         Ok(id)
@@ -323,7 +323,11 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open_with(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
+    pub fn open_with(
+        &mut self,
+        data: T,
+        span: Span<F::Index>,
+    ) -> Result<F::Pointer, Error<F::Error>> {
         let id = self.insert(data, span)?;
         self.parent = Some(id);
         Ok(id)
@@ -355,7 +359,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn close(&mut self) -> Result<(), Error> {
+    pub fn close(&mut self) -> Result<(), Error<F::Error>> {
         let head = self.parent.take().ok_or(Error::CloseError)?;
 
         self.sibling = Some(head);
@@ -408,7 +412,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error> {
+    pub fn token(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error<F::Error>> {
         let start = self.cursor;
 
         if !len.is_empty() {
@@ -420,7 +424,7 @@ where
         self.sibling = Some(id);
 
         if !len.is_empty() {
-            self.tree.indexes_mut().push(self.cursor, id);
+            self.tree.indexes_mut().push(self.cursor, id)?;
         }
 
         Ok(id)
@@ -483,11 +487,15 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token_with(&mut self, value: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
+    pub fn token_with(
+        &mut self,
+        value: T,
+        span: Span<F::Index>,
+    ) -> Result<F::Pointer, Error<F::Error>> {
         let id = self.insert(value, span)?;
 
         self.sibling = Some(id);
-        self.tree.indexes_mut().push(span.start, id);
+        self.tree.indexes_mut().push(span.start, id)?;
 
         if let Some(parent) = self.parent.and_then(|id| self.tree.get_mut(id)) {
             parent.span = parent.span.join(&span);
@@ -526,7 +534,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token_empty(&mut self, value: T) -> Result<F::Pointer, Error> {
+    pub fn token_empty(&mut self, value: T) -> Result<F::Pointer, Error<F::Error>> {
         self.token(value, F::Length::EMPTY)
     }
 
@@ -603,7 +611,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn checkpoint(&mut self) -> Result<Checkpoint<F::Pointer>, Error> {
+    pub fn checkpoint(&mut self) -> Result<Checkpoint<F::Pointer>, Error<F::Error>> {
         let node = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         if let Some(c) = &self.checkpoint {
@@ -721,7 +729,11 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn close_at(&mut self, c: &Checkpoint<F::Pointer>, data: T) -> Result<F::Pointer, Error> {
+    pub fn close_at(
+        &mut self,
+        c: &Checkpoint<F::Pointer>,
+        data: T,
+    ) -> Result<F::Pointer, Error<F::Error>> {
         let (id, parent) = c.get();
 
         if parent != self.parent {
@@ -786,7 +798,7 @@ where
             next: None,
             first: Some(id),
             last: Some(last),
-        });
+        })?;
 
         self.sibling = Some(new_id);
         c.set(new_id, parent);
@@ -829,7 +841,7 @@ where
         c: &Checkpoint<F::Pointer>,
         data: T,
         span: Span<F::Index>,
-    ) -> Result<F::Pointer, Error> {
+    ) -> Result<F::Pointer, Error<F::Error>> {
         let (id, parent) = c.get();
 
         if parent != self.parent {
@@ -893,7 +905,7 @@ where
             next: None,
             first: Some(id),
             last: Some(last),
-        });
+        })?;
 
         self.sibling = Some(new_id);
         c.set(new_id, parent);
@@ -948,7 +960,7 @@ where
     /// assert!(matches!(tree.build(), Err(Error::BuildError)));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn build(self) -> Result<Tree<T, F>, Error> {
+    pub fn build(self) -> Result<Tree<T, F>, Error<F::Error>> {
         if self.parent.is_some() {
             return Err(Error::BuildError);
         }
@@ -957,7 +969,7 @@ where
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
+    fn insert(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error<F::Error>> {
         let new = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
@@ -970,7 +982,7 @@ where
             next: None,
             first: None,
             last: None,
-        });
+        })?;
 
         if let Some(id) = self.parent {
             if let Some(node) = self.tree.links_at_mut(id) {
@@ -1003,6 +1015,7 @@ impl<T, F> Clone for Builder<T, F>
 where
     T: Copy,
     F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
+    F::Storage<Links<T, F::Index, F::Pointer>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -1030,11 +1043,12 @@ where
 // Adjust span to encapsulate all children and check that we just inserted the
 // checkpointed node in the right location which should be the tail sibling of
 // the replaced node.
+#[allow(clippy::type_complexity)]
 fn restructure_close_at<T, F>(
     tree: &mut Tree<T, F>,
     parent_id: F::Pointer,
     next: F::Pointer,
-) -> Result<(F::Pointer, F::Index), Error>
+) -> Result<(F::Pointer, F::Index), Error<F::Error>>
 where
     T: Copy,
     F: Flavor,
