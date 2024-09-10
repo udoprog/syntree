@@ -1,20 +1,15 @@
 //! Types that can be used to refer to indexes in a [Span][crate::Span].
 
 use core::cmp;
-use core::convert::Infallible;
 
-use alloc::vec::Vec;
+use crate::flavor::Flavor;
 
 mod sealed {
-    use alloc::vec::Vec;
-
     pub trait Sealed {}
 
     impl Sealed for u32 {}
     impl Sealed for usize {}
     impl Sealed for crate::empty::Empty {}
-
-    impl<I, P> Sealed for Vec<crate::index::TreeIndex<I, P>> {}
 }
 
 /// A type that can be used when referring to an index in a tree.
@@ -45,19 +40,6 @@ pub trait Index: Sized + Copy + cmp::Ord + cmp::Eq + self::sealed::Sealed {
 
     #[doc(hidden)]
     fn from_usize(value: usize) -> Option<Self>;
-}
-
-#[doc(hidden)]
-pub trait Indexes<I, P> {
-    const EMPTY: Self;
-
-    type Error;
-
-    #[doc(hidden)]
-    fn push(&mut self, cursor: I, id: P) -> Result<(), Self::Error>;
-
-    #[doc(hidden)]
-    fn get(&self, index: usize) -> Option<&P>;
 }
 
 #[doc(hidden)]
@@ -143,46 +125,12 @@ impl Index for usize {
     }
 }
 
-/// Trait which constrains [Indexes] capable of being binary searched.
-///
-/// This allows search operations by span to be performed over a [Tree].
-///
-/// [Tree]: crate::Tree
-pub trait BinarySearch<I> {
-    /// Perform a binary search for the specified index.
-    fn binary_search(&self, index: I) -> Result<usize, usize>;
-}
-
 #[derive(Debug, Clone, Copy)]
 #[doc(hidden)]
-pub struct TreeIndex<I, P> {
-    pub(crate) index: I,
-    pub(crate) id: P,
-}
-
-impl<I, P> BinarySearch<I> for [TreeIndex<I, P>]
+pub struct TreeIndex<F>
 where
-    I: Ord,
+    F: ?Sized + Flavor,
 {
-    #[inline]
-    fn binary_search(&self, index: I) -> Result<usize, usize> {
-        self.binary_search_by(|f| f.index.cmp(&index))
-    }
-}
-
-impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>> {
-    const EMPTY: Self = Self::new();
-
-    type Error = Infallible;
-
-    #[inline]
-    fn push(&mut self, index: I, id: P) -> Result<(), Self::Error> {
-        Vec::push(self, TreeIndex { index, id });
-        Ok(())
-    }
-
-    #[inline]
-    fn get(&self, index: usize) -> Option<&P> {
-        Some(&<[_]>::get(self, index)?.id)
-    }
+    pub(crate) index: F::Index,
+    pub(crate) id: F::Pointer,
 }

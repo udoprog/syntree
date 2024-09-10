@@ -1,9 +1,10 @@
 use core::fmt;
-use core::ops::{Deref, Range};
+use core::ops::Range;
 
+#[cfg(feature = "std")]
 use crate::error::Error;
 use crate::flavor::{Flavor, Storage};
-use crate::index::{BinarySearch, Index, Indexes};
+use crate::index::Index;
 use crate::links::Links;
 use crate::node::{Children, Walk, WalkEvents};
 use crate::node::{Event, Node};
@@ -405,10 +406,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, F>>
-    where
-        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
-    {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, F>> {
         let start = F::Index::from_usize(span.start)?;
         let end = F::Index::from_usize(span.end)?;
         self.node_with_span_internal(start, end)
@@ -515,25 +513,19 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span<F::Index>) -> Option<Node<'_, T, F>>
-    where
-        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
-    {
+    pub fn node_with_span(&self, span: Span<F::Index>) -> Option<Node<'_, T, F>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Node<'_, T, F>>
-    where
-        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
-    {
-        let result = self.indexes.binary_search(start);
+    fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Node<'_, T, F>> {
+        let result = self.indexes.binary_search_by(|f| f.index.cmp(&start));
 
         let n = match result {
             Ok(n) => n.saturating_add(1),
             Err(n) => n,
         };
 
-        let mut node = self.get(*self.indexes.get(n)?)?;
+        let mut node = self.get(self.indexes.get(n)?.id)?;
 
         while let Some(parent) = node.parent() {
             node = parent;

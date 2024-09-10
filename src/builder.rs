@@ -3,8 +3,8 @@ mod checkpoint;
 use core::cell::Cell;
 
 use crate::error::Error;
-use crate::flavor::{Flavor, FlavorDefault};
-use crate::index::{Index, Indexes, Length};
+use crate::flavor::{Flavor, FlavorDefault, Storage};
+use crate::index::{Index, Length, TreeIndex};
 use crate::links::Links;
 use crate::pointer::{Pointer, Width};
 use crate::span::Span;
@@ -130,13 +130,13 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Builder, Empty, Tree};
+    /// use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
     ///
     /// syntree::flavor! {
     ///     struct FlavorEmpty {
     ///         type Index = Empty;
     ///         type Width = u32;
-    ///         type Indexes = Empty;
+    ///         type Indexes = EmptyVec<TreeIndex<Self>>;
     ///     }
     /// }
     ///
@@ -424,7 +424,10 @@ where
         self.sibling = Some(id);
 
         if !len.is_empty() {
-            self.tree.indexes_mut().push(self.cursor, id)?;
+            self.tree.indexes_mut().push(TreeIndex {
+                index: self.cursor,
+                id,
+            })?;
         }
 
         Ok(id)
@@ -495,7 +498,10 @@ where
         let id = self.insert(value, span)?;
 
         self.sibling = Some(id);
-        self.tree.indexes_mut().push(span.start, id)?;
+        self.tree.indexes_mut().push(TreeIndex {
+            index: span.start,
+            id,
+        })?;
 
         if let Some(parent) = self.parent.and_then(|id| self.tree.get_mut(id)) {
             parent.span = parent.span.join(&span);

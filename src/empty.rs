@@ -1,6 +1,9 @@
 use core::convert::Infallible;
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
 
-use crate::index::{Index, Indexes, Length};
+use crate::flavor::Storage;
+use crate::index::{Index, Length};
 
 /// The empty [Index] implementation.
 ///
@@ -63,27 +66,57 @@ impl From<Empty> for usize {
     }
 }
 
-impl<I, P> Indexes<I, P> for Empty {
-    const EMPTY: Self = Self;
-
-    type Error = Infallible;
-
-    #[inline]
-    fn push(&mut self, _: I, _: P) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    #[inline]
-    fn get(&self, _: usize) -> Option<&P> {
-        None
-    }
-}
-
 impl Length for Empty {
     const EMPTY: Self = Empty;
 
     #[inline]
     fn is_empty(&self) -> bool {
         true
+    }
+}
+
+/// An empty vector.
+pub struct EmptyVec<T>(PhantomData<T>);
+
+impl<T> Default for EmptyVec<T> {
+    fn default() -> Self {
+        EmptyVec(PhantomData)
+    }
+}
+
+impl<T> Storage<T> for EmptyVec<T> {
+    const EMPTY: Self = EmptyVec(PhantomData);
+
+    type Error = Infallible;
+
+    #[inline]
+    fn push(&mut self, _: T) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    #[inline]
+    fn with_capacity(_: usize) -> Result<Self, Self::Error> {
+        Ok(Self::EMPTY)
+    }
+
+    #[inline]
+    fn capacity(&self) -> usize {
+        0
+    }
+}
+
+impl<T> Deref for EmptyVec<T> {
+    type Target = [T];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &[]
+    }
+}
+
+impl<T> DerefMut for EmptyVec<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut []
     }
 }
