@@ -92,7 +92,7 @@ macro_rules! flavor {
         impl $crate::Flavor for $ty {
             type Error = core::convert::Infallible;
             type Index = $index;
-            type Length = <$index as $crate::index::Index>::Length;
+            type Length = <$index as $crate::Index>::Length;
             type Width = $crate::flavor!(@width $($width)*);
             type Pointer = $crate::flavor!(@pointer $($width)*);
             type Storage<T> = $crate::macro_support::Vec<T>;

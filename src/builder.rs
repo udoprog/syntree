@@ -2,13 +2,10 @@ mod checkpoint;
 
 use core::cell::Cell;
 
-use crate::error::Error;
-use crate::flavor::{Flavor, FlavorDefault, Storage};
-use crate::index::{Index, Length, TreeIndex};
 use crate::links::Links;
-use crate::pointer::{Pointer, Width};
-use crate::span::Span;
-use crate::tree::Tree;
+use crate::{
+    Error, Flavor, FlavorDefault, Index, Length, Pointer, Span, Storage, Tree, TreeIndex, Width,
+};
 
 pub use self::checkpoint::Checkpoint;
 
