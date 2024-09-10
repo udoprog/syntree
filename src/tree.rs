@@ -1,15 +1,11 @@
 use core::fmt;
 use core::ops::Range;
 
-#[cfg(feature = "std")]
-use crate::error::Error;
-use crate::flavor::{Flavor, Storage};
-use crate::index::Index;
 use crate::links::Links;
-use crate::node::{Children, Walk, WalkEvents};
-use crate::node::{Event, Node};
-use crate::pointer::{Pointer, Width};
-use crate::span::Span;
+use crate::node::{Children, Event, Node, Walk, WalkEvents};
+#[cfg(feature = "std")]
+use crate::Error;
+use crate::{Flavor, Index, Pointer, Span, Storage, Width};
 
 /// A syntax tree.
 ///

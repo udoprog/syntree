@@ -17,7 +17,7 @@
 //! Add `syntree` to your crate:
 //!
 //! ```toml
-//! syntree = "0.17.5"
+//! syntree = "0.18.0"
 //! ```
 //!
 //! If you want a complete sample for how `syntree` can be used for parsing, see
@@ -371,8 +371,8 @@ pub mod edit;
 mod empty;
 mod error;
 #[macro_use]
-pub mod flavor;
-pub mod index;
+mod flavor;
+mod index;
 mod links;
 pub mod node;
 pub mod pointer;
@@ -380,13 +380,23 @@ pub mod print;
 mod span;
 mod tree;
 
+#[doc(inline)]
 pub use self::builder::{Builder, Checkpoint};
+#[doc(inline)]
 pub use self::empty::{Empty, EmptyVec};
+#[doc(inline)]
 pub use self::error::Error;
-pub use self::flavor::{Flavor, FlavorDefault};
-pub use self::index::TreeIndex;
+#[doc(inline)]
+pub use self::flavor::{Flavor, FlavorDefault, Storage};
+#[doc(inline)]
+pub use self::index::{Index, Length, TreeIndex};
+#[doc(inline)]
 pub use self::node::node_impl::Node;
+#[doc(inline)]
+pub use self::pointer::{Pointer, Width};
+#[doc(inline)]
 pub use self::span::Span;
+#[doc(inline)]
 pub use self::tree::Tree;
 
 #[doc(hidden)]

@@ -1,8 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::index::TreeIndex;
-use syntree::{Builder, Error, FlavorDefault, Tree};
+use syntree::{Builder, Error, FlavorDefault, Tree, TreeIndex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]

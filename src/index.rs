@@ -125,6 +125,7 @@ impl Index for usize {
     }
 }
 
+/// A single span index entry for the given [Flavor] `F`.
 #[derive(Debug, Clone, Copy)]
 #[doc(hidden)]
 pub struct TreeIndex<F>
