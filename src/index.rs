@@ -28,9 +28,6 @@ pub trait Index: Sized + Copy + cmp::Ord + cmp::Eq + self::sealed::Sealed {
     const EMPTY: Self;
 
     #[doc(hidden)]
-    type Indexes<P>: Indexes<Self, P>;
-
-    #[doc(hidden)]
     type Length: Length;
 
     #[doc(hidden)]
@@ -55,11 +52,6 @@ pub trait Indexes<I, P>: self::sealed::Sealed {
 
     #[doc(hidden)]
     fn push(&mut self, cursor: I, id: P);
-
-    #[doc(hidden)]
-    fn binary_search(&self, index: I) -> Result<usize, usize>
-    where
-        I: Ord;
 
     #[doc(hidden)]
     fn get(&self, index: usize) -> Option<&P>;
@@ -89,7 +81,6 @@ const _: () = assert!(core::mem::size_of::<u32>() <= core::mem::size_of::<usize>
 impl Index for u32 {
     const EMPTY: Self = 0;
 
-    type Indexes<P> = Vec<TreeIndex<Self, P>>;
     type Length = usize;
 
     #[inline]
@@ -121,7 +112,6 @@ impl Index for u32 {
 impl Index for usize {
     const EMPTY: Self = 0;
 
-    type Indexes<P> = Vec<TreeIndex<Self, P>>;
     type Length = usize;
 
     #[inline]
@@ -150,11 +140,31 @@ impl Index for usize {
     }
 }
 
+/// Trait which constrains [Indexes] capable of being binary searched.
+///
+/// This allows search operations by span to be performed over a [Tree].
+///
+/// [Tree]: crate::Tree
+pub trait BinarySearch<I> {
+    /// Perform a binary search for the specified index.
+    fn binary_search(&self, index: I) -> Result<usize, usize>;
+}
+
 #[derive(Debug, Clone, Copy)]
 #[doc(hidden)]
 pub struct TreeIndex<I, P> {
     pub(crate) index: I,
     pub(crate) id: P,
+}
+
+impl<I, P> BinarySearch<I> for [TreeIndex<I, P>]
+where
+    I: Ord,
+{
+    #[inline]
+    fn binary_search(&self, index: I) -> Result<usize, usize> {
+        self.binary_search_by(|f| f.index.cmp(&index))
+    }
 }
 
 impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>> {
@@ -163,14 +173,6 @@ impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>> {
     #[inline]
     fn push(&mut self, index: I, id: P) {
         Vec::push(self, TreeIndex { index, id })
-    }
-
-    #[inline]
-    fn binary_search(&self, index: I) -> Result<usize, usize>
-    where
-        I: Ord,
-    {
-        self.binary_search_by(|f| f.index.cmp(&index))
     }
 
     #[inline]

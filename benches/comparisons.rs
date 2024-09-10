@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{index, pointer, Builder, Error, Tree};
+use syntree::{Builder, Error, FlavorDefault, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -37,13 +37,11 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree_build<I, W>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, I, W>, Error>
+fn syntree_build<F>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, F>, Error>
 where
-    I: index::Index,
-    I::Length: From<usize>,
-    W: pointer::Width,
+    F: syntree::Flavor<Length: From<usize>>,
 {
-    let mut builder = Builder::<_, _, W>::new_with();
+    let mut builder = Builder::<_, F>::new_with();
 
     let c = builder.checkpoint()?;
 
@@ -86,13 +84,11 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
     SyntaxNode::new_root(builder.finish())
 }
 
-fn syntree_tree<I, W>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, I, W>, Error>
+fn syntree_tree<F>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, F>, Error>
 where
-    I: index::Index,
-    I::Length: From<usize>,
-    W: pointer::Width,
+    F: syntree::Flavor<Length: From<usize>>,
 {
-    let mut builder = Builder::<_, I, W>::new_with();
+    let mut builder = Builder::<_, F>::new_with();
 
     let c = builder.checkpoint()?;
 
@@ -108,6 +104,33 @@ where
 }
 
 fn setup(c: &mut Criterion) {
+    syntree::flavor! {
+        struct FlavorUsize {
+            type Index = usize;
+        }
+    }
+
+    syntree::flavor! {
+        struct FlavorU32 {
+            type Index = usize;
+            type Width = u32;
+        }
+    }
+
+    syntree::flavor! {
+        struct FlavorU16 {
+            type Index = u32;
+            type Width = u16;
+        }
+    }
+
+    syntree::flavor! {
+        struct FlavorEmpty {
+            type Index = syntree::Empty;
+            type Indexes = syntree::Empty;
+        }
+    }
+
     let strings = generate_random(100, 5, 20);
 
     let sizes = [1024, 2048, 4096, 8192, 16384];
@@ -118,20 +141,19 @@ fn setup(c: &mut Criterion) {
         for size in sizes {
             group.bench_with_input(BenchmarkId::new("syntree-u32", size), &size, |b, size| {
                 b.iter(|| {
-                    syntree_build::<u32, usize>(&strings, *size).expect("failed to build tree")
+                    syntree_build::<FlavorDefault>(&strings, *size).expect("failed to build tree")
                 })
             });
 
             group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
                 b.iter(|| {
-                    syntree_build::<usize, usize>(&strings, *size).expect("failed to build tree")
+                    syntree_build::<FlavorUsize>(&strings, *size).expect("failed to build tree")
                 })
             });
 
             group.bench_with_input(BenchmarkId::new("syntree-empty", size), &size, |b, size| {
                 b.iter(|| {
-                    syntree_build::<syntree::Empty, usize>(&strings, *size)
-                        .expect("failed to build tree")
+                    syntree_build::<FlavorEmpty>(&strings, *size).expect("failed to build tree")
                 })
             });
 
@@ -149,7 +171,7 @@ fn setup(c: &mut Criterion) {
                 BenchmarkId::new("syntree-u32-usize", size),
                 &size,
                 |b, size| {
-                    let syntree = syntree_tree::<u32, usize>(*size, &strings).unwrap();
+                    let syntree = syntree_tree::<FlavorDefault>(*size, &strings).unwrap();
                     let root = syntree.first().unwrap();
                     b.iter(|| root.children().count())
                 },
@@ -159,14 +181,14 @@ fn setup(c: &mut Criterion) {
                 BenchmarkId::new("syntree-u32-u16", size),
                 &size,
                 |b, size| {
-                    let syntree = syntree_tree::<u32, u16>(*size, &strings).unwrap();
+                    let syntree = syntree_tree::<FlavorU16>(*size, &strings).unwrap();
                     let root = syntree.first().unwrap();
                     b.iter(|| root.children().count())
                 },
             );
 
             group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
-                let syntree = syntree_tree::<usize, usize>(*size, &strings).unwrap();
+                let syntree = syntree_tree::<FlavorUsize>(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
                 b.iter(|| root.children().count())
             });
@@ -183,13 +205,13 @@ fn setup(c: &mut Criterion) {
 
         for size in sizes {
             group.bench_with_input(BenchmarkId::new("syntree-u32", size), &size, |b, size| {
-                let syntree = syntree_tree::<u32, usize>(*size, &strings).unwrap();
+                let syntree = syntree_tree::<FlavorDefault>(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
                 b.iter(|| root.children().skip_tokens().count())
             });
 
             group.bench_with_input(BenchmarkId::new("syntree-usize", size), &size, |b, size| {
-                let syntree = syntree_tree::<usize, usize>(*size, &strings).unwrap();
+                let syntree = syntree_tree::<FlavorUsize>(*size, &strings).unwrap();
                 let root = syntree.first().unwrap();
                 b.iter(|| root.children().skip_tokens().count())
             });

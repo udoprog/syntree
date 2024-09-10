@@ -143,7 +143,21 @@
 //! ```
 //! use syntree::{Builder, Span, Tree};
 //!
-//! let mut tree = Builder::<_, usize, u16>::new_with();
+//! syntree::flavor! {
+//!     struct FlavorU16 {
+//!         type Index = usize;
+//!         type Width = u16;
+//!     }
+//! };
+//!
+//! syntree::flavor! {
+//!     struct FlavorU32 {
+//!         type Index = usize;
+//!         type Width = u32;
+//!     }
+//! };
+//!
+//! let mut tree = Builder::<_, FlavorU16>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
@@ -155,7 +169,7 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, usize, u32> = syntree::tree_with! {
+//! let expected: Tree<_, FlavorU32> = syntree::tree_with! {
 //!     "root" => {
 //!         "child" => { ("token", 100) },
 //!         "child2" => {}
@@ -173,7 +187,14 @@
 //! ```
 //! use syntree::{Builder, Empty, Tree};
 //!
-//! let mut tree = Builder::<_, Empty, u32>::new_with();
+//! syntree::flavor! {
+//!     struct FlavorEmpty {
+//!         type Index = Empty;
+//!         type Indexes = Empty;
+//!     }
+//! };
+//!
+//! let mut tree = Builder::<_, FlavorEmpty>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
@@ -185,7 +206,7 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, Empty, usize> = syntree::tree_with! {
+//! let expected: Tree<_, FlavorEmpty> = syntree::tree_with! {
 //!     "root" => {
 //!         "child" => { "token" },
 //!         "child2" => {}
@@ -352,6 +373,8 @@ pub mod edit;
 
 mod empty;
 mod error;
+#[macro_use]
+mod flavor;
 pub mod index;
 mod links;
 pub mod node;
@@ -363,6 +386,13 @@ mod tree;
 pub use self::builder::{Builder, Checkpoint};
 pub use self::empty::Empty;
 pub use self::error::Error;
+pub use self::flavor::{Flavor, FlavorDefault};
 pub use self::node::node_impl::Node;
 pub use self::span::Span;
 pub use self::tree::Tree;
+
+#[doc(hidden)]
+pub mod macro_support {
+    pub use crate::index::TreeIndex;
+    pub use alloc::vec::Vec;
+}

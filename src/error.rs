@@ -76,7 +76,14 @@ pub enum Error {
     /// ```
     /// use syntree::{Builder, Error};
     ///
-    /// let mut tree: Builder<_, u32, u8> = Builder::new_with();
+    /// syntree::flavor! {
+    ///     struct CustomFlavor {
+    ///         type Index = u32;
+    ///         type Width = u8;
+    ///     }
+    /// }
+    ///
+    /// let mut tree: Builder<_, CustomFlavor> = Builder::new_with();
     ///
     /// for d in 0..u8::MAX {
     ///     tree.token(d, 1)?;

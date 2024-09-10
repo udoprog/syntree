@@ -5,13 +5,22 @@ use crate::index::Index;
 
 /// A span in the source code, akin to `start..end` so the end of the span is
 /// exclusive.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub struct Span<I> {
     /// The start of the span.
     pub start: I,
     /// The end of the span.
     pub end: I,
+}
+
+impl<A, B> PartialEq<Span<A>> for Span<B>
+where
+    B: PartialEq<A>,
+{
+    fn eq(&self, other: &Span<A>) -> bool {
+        self.start == other.start && self.end == other.end
+    }
 }
 
 impl<I> Span<I> {

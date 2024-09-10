@@ -1,13 +1,15 @@
+use anyhow::Result;
+use syntree::{Builder, Error, FlavorDefault};
+
 use crate::lexer::{Lexer, Token};
 use crate::Syntax;
-use anyhow::Result;
-use syntree::{Builder, Error};
+
 use Syntax::{Eof, Whitespace};
 
 /// Parser and lexer baked into one.
 pub(crate) struct Parser<'a> {
     lexer: Lexer<'a>,
-    pub(crate) tree: Builder<Syntax, u32, usize>,
+    pub(crate) tree: Builder<Syntax, FlavorDefault>,
     // One token of lookahead.
     buf: Option<Token>,
 }

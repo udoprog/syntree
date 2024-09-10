@@ -1,9 +1,9 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::links::Links;
 use crate::node::Node;
 use crate::node::{Event, SkipTokens, WalkEvents};
-use crate::pointer::Width;
 
 /// An iterator that walks over the entire tree, visiting every node exactly
 /// once.
@@ -81,24 +81,24 @@ use crate::pointer::Width;
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct Walk<'a, T, I, W>
+pub struct Walk<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    iter: WalkEvents<'a, T, I, W>,
+    iter: WalkEvents<'a, T, F>,
 }
 
-impl<'a, T, I, W> Walk<'a, T, I, W>
+impl<'a, T, F> Walk<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new walk.
     #[inline]
     pub(crate) fn new(
-        tree: &'a [Links<T, I, W::Pointer>],
-        node: Option<W::Pointer>,
+        tree: &'a [Links<T, F::Index, F::Pointer>],
+        node: Option<F::Pointer>,
         e: Event,
     ) -> Self {
         Self {
@@ -143,7 +143,7 @@ where
     /// ```
     #[inline]
     #[must_use]
-    pub fn inside(self) -> Inside<'a, T, I, W> {
+    pub fn inside(self) -> Inside<'a, T, F> {
         Inside { iter: self.iter }
     }
 
@@ -168,7 +168,7 @@ where
     /// ```
     #[inline]
     #[must_use]
-    pub fn with_depths(self) -> WithDepths<'a, T, I, W> {
+    pub fn with_depths(self) -> WithDepths<'a, T, F> {
         WithDepths { iter: self.iter }
     }
 
@@ -210,7 +210,7 @@ where
     /// ```
     #[inline]
     #[must_use]
-    pub fn next_with_depth(&mut self) -> Option<(isize, Node<'a, T, I, W>)> {
+    pub fn next_with_depth(&mut self) -> Option<(isize, Node<'a, T, F>)> {
         loop {
             let depth = self.iter.depth();
             let (event, node) = self.iter.next()?;
@@ -222,10 +222,10 @@ where
     }
 }
 
-impl<T, I, W> Clone for Walk<'_, T, I, W>
+impl<T, F> Clone for Walk<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -235,10 +235,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Walk<'_, T, I, W>
+impl<T, F> Default for Walk<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -248,12 +248,12 @@ where
     }
 }
 
-impl<'a, T, I, W> Iterator for Walk<'a, T, I, W>
+impl<'a, T, F> Iterator for Walk<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = Node<'a, T, I, W>;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -267,10 +267,10 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Walk<'_, T, I, W>
+impl<T, F> FusedIterator for Walk<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
@@ -321,20 +321,20 @@ where
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct WithDepths<'a, T, I, W>
+pub struct WithDepths<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    iter: WalkEvents<'a, T, I, W>,
+    iter: WalkEvents<'a, T, F>,
 }
 
-impl<'a, T, I, W> Iterator for WithDepths<'a, T, I, W>
+impl<'a, T, F> Iterator for WithDepths<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = (isize, Node<'a, T, I, W>);
+    type Item = (isize, Node<'a, T, F>);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -349,17 +349,17 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for WithDepths<'_, T, I, W>
+impl<T, F> FusedIterator for WithDepths<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, W> Clone for WithDepths<'_, T, I, W>
+impl<T, F> Clone for WithDepths<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -369,10 +369,10 @@ where
     }
 }
 
-impl<T, I, W> Default for WithDepths<'_, T, I, W>
+impl<T, F> Default for WithDepths<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -417,20 +417,20 @@ where
 ///
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct Inside<'a, T, I, W>
+pub struct Inside<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    iter: WalkEvents<'a, T, I, W>,
+    iter: WalkEvents<'a, T, F>,
 }
 
-impl<'a, T, I, W> Iterator for Inside<'a, T, I, W>
+impl<'a, T, F> Iterator for Inside<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = Node<'a, T, I, W>;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -448,17 +448,17 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Inside<'_, T, I, W>
+impl<T, F> FusedIterator for Inside<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, W> Clone for Inside<'_, T, I, W>
+impl<T, F> Clone for Inside<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -468,10 +468,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Inside<'_, T, I, W>
+impl<T, F> Default for Inside<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {

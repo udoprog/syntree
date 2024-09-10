@@ -1,9 +1,10 @@
 use core::fmt;
-use core::ops::Range;
+use core::ops::{Deref, Range};
 
 use alloc::vec::Vec;
 
-use crate::index::{Index, Indexes};
+use crate::flavor::Flavor;
+use crate::index::{BinarySearch, Index, Indexes};
 use crate::links::Links;
 use crate::node::{Children, Walk, WalkEvents};
 use crate::node::{Event, Node};
@@ -27,38 +28,36 @@ use crate::span::Span;
 ///
 /// To use the default values, use the [Builder::new][crate::Builder::new]
 /// constructor.
-pub struct Tree<T, I, W>
+pub struct Tree<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Links in the tree.
-    tree: Vec<Links<T, I, W::Pointer>>,
+    tree: Vec<Links<T, F::Index, F::Pointer>>,
     /// The span of the whole tree.
-    span: Span<I>,
+    span: Span<F::Index>,
     /// Token indexes for range searches. This contains the value of the token
     /// cursor each time it is modified and allow for binary searching for
     /// sequences of nodes which corresponds to the given index.
-    indexes: I::Indexes<W::Pointer>,
+    indexes: F::Indexes,
     /// The first node in the tree.
-    first: Option<W::Pointer>,
+    first: Option<F::Pointer>,
     /// The last node in the tree.
-    last: Option<W::Pointer>,
+    last: Option<F::Pointer>,
 }
 
-impl<T, I, W> Tree<T, I, W>
+impl<T, F> Tree<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new empty tree.
     pub(crate) const fn new_with() -> Self {
         Self {
             tree: Vec::new(),
-            span: Span::point(I::EMPTY),
-            indexes: I::Indexes::EMPTY,
+            span: Span::point(F::Index::EMPTY),
+            indexes: F::Indexes::EMPTY,
             first: None,
             last: None,
         }
@@ -69,8 +68,8 @@ where
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             tree: Vec::with_capacity(capacity),
-            span: Span::point(I::EMPTY),
-            indexes: I::Indexes::EMPTY,
+            span: Span::point(F::Index::EMPTY),
+            indexes: F::Indexes::EMPTY,
             first: None,
             last: None,
         }
@@ -101,12 +100,12 @@ where
     /// assert_eq!(tree.span(), Span::new(0, 13));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub const fn span(&self) -> &Span<I> {
+    pub const fn span(&self) -> &Span<F::Index> {
         &self.span
     }
 
     /// Get mutable span from the tree.
-    pub(crate) fn span_mut(&mut self) -> &mut Span<I> {
+    pub(crate) fn span_mut(&mut self) -> &mut Span<F::Index> {
         &mut self.span
     }
 
@@ -115,7 +114,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
+    /// let mut tree: syntree::Builder<()> = syntree::Builder::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.len(), 0);
@@ -143,7 +142,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
+    /// let mut tree: syntree::Builder<()> = syntree::Builder::new();
     /// let tree = tree.build()?;
     /// assert!(tree.is_empty());
     /// # Ok::<_, Box<dyn core::error::Error>>(())
@@ -157,7 +156,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut tree: syntree::Builder<(), _, _> = syntree::Builder::new();
+    /// let mut tree: syntree::Builder<()> = syntree::Builder::new();
     /// let tree = tree.build()?;
     ///
     /// assert_eq!(tree.capacity(), 0);
@@ -182,7 +181,7 @@ where
     /// Get all root nodes in the tree.
     ///
     /// See [Children] for documentation.
-    pub fn children(&self) -> Children<'_, T, I, W> {
+    pub fn children(&self) -> Children<'_, T, F> {
         Children::new(&self.tree, self.first, self.last)
     }
 
@@ -190,7 +189,7 @@ where
     /// once.
     ///
     /// See [`Walk`] for documentation.
-    pub fn walk(&self) -> Walk<'_, T, I, W> {
+    pub fn walk(&self) -> Walk<'_, T, F> {
         Walk::new(self.tree.as_slice(), self.first, Event::Next)
     }
 
@@ -198,7 +197,7 @@ where
     /// indicating how the tree is being traversed.
     ///
     /// See [`WalkEvents`] for documentation.
-    pub fn walk_events(&self) -> WalkEvents<'_, T, I, W> {
+    pub fn walk_events(&self) -> WalkEvents<'_, T, F> {
         WalkEvents::new(self.tree.as_slice(), self.first, Event::Next)
     }
 
@@ -217,7 +216,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn first(&self) -> Option<Node<'_, T, I, W>> {
+    pub fn first(&self) -> Option<Node<'_, T, F>> {
         self.get(self.first?)
     }
 
@@ -236,35 +235,38 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn last(&self) -> Option<Node<'_, T, I, W>> {
+    pub fn last(&self) -> Option<Node<'_, T, F>> {
         self.get(self.last?)
     }
 
     /// Get the tree links mutably.
-    pub(crate) fn links_mut(&mut self) -> (&mut Option<W::Pointer>, &mut Option<W::Pointer>) {
+    pub(crate) fn links_mut(&mut self) -> (&mut Option<F::Pointer>, &mut Option<F::Pointer>) {
         (&mut self.first, &mut self.last)
     }
 
     /// Get a mutable reference to an element in the tree.
-    pub(crate) fn get_mut(&mut self, id: W::Pointer) -> Option<&mut Links<T, I, W::Pointer>> {
+    pub(crate) fn get_mut(
+        &mut self,
+        id: F::Pointer,
+    ) -> Option<&mut Links<T, F::Index, F::Pointer>> {
         self.tree.get_mut(id.get())
     }
 
     /// Push a new node into the tree with the specified links.
-    pub(crate) fn push(&mut self, links: Links<T, I, W::Pointer>) {
+    pub(crate) fn push(&mut self, links: Links<T, F::Index, F::Pointer>) {
         self.tree.push(links);
     }
 
     /// Push the given index.
-    pub(crate) fn indexes_mut(&mut self) -> &mut I::Indexes<W::Pointer> {
+    pub(crate) fn indexes_mut(&mut self) -> &mut F::Indexes {
         &mut self.indexes
     }
 
     /// Optionally get the links at the given location.
     pub(crate) fn links_at_mut(
         &mut self,
-        index: W::Pointer,
-    ) -> Option<&mut Links<T, I, W::Pointer>> {
+        index: F::Pointer,
+    ) -> Option<&mut Links<T, F::Index, F::Pointer>> {
         self.tree.get_mut(index.get())
     }
 
@@ -298,7 +300,7 @@ where
     /// assert_eq!(node.value(), "ident");
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn get(&self, id: W::Pointer) -> Option<Node<'_, T, I, W>> {
+    pub fn get(&self, id: F::Pointer) -> Option<Node<'_, T, F>> {
         let cur = self.tree.get(id.get())?;
         Some(Node::new(cur, &self.tree))
     }
@@ -404,9 +406,12 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, I, W>> {
-        let start = I::from_usize(span.start)?;
-        let end = I::from_usize(span.end)?;
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, F>>
+    where
+        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
+    {
+        let start = F::Index::from_usize(span.start)?;
+        let end = F::Index::from_usize(span.end)?;
         self.node_with_span_internal(start, end)
     }
 
@@ -511,11 +516,17 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span<I>) -> Option<Node<'_, T, I, W>> {
+    pub fn node_with_span(&self, span: Span<F::Index>) -> Option<Node<'_, T, F>>
+    where
+        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
+    {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: I, end: I) -> Option<Node<'_, T, I, W>> {
+    fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Node<'_, T, F>>
+    where
+        F::Indexes: Deref<Target: BinarySearch<F::Index>>,
+    {
         let result = self.indexes.binary_search(start);
 
         let n = match result {
@@ -537,13 +548,10 @@ where
     }
 }
 
-impl<T, I, W> Clone for Tree<T, I, W>
+impl<T, F> Clone for Tree<T, F>
 where
     T: Copy,
-    I: Index,
-    I::Indexes<W::Pointer>: Clone,
-    W: Width,
-    W::Pointer: Clone,
+    F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -557,11 +565,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Tree<T, I, W>
+impl<T, F> Default for Tree<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -569,30 +576,28 @@ where
     }
 }
 
-impl<T, I, A, B> PartialEq<Tree<T, I, A>> for Tree<T, I, B>
+impl<T, A, B> PartialEq<Tree<T, A>> for Tree<T, B>
 where
     T: Copy + PartialEq,
-    I: Index + PartialEq,
-    A: Width,
-    B: Width,
+    A: Flavor,
+    B: Flavor<Index: PartialEq<A::Index>>,
 {
-    fn eq(&self, other: &Tree<T, I, A>) -> bool {
-        struct Item<'a, T, I, W>((isize, Node<'a, T, I, W>))
+    fn eq(&self, other: &Tree<T, A>) -> bool {
+        struct Item<'a, T, F>((isize, Node<'a, T, F>))
         where
             T: Copy,
-            W: Width;
+            F: Flavor;
 
         // NB: this is needed because the constraints on tuples doesn't allow
         // for `A` and `B` to be different.
-        impl<'a, T, I, A, B> PartialEq<Item<'a, T, I, A>> for Item<'a, T, I, B>
+        impl<'a, T, A, B> PartialEq<Item<'a, T, A>> for Item<'a, T, B>
         where
             T: Copy + PartialEq,
-            I: PartialEq,
-            A: Width,
-            B: Width,
+            A: Flavor,
+            B: Flavor<Index: PartialEq<A::Index>>,
         {
             #[inline]
-            fn eq(&self, other: &Item<'a, T, I, A>) -> bool {
+            fn eq(&self, other: &Item<'a, T, A>) -> bool {
                 self.0 .0 == other.0 .0 && self.0 .1.eq(&other.0 .1)
             }
         }
@@ -604,32 +609,28 @@ where
     }
 }
 
-impl<T, I, W> Eq for Tree<T, I, W>
+impl<T, F> Eq for Tree<T, F>
 where
     T: Copy + Eq,
-    I: Index + Eq,
-    W: Width,
+    F: Flavor<Index: Eq>,
 {
 }
 
-impl<T, I, W> fmt::Debug for Tree<T, I, W>
+impl<T, F> fmt::Debug for Tree<T, F>
 where
     T: Copy + fmt::Debug,
-    I: Index + fmt::Debug,
-    W: Width,
+    F: Flavor<Index: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        struct List<'a, T, I, W>(&'a Tree<T, I, W>)
+        struct List<'a, T, F>(&'a Tree<T, F>)
         where
             T: Copy,
-            I: Index,
-            W: Width;
+            F: Flavor;
 
-        impl<T, I, W> fmt::Debug for List<'_, T, I, W>
+        impl<T, F> fmt::Debug for List<'_, T, F>
         where
             T: Copy + fmt::Debug,
-            I: Index + fmt::Debug,
-            W: Width,
+            F: Flavor<Index: fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_list().entries(self.0.walk().with_depths()).finish()

@@ -3,6 +3,7 @@ mod checkpoint;
 use core::cell::Cell;
 
 use crate::error::Error;
+use crate::flavor::{Flavor, FlavorDefault};
 use crate::index::{Index, Indexes, Length};
 use crate::links::Links;
 use crate::pointer::{Pointer, Width};
@@ -53,27 +54,26 @@ pub use self::checkpoint::Checkpoint;
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 #[derive(Debug)]
-pub struct Builder<T, I, W>
+pub struct Builder<T, F = FlavorDefault>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Data in the tree being built.
-    tree: Tree<T, I, W>,
+    tree: Tree<T, F>,
     /// The last checkpoint that was handed out.
-    checkpoint: Option<Checkpoint<W::Pointer>>,
+    checkpoint: Option<Checkpoint<F::Pointer>>,
     /// Reference the current parent to the node being built. It itself has its
     /// parent set in the tree, so that is what is used to traverse ancestors of
     /// a node.
-    parent: Option<W::Pointer>,
+    parent: Option<F::Pointer>,
     /// Reference to last sibling inserted.
-    sibling: Option<W::Pointer>,
+    sibling: Option<F::Pointer>,
     /// The current cursor.
-    cursor: I,
+    cursor: F::Index,
 }
 
-impl<T> Builder<T, u32, usize>
+impl<T> Builder<T, FlavorDefault>
 where
     T: Copy,
 {
@@ -117,11 +117,10 @@ where
     }
 }
 
-impl<T, I, W> Builder<T, I, W>
+impl<T, F> Builder<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new tree with a custom span.
     ///
@@ -133,7 +132,15 @@ where
     /// ```
     /// use syntree::{Builder, Empty, Tree};
     ///
-    /// let mut tree: Builder<_, Empty, usize> = Builder::new_with();
+    /// syntree::flavor! {
+    ///     struct FlavorEmpty {
+    ///         type Index = Empty;
+    ///         type Width = u32;
+    ///         type Indexes = Empty;
+    ///     }
+    /// }
+    ///
+    /// let mut tree: Builder<_, FlavorEmpty> = Builder::new_with();
     ///
     /// tree.open("root")?;
     ///
@@ -148,7 +155,7 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected: Tree<_, Empty, u32> = syntree::tree_with! {
+    /// let expected: Tree<_, FlavorEmpty> = syntree::tree_with! {
     ///     "root" => {
     ///         "child" => {
     ///             "token"
@@ -167,7 +174,7 @@ where
             parent: None,
             checkpoint: None,
             sibling: None,
-            cursor: I::EMPTY,
+            cursor: F::Index::EMPTY,
         }
     }
 
@@ -202,7 +209,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub const fn cursor(&self) -> &I {
+    pub const fn cursor(&self) -> &F::Index {
         &self.cursor
     }
 
@@ -235,7 +242,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn set_cursor(&mut self, cursor: I) {
+    pub fn set_cursor(&mut self, cursor: F::Index) {
         self.cursor = cursor;
     }
 
@@ -267,7 +274,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open(&mut self, data: T) -> Result<W::Pointer, Error> {
+    pub fn open(&mut self, data: T) -> Result<F::Pointer, Error> {
         let id = self.insert(data, Span::point(self.cursor))?;
         self.parent = Some(id);
         Ok(id)
@@ -316,7 +323,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open_with(&mut self, data: T, span: Span<I>) -> Result<W::Pointer, Error> {
+    pub fn open_with(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
         let id = self.insert(data, span)?;
         self.parent = Some(id);
         Ok(id)
@@ -401,7 +408,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token(&mut self, value: T, len: I::Length) -> Result<W::Pointer, Error> {
+    pub fn token(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error> {
         let start = self.cursor;
 
         if !len.is_empty() {
@@ -476,7 +483,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token_with(&mut self, value: T, span: Span<I>) -> Result<W::Pointer, Error> {
+    pub fn token_with(&mut self, value: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
         let id = self.insert(value, span)?;
 
         self.sibling = Some(id);
@@ -519,8 +526,8 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn token_empty(&mut self, value: T) -> Result<W::Pointer, Error> {
-        self.token(value, I::Length::EMPTY)
+    pub fn token_empty(&mut self, value: T) -> Result<F::Pointer, Error> {
+        self.token(value, F::Length::EMPTY)
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
@@ -596,8 +603,8 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn checkpoint(&mut self) -> Result<Checkpoint<W::Pointer>, Error> {
-        let node = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+    pub fn checkpoint(&mut self) -> Result<Checkpoint<F::Pointer>, Error> {
+        let node = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         if let Some(c) = &self.checkpoint {
             if c.node() == node {
@@ -714,14 +721,14 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn close_at(&mut self, c: &Checkpoint<W::Pointer>, data: T) -> Result<W::Pointer, Error> {
+    pub fn close_at(&mut self, c: &Checkpoint<F::Pointer>, data: T) -> Result<F::Pointer, Error> {
         let (id, parent) = c.get();
 
         if parent != self.parent {
             return Err(Error::CloseAtError);
         }
 
-        let new_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+        let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
             let new_id = self.insert(data, Span::point(self.cursor))?;
@@ -819,17 +826,17 @@ where
     /// ```
     pub fn close_at_with(
         &mut self,
-        c: &Checkpoint<W::Pointer>,
+        c: &Checkpoint<F::Pointer>,
         data: T,
-        span: Span<I>,
-    ) -> Result<W::Pointer, Error> {
+        span: Span<F::Index>,
+    ) -> Result<F::Pointer, Error> {
         let (id, parent) = c.get();
 
         if parent != self.parent {
             return Err(Error::CloseAtError);
         }
 
-        let new_id = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+        let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
             let new_id = self.insert(data, span)?;
@@ -941,7 +948,7 @@ where
     /// assert!(matches!(tree.build(), Err(Error::BuildError)));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn build(self) -> Result<Tree<T, I, W>, Error> {
+    pub fn build(self) -> Result<Tree<T, F>, Error> {
         if self.parent.is_some() {
             return Err(Error::BuildError);
         }
@@ -950,8 +957,8 @@ where
     }
 
     /// Insert a new node.
-    fn insert(&mut self, data: T, span: Span<I>) -> Result<W::Pointer, Error> {
-        let new = W::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+    fn insert(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error> {
+        let new = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let prev = self.sibling.take();
 
@@ -992,13 +999,10 @@ where
     }
 }
 
-impl<T, I, W> Clone for Builder<T, I, W>
+impl<T, F> Clone for Builder<T, F>
 where
     T: Copy,
-    I: Index,
-    I::Indexes<W::Pointer>: Clone,
-    W: Width,
-    W::Pointer: Clone,
+    F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -1012,11 +1016,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Builder<T, I, W>
+impl<T, F> Default for Builder<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -1027,15 +1030,14 @@ where
 // Adjust span to encapsulate all children and check that we just inserted the
 // checkpointed node in the right location which should be the tail sibling of
 // the replaced node.
-fn restructure_close_at<T, I, W>(
-    tree: &mut Tree<T, I, W>,
-    parent_id: W::Pointer,
-    next: W::Pointer,
-) -> Result<(W::Pointer, I), Error>
+fn restructure_close_at<T, F>(
+    tree: &mut Tree<T, F>,
+    parent_id: F::Pointer,
+    next: F::Pointer,
+) -> Result<(F::Pointer, F::Index), Error>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     let mut links = tree
         .get_mut(next)

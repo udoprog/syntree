@@ -26,7 +26,6 @@ impl From<usize> for Empty {
 impl Index for Empty {
     const EMPTY: Self = Empty;
 
-    type Indexes<P> = Empty;
     type Length = Empty;
 
     #[inline]
@@ -67,11 +66,6 @@ impl<I, P> Indexes<I, P> for Empty {
 
     #[inline]
     fn push(&mut self, _: I, _: P) {}
-
-    #[inline]
-    fn binary_search(&self, _: I) -> Result<usize, usize> {
-        Err(0)
-    }
 
     #[inline]
     fn get(&self, _: usize) -> Option<&P> {

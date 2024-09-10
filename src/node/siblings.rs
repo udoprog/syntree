@@ -1,8 +1,9 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
-use crate::pointer::{Pointer, Width};
+use crate::pointer::Pointer;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -61,25 +62,25 @@ use crate::pointer::{Pointer, Width};
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct Siblings<'a, T, I, W>
+pub struct Siblings<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    tree: &'a [Links<T, I, W::Pointer>],
-    links: Option<&'a Links<T, I, W::Pointer>>,
+    tree: &'a [Links<T, F::Index, F::Pointer>],
+    links: Option<&'a Links<T, F::Index, F::Pointer>>,
 }
 
-impl<'a, T, I, W> Siblings<'a, T, I, W>
+impl<'a, T, F> Siblings<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new child iterator.
     #[inline]
     pub(crate) const fn new(
-        tree: &'a [Links<T, I, W::Pointer>],
-        links: &'a Links<T, I, W::Pointer>,
+        tree: &'a [Links<T, F::Index, F::Pointer>],
+        links: &'a Links<T, F::Index, F::Pointer>,
     ) -> Self {
         Self {
             tree,
@@ -139,17 +140,17 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, F>> {
         self.find(|n| n.has_children())
     }
 }
 
-impl<'a, T, I, W> Iterator for Siblings<'a, T, I, W>
+impl<'a, T, F> Iterator for Siblings<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = Node<'a, T, I, W>;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -159,17 +160,17 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Siblings<'_, T, I, W>
+impl<T, F> FusedIterator for Siblings<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, W> Clone for Siblings<'_, T, I, W>
+impl<T, F> Clone for Siblings<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -180,10 +181,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Siblings<'_, T, I, W>
+impl<T, F> Default for Siblings<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {

@@ -117,7 +117,14 @@ macro_rules! tree {
 /// ```
 /// use syntree::{Empty, Tree};
 ///
-/// let tree: Tree<_, Empty, usize> = syntree::tree_with! {
+/// syntree::flavor! {
+///     struct FlavorEmpty {
+///         type Index = Empty;
+///         type Indexes = Empty;
+///     }
+/// };
+///
+/// let tree: Tree<_, FlavorEmpty> = syntree::tree_with! {
 ///     "root" => {
 ///         "child" => {
 ///             "token"
@@ -126,7 +133,7 @@ macro_rules! tree {
 ///     }
 /// };
 ///
-/// let expected: Tree<_, Empty, u32> = syntree::tree_with! {
+/// let expected: Tree<_, FlavorEmpty> = syntree::tree_with! {
 ///     "root" => {
 ///         "child" => {
 ///             ("token", Empty)

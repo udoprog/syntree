@@ -1,8 +1,9 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::links::Links;
 use crate::node::{Node, SkipTokens};
-use crate::pointer::{Pointer, Width};
+use crate::pointer::Pointer;
 
 /// An iterator that iterates over the [`Node::next`] elements of a node. This is
 /// typically used for iterating over the children of a tree.
@@ -68,27 +69,27 @@ use crate::pointer::{Pointer, Width};
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct Children<'a, T, I, W>
+pub struct Children<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    tree: &'a [Links<T, I, W::Pointer>],
-    first: Option<W::Pointer>,
-    last: Option<W::Pointer>,
+    tree: &'a [Links<T, F::Index, F::Pointer>],
+    first: Option<F::Pointer>,
+    last: Option<F::Pointer>,
 }
 
-impl<'a, T, I, W> Children<'a, T, I, W>
+impl<'a, T, F> Children<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new child iterator.
     #[inline]
     pub(crate) const fn new(
-        tree: &'a [Links<T, I, W::Pointer>],
-        first: Option<W::Pointer>,
-        last: Option<W::Pointer>,
+        tree: &'a [Links<T, F::Index, F::Pointer>],
+        first: Option<F::Pointer>,
+        last: Option<F::Pointer>,
     ) -> Self {
         Self { tree, first, last }
     }
@@ -143,17 +144,17 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, F>> {
         self.find(|n| n.has_children())
     }
 }
 
-impl<'a, T, I, W> Iterator for Children<'a, T, I, W>
+impl<'a, T, F> Iterator for Children<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = Node<'a, T, I, W>;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -168,10 +169,10 @@ where
     }
 }
 
-impl<T, I, W> DoubleEndedIterator for Children<'_, T, I, W>
+impl<T, F> DoubleEndedIterator for Children<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -186,17 +187,17 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Children<'_, T, I, W>
+impl<T, F> FusedIterator for Children<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, W> Clone for Children<'_, T, I, W>
+impl<T, F> Clone for Children<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -208,10 +209,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Children<'_, T, I, W>
+impl<T, F> Default for Children<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
