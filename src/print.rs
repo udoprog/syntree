@@ -6,8 +6,7 @@
 use std::fmt;
 use std::io::{Error, Write};
 
-use crate::index::Index;
-use crate::pointer::Width;
+use crate::flavor::Flavor;
 use crate::span::Span;
 use crate::tree::Tree;
 
@@ -62,12 +61,11 @@ use crate::tree::Tree;
 /// NUMBER@6..8
 ///   NUMBER@6..8 +
 /// ```
-pub fn print<O, T, I, W>(o: O, tree: &Tree<T, I, W>) -> Result<(), Error>
+pub fn print<O, T, F>(o: O, tree: &Tree<T, F>) -> Result<(), Error>
 where
     O: Write,
     T: Copy + fmt::Debug,
-    I: Index + fmt::Display,
-    W: Width,
+    F: Flavor<Index: fmt::Display>,
 {
     print_with_lookup(o, tree, |_| None)
 }
@@ -122,26 +120,24 @@ where
 /// NUMBER@6..8
 ///   NUMBER@6..8 "64"
 /// ```
-pub fn print_with_source<O, T, I, W>(o: O, tree: &Tree<T, I, W>, source: &str) -> Result<(), Error>
+pub fn print_with_source<O, T, F>(o: O, tree: &Tree<T, F>, source: &str) -> Result<(), Error>
 where
     O: Write,
     T: Copy + fmt::Debug,
-    I: Index + fmt::Display,
-    W: Width,
+    F: Flavor<Index: fmt::Display>,
 {
     print_with_lookup(o, tree, |span| source.get(span.range()))
 }
 
-fn print_with_lookup<'a, O, T, I, W>(
+fn print_with_lookup<'a, O, T, F>(
     mut o: O,
-    tree: &Tree<T, I, W>,
-    source: impl Fn(&Span<I>) -> Option<&'a str>,
+    tree: &Tree<T, F>,
+    source: impl Fn(&Span<F::Index>) -> Option<&'a str>,
 ) -> Result<(), Error>
 where
     O: Write,
     T: Copy + fmt::Debug,
-    I: Index + fmt::Display,
-    W: Width,
+    F: Flavor<Index: fmt::Display>,
 {
     for (depth, node) in tree.walk().with_depths() {
         let n = (depth * 2) as usize;

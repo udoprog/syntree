@@ -1,8 +1,9 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::links::Links;
 use crate::node::Node;
-use crate::pointer::{Pointer, Width};
+use crate::pointer::Pointer;
 
 /// An event indicating how a tree is being walked with [`WalkEvents`].
 ///
@@ -135,29 +136,29 @@ pub enum Event {
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct WalkEvents<'a, T, I, W>
+pub struct WalkEvents<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// The tree being iterated over.
-    tree: &'a [Links<T, I, W::Pointer>],
+    tree: &'a [Links<T, F::Index, F::Pointer>],
     // The current node.
-    node: Option<(W::Pointer, Event)>,
+    node: Option<(F::Pointer, Event)>,
     // Current depth being walked.
     depth: isize,
 }
 
-impl<'a, T, I, W> WalkEvents<'a, T, I, W>
+impl<'a, T, F> WalkEvents<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new events walker.
     #[inline]
     pub(crate) fn new(
-        tree: &'a [Links<T, I, W::Pointer>],
-        node: Option<W::Pointer>,
+        tree: &'a [Links<T, F::Index, F::Pointer>],
+        node: Option<F::Pointer>,
         e: Event,
     ) -> Self {
         Self {
@@ -175,9 +176,9 @@ where
 
     fn step(
         &mut self,
-        links: &Links<T, I, W::Pointer>,
+        links: &Links<T, F::Index, F::Pointer>,
         event: Event,
-    ) -> Option<(W::Pointer, Event)> {
+    ) -> Option<(F::Pointer, Event)> {
         if let Event::Up = event {
             if let Some(next) = links.next {
                 return Some((next, Event::Next));
@@ -198,10 +199,10 @@ where
     }
 }
 
-impl<T, I, W> Clone for WalkEvents<'_, T, I, W>
+impl<T, F> Clone for WalkEvents<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -213,10 +214,10 @@ where
     }
 }
 
-impl<T, I, W> Default for WalkEvents<'_, T, I, W>
+impl<T, F> Default for WalkEvents<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -228,12 +229,12 @@ where
     }
 }
 
-impl<'a, T, I, W> Iterator for WalkEvents<'a, T, I, W>
+impl<'a, T, F> Iterator for WalkEvents<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = (Event, Node<'a, T, I, W>);
+    type Item = (Event, Node<'a, T, F>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (node, event) = self.node.take()?;
@@ -244,9 +245,9 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for WalkEvents<'_, T, I, W>
+impl<T, F> FusedIterator for WalkEvents<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }

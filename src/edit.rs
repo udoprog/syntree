@@ -7,10 +7,11 @@ use alloc::vec::Vec;
 use std::collections::HashMap;
 
 use crate::error::Error;
+use crate::flavor::Flavor;
 use crate::index::{Index, Indexes};
 use crate::links::Links;
 use crate::node::Node;
-use crate::pointer::{Pointer, Width};
+use crate::pointer::Pointer;
 use crate::span::Span;
 use crate::tree::Tree;
 
@@ -72,22 +73,20 @@ pub(crate) enum Change {
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct ChangeSet<T, I, W>
+pub struct ChangeSet<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
-    changes: HashMap<W::Pointer, Change>,
+    changes: HashMap<F::Pointer, Change>,
     #[allow(unused)]
-    trees: Vec<Tree<T, I, W>>,
+    trees: Vec<Tree<T, F>>,
 }
 
-impl<T, I, W> ChangeSet<T, I, W>
+impl<T, F> ChangeSet<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new empty [`ChangeSet`].
     #[must_use]
@@ -96,11 +95,10 @@ where
     }
 }
 
-impl<T, I, W> ChangeSet<T, I, W>
+impl<T, F> ChangeSet<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Register a node removal in the changeset. Only one kind of modification
     /// for a given node will be preserved.
@@ -135,7 +133,7 @@ where
     /// );
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn remove(&mut self, id: W::Pointer) {
+    pub fn remove(&mut self, id: F::Pointer) {
         self.changes.insert(id, Change::Delete);
     }
 
@@ -176,24 +174,21 @@ where
     /// );
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T, I, W>) -> Result<Tree<T, I, W>, Error>
-    where
-        I: Index,
-    {
-        let mut output = Tree::<T, I, W>::with_capacity(tree.capacity());
+    pub fn modify(&mut self, tree: &Tree<T, F>) -> Result<Tree<T, F>, Error> {
+        let mut output = Tree::<T, F>::with_capacity(tree.capacity());
 
         let mut refactor = RefactorWalk {
             parents: Vec::new(),
             prev: None,
         };
 
-        let mut cursor = I::EMPTY;
+        let mut cursor = F::Index::EMPTY;
 
         // The specified sub-tree depth is being deleted.
         let mut current = tree.first().map(|node| (node, false));
 
         while let Some((mut node, mut first)) = current.take() {
-            let node_id = W::Pointer::new(output.len()).ok_or(Error::Overflow)?;
+            let node_id = F::Pointer::new(output.len()).ok_or(Error::Overflow)?;
 
             if let Some(change) = self.changes.get(&node_id) {
                 match change {
@@ -272,11 +267,10 @@ where
     }
 }
 
-impl<T, I, W> Default for ChangeSet<T, I, W>
+impl<T, F> Default for ChangeSet<T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
@@ -288,34 +282,30 @@ where
 }
 
 /// The state of the skipped subtree.
-struct Skipped<'a, T, I, W>
+struct Skipped<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    node: Node<'a, T, I, W>,
+    node: Node<'a, T, F>,
     first: bool,
 }
 
-struct RefactorWalk<'a, T, I, W>
+struct RefactorWalk<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    parents: Vec<(Node<'a, T, I, W>, W::Pointer)>,
-    prev: Option<W::Pointer>,
+    parents: Vec<(Node<'a, T, F>, F::Pointer)>,
+    prev: Option<F::Pointer>,
 }
 
-impl<'a, T, I, W> RefactorWalk<'a, T, I, W>
+impl<'a, T, F> RefactorWalk<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    fn skip_subtree(
-        &mut self,
-        node: Node<'a, T, I, W>,
-        first: bool,
-    ) -> Option<Skipped<'a, T, I, W>> {
+    fn skip_subtree(&mut self, node: Node<'a, T, F>, first: bool) -> Option<Skipped<'a, T, F>> {
         if let Some(next) = node.next() {
             return Some(Skipped { node: next, first });
         }
@@ -328,9 +318,9 @@ where
     /// Advance the iteration.
     fn step(
         &mut self,
-        node: Node<'a, T, I, W>,
-        node_id: W::Pointer,
-    ) -> Option<(Node<'a, T, I, W>, bool)> {
+        node: Node<'a, T, F>,
+        node_id: F::Pointer,
+    ) -> Option<(Node<'a, T, F>, bool)> {
         if let Some(next) = node.first() {
             self.parents.push((node, node_id));
             return Some((next, true));

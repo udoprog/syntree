@@ -1,7 +1,7 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::node::Node;
-use crate::pointer::Width;
 
 /// Wrapped around an iterator that excludes nodes without children.
 ///
@@ -80,11 +80,11 @@ impl<U> SkipTokens<U> {
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, W: 'a> Iterator for SkipTokens<U>
+impl<'a, U, T: 'a, F: 'a> Iterator for SkipTokens<U>
 where
     T: Copy,
-    W: Width,
-    U: Iterator<Item = Node<'a, T, I, W>>,
+    F: Flavor,
+    U: Iterator<Item = Node<'a, T, F>>,
 {
     type Item = U::Item;
 
@@ -100,20 +100,20 @@ where
     }
 
     #[inline]
-    fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> bool,
+        P: FnMut(&Self::Item) -> bool,
     {
         self.iter.find(move |n| n.has_children() && predicate(n))
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, W: 'a> DoubleEndedIterator for SkipTokens<U>
+impl<'a, U, T: 'a, F: 'a> DoubleEndedIterator for SkipTokens<U>
 where
     T: Copy,
-    W: Width,
-    U: DoubleEndedIterator<Item = Node<'a, T, I, W>>,
+    F: Flavor,
+    U: DoubleEndedIterator<Item = Node<'a, T, F>>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -121,20 +121,20 @@ where
     }
 
     #[inline]
-    fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> bool,
+        P: FnMut(&Self::Item) -> bool,
     {
         self.iter.rfind(move |n| n.has_children() && predicate(n))
     }
 }
 
-impl<'a, U, T: 'a, I: 'a, W: 'a> FusedIterator for SkipTokens<U>
+impl<'a, U, T: 'a, F: 'a> FusedIterator for SkipTokens<U>
 where
     T: Copy,
-    W: Width,
-    U: FusedIterator<Item = Node<'a, T, I, W>>,
+    F: Flavor,
+    U: FusedIterator<Item = Node<'a, T, F>>,
 {
 }
 

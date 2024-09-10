@@ -2,10 +2,10 @@ use core::fmt;
 use core::mem::size_of;
 use core::ops::Range;
 
-use crate::index::Index;
+use crate::flavor::Flavor;
 use crate::links::Links;
 use crate::node::{Ancestors, Children, Event, Siblings, Walk, WalkEvents};
-use crate::pointer::{Pointer, Width};
+use crate::pointer::Pointer;
 use crate::span::Span;
 
 /// A node in the tree.
@@ -14,31 +14,30 @@ use crate::span::Span;
 ///
 /// The three type parameters of the tree determines the following properties:
 /// * `T` is the data stored in the tree.
-/// * `I` determines the numerical bounds of spans stored in the tree through
-///   the [Index] trait, if set to [Empty][crate::Empty] the tree does not store
-///   any spans.
-/// * `W` determines the bounds of pointers in the tree through the [Width]
-///   trait, this decides how many elements that can be stored in the tree.
+/// * `F` determines the [Flavor] of the tree, defining numerical bounds of
+///   spans stored in the tree.
 ///
 /// To use the default values, use the [Builder::new][crate::Builder::new]
 /// constructor.
-pub struct Node<'a, T, I, W>
+///
+/// [Empty]: crate::Empty
+pub struct Node<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    links: &'a Links<T, I, W::Pointer>,
-    tree: &'a [Links<T, I, W::Pointer>],
+    links: &'a Links<T, F::Index, F::Pointer>,
+    tree: &'a [Links<T, F::Index, F::Pointer>],
 }
 
-impl<'a, T, I, W> Node<'a, T, I, W>
+impl<'a, T, F> Node<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     pub(crate) const fn new(
-        links: &'a Links<T, I, W::Pointer>,
-        tree: &'a [Links<T, I, W::Pointer>],
+        links: &'a Links<T, F::Index, F::Pointer>,
+        tree: &'a [Links<T, F::Index, F::Pointer>],
     ) -> Self {
         Self { links, tree }
     }
@@ -152,7 +151,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub const fn span(&self) -> &Span<I> {
+    pub const fn span(&self) -> &Span<F::Index> {
         &self.links.span
     }
 
@@ -185,7 +184,7 @@ where
     ///
     /// See [Ancestors] for documentation.
     #[must_use]
-    pub fn ancestors(&self) -> Ancestors<'a, T, I, W> {
+    pub fn ancestors(&self) -> Ancestors<'a, T, F> {
         Ancestors::new(Some(*self))
     }
 
@@ -193,7 +192,7 @@ where
     ///
     /// See [Siblings] for documentation.
     #[must_use]
-    pub fn siblings(&self) -> Siblings<'a, T, I, W> {
+    pub fn siblings(&self) -> Siblings<'a, T, F> {
         Siblings::new(self.tree, self.links)
     }
 
@@ -201,7 +200,7 @@ where
     ///
     /// See [Children] for documentation.
     #[must_use]
-    pub fn children(&self) -> Children<'a, T, I, W> {
+    pub fn children(&self) -> Children<'a, T, F> {
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
@@ -210,7 +209,7 @@ where
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk(&self) -> Walk<'a, T, I, W> {
+    pub fn walk(&self) -> Walk<'a, T, F> {
         Walk::new(self.tree, Some(self.id()), Event::Next)
     }
 
@@ -220,7 +219,7 @@ where
     ///
     /// See [Walk] for documentation.
     #[must_use]
-    pub fn walk_from(&self) -> Walk<'a, T, I, W> {
+    pub fn walk_from(&self) -> Walk<'a, T, F> {
         Walk::new(self.tree, Some(self.id()), Event::Up)
     }
 
@@ -229,15 +228,15 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     #[must_use]
-    pub fn walk_events(&self) -> WalkEvents<'a, T, I, W> {
+    pub fn walk_events(&self) -> WalkEvents<'a, T, F> {
         WalkEvents::new(self.tree, Some(self.id()), Event::Next)
     }
 }
 
-impl<'a, T, I, W> Node<'a, T, I, W>
+impl<'a, T, F> Node<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Get immediate parent to this node.
     ///
@@ -270,7 +269,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn parent(&self) -> Option<Node<'a, T, I, W>> {
+    pub fn parent(&self) -> Option<Node<'a, T, F>> {
         self.node_at(self.links.parent?)
     }
 
@@ -302,7 +301,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn prev(&self) -> Option<Node<'a, T, I, W>> {
+    pub fn prev(&self) -> Option<Node<'a, T, F>> {
         self.node_at(self.links.prev?)
     }
 
@@ -333,7 +332,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn next(&self) -> Option<Node<'a, T, I, W>> {
+    pub fn next(&self) -> Option<Node<'a, T, F>> {
         self.node_at(self.links.next?)
     }
 
@@ -364,7 +363,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn first(&self) -> Option<Node<'a, T, I, W>> {
+    pub fn first(&self) -> Option<Node<'a, T, F>> {
         self.node_at(self.links.first?)
     }
 
@@ -395,7 +394,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn last(&self) -> Option<Node<'a, T, I, W>> {
+    pub fn last(&self) -> Option<Node<'a, T, F>> {
         self.node_at(self.links.last?)
     }
 
@@ -433,9 +432,9 @@ where
     /// assert_eq!(found.value(), "child2");
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn find_preceding<F>(&self, mut predicate: F) -> Option<Node<'a, T, I, W>>
+    pub fn find_preceding<P>(&self, mut predicate: P) -> Option<Node<'a, T, F>>
     where
-        F: FnMut(Node<'a, T, I, W>) -> bool,
+        P: FnMut(Node<'a, T, F>) -> bool,
     {
         // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
@@ -467,7 +466,7 @@ where
         }
     }
 
-    fn node_at(&self, id: W::Pointer) -> Option<Node<'a, T, I, W>> {
+    fn node_at(&self, id: F::Pointer) -> Option<Node<'a, T, F>> {
         let cur = self.tree.get(id.get())?;
 
         Some(Self {
@@ -506,24 +505,23 @@ where
     ///
     /// [`ChangeSet`]: crate::edit::ChangeSet
     #[must_use]
-    pub fn id(&self) -> W::Pointer {
+    pub fn id(&self) -> F::Pointer {
         // We're relying on the knowledge that the provided links reference is
         // inside of the tree of links.
         let current = self.links as *const _ as usize;
         let base = self.tree.as_ptr() as usize;
-        let id = (current - base) / size_of::<Links<T, I, W::Pointer>>();
+        let id = (current - base) / size_of::<Links<T, F::Index, F::Pointer>>();
         debug_assert!(id < self.tree.len(), "identifier outside of tree length");
         // SAFETY: It's impossible to construct a node with an offset which is
         // not a legal `NonMax`.
-        unsafe { W::Pointer::new_unchecked(id) }
+        unsafe { F::Pointer::new_unchecked(id) }
     }
 }
 
-impl<T, I, W> Node<'_, T, I, W>
+impl<T, F> Node<'_, T, F>
 where
     T: Copy,
-    I: Index,
-    W: Width,
+    F: Flavor,
 {
     /// Access the [Span] of the node as a [Range].
     ///
@@ -558,11 +556,10 @@ where
     }
 }
 
-impl<T, I, W> fmt::Debug for Node<'_, T, I, W>
+impl<T, F> fmt::Debug for Node<'_, T, F>
 where
     T: Copy + fmt::Debug,
-    I: fmt::Debug,
-    W: Width,
+    F: Flavor<Index: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node")
@@ -572,10 +569,10 @@ where
     }
 }
 
-impl<T, I, W> Clone for Node<'_, T, I, W>
+impl<T, F> Clone for Node<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -583,29 +580,27 @@ where
     }
 }
 
-impl<T, I, W> Copy for Node<'_, T, I, W>
+impl<T, F> Copy for Node<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, A, B> PartialEq<Node<'_, T, I, A>> for Node<'_, T, I, B>
+impl<T, A, B> PartialEq<Node<'_, T, A>> for Node<'_, T, B>
 where
-    A: Width,
-    B: Width,
     T: Copy + PartialEq,
-    I: PartialEq,
+    A: Flavor,
+    B: Flavor<Index: PartialEq<A::Index>>,
 {
-    fn eq(&self, other: &Node<'_, T, I, A>) -> bool {
+    fn eq(&self, other: &Node<'_, T, A>) -> bool {
         self.links.data.get() == other.links.data.get() && self.links.span == other.links.span
     }
 }
 
-impl<T, I, W> Eq for Node<'_, T, I, W>
+impl<T, F> Eq for Node<'_, T, F>
 where
     T: Copy + Eq,
-    I: Eq,
-    W: Width,
+    F: Flavor<Index: Eq>,
 {
 }

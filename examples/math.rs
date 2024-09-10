@@ -3,7 +3,7 @@
 use std::iter::Peekable;
 
 use anyhow::Result;
-use syntree::{print, Builder, Error, Tree};
+use syntree::{print, Builder, Error, FlavorDefault, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
@@ -27,7 +27,7 @@ struct Parser<Iter>
 where
     Iter: Iterator<Item = (Syntax, usize)>,
 {
-    builder: Builder<Syntax, u32, usize>,
+    builder: Builder<Syntax, FlavorDefault>,
     iter: Peekable<Iter>,
 }
 
@@ -90,7 +90,7 @@ where
         self.handle_operation(&[Add, Sub], Self::parse_mul)
     }
 
-    fn parse(mut self) -> Result<Tree<Syntax, u32, usize>, Error> {
+    fn parse(mut self) -> Result<Tree<Syntax, FlavorDefault>, Error> {
         self.builder.open(Root)?;
         self.parse_add()?;
         self.builder.close()?;

@@ -1,7 +1,7 @@
 use core::iter::FusedIterator;
 
+use crate::flavor::Flavor;
 use crate::node::{Node, SkipTokens};
-use crate::pointer::Width;
 
 /// An iterator that iterates over the [`Node::parent`] elements of a node. This
 /// is used for iterating over the ancestors of a node.
@@ -46,22 +46,22 @@ use crate::pointer::Width;
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-pub struct Ancestors<'a, T, I, W>
+pub struct Ancestors<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    node: Option<Node<'a, T, I, W>>,
+    node: Option<Node<'a, T, F>>,
 }
 
-impl<'a, T, I, W> Ancestors<'a, T, I, W>
+impl<'a, T, F> Ancestors<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     /// Construct a new ancestor iterator.
     #[inline]
-    pub(crate) const fn new(node: Option<Node<'a, T, I, W>>) -> Self {
+    pub(crate) const fn new(node: Option<Node<'a, T, F>>) -> Self {
         Self { node }
     }
 
@@ -110,17 +110,17 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn next_node(&mut self) -> Option<Node<'a, T, I, W>> {
+    pub fn next_node(&mut self) -> Option<Node<'a, T, F>> {
         self.find(|n| n.has_children())
     }
 }
 
-impl<'a, T, I, W> Iterator for Ancestors<'a, T, I, W>
+impl<'a, T, F> Iterator for Ancestors<'a, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
-    type Item = Node<'a, T, I, W>;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -130,17 +130,17 @@ where
     }
 }
 
-impl<T, I, W> FusedIterator for Ancestors<'_, T, I, W>
+impl<T, F> FusedIterator for Ancestors<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
 }
 
-impl<T, I, W> Clone for Ancestors<'_, T, I, W>
+impl<T, F> Clone for Ancestors<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -148,10 +148,10 @@ where
     }
 }
 
-impl<T, I, W> Default for Ancestors<'_, T, I, W>
+impl<T, F> Default for Ancestors<'_, T, F>
 where
     T: Copy,
-    W: Width,
+    F: Flavor,
 {
     #[inline]
     fn default() -> Self {
