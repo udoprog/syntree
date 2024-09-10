@@ -185,12 +185,12 @@
 //! that is something you want to do:
 //!
 //! ```
-//! use syntree::{Builder, Empty, Tree};
+//! use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
 //!
 //! syntree::flavor! {
 //!     struct FlavorEmpty {
 //!         type Index = Empty;
-//!         type Indexes = Empty;
+//!         type Indexes = EmptyVec<TreeIndex<Self>>;
 //!     }
 //! };
 //!
@@ -361,9 +361,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(not(feature = "alloc"))]
-compile_error!("The `syntree` crate currently requires that the `alloc` feature is enabled");
-
 #[macro_use]
 mod macros;
 mod builder;
@@ -374,7 +371,7 @@ pub mod edit;
 mod empty;
 mod error;
 #[macro_use]
-mod flavor;
+pub mod flavor;
 pub mod index;
 mod links;
 pub mod node;
@@ -384,15 +381,23 @@ mod span;
 mod tree;
 
 pub use self::builder::{Builder, Checkpoint};
-pub use self::empty::Empty;
+pub use self::empty::{Empty, EmptyVec};
 pub use self::error::Error;
 pub use self::flavor::{Flavor, FlavorDefault};
+pub use self::index::TreeIndex;
 pub use self::node::node_impl::Node;
 pub use self::span::Span;
 pub use self::tree::Tree;
 
 #[doc(hidden)]
 pub mod macro_support {
-    pub use crate::index::TreeIndex;
-    pub use alloc::vec::Vec;
+    use crate::index::TreeIndex;
+
+    #[cfg(feature = "alloc")]
+    pub type Vec<T> = alloc::vec::Vec<T>;
+
+    #[cfg(not(feature = "alloc"))]
+    pub type Vec<T> = crate::empty::EmptyVec<T>;
+
+    pub type DefaultIndexes<F> = crate::macro_support::Vec<TreeIndex<F>>;
 }

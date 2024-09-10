@@ -1,13 +1,14 @@
-use core::convert::Infallible;
+//! Trait for defining the flavor of a syntree.
+
 use core::ops::DerefMut;
 
-use crate::index::{Index, Indexes, Length};
+use crate::index::{Index, Length, TreeIndex};
 use crate::pointer::{Pointer, Width};
 
 /// Storage being used in a tree.
 pub trait Storage<T>
 where
-    Self: Sized,
+    Self: Sized + DerefMut<Target = [T]>,
 {
     /// A storage error.
     type Error: 'static;
@@ -25,8 +26,9 @@ where
     fn push(&mut self, item: T) -> Result<(), Self::Error>;
 }
 
+#[cfg(feature = "alloc")]
 impl<T> Storage<T> for alloc::vec::Vec<T> {
-    type Error = Infallible;
+    type Error = core::convert::Infallible;
 
     const EMPTY: Self = alloc::vec::Vec::new();
 
@@ -56,12 +58,12 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 /// # Examples
 ///
 /// ```
-/// use syntree::Empty;
+/// use syntree::{Empty, EmptyVec, TreeIndex};
 ///
 /// syntree::flavor! {
 ///     struct FlavorEmpty {
 ///         type Index = Empty;
-///         type Indexes = Empty;
+///         type Indexes = EmptyVec<TreeIndex<Self>>;
 ///     }
 /// }
 ///
@@ -94,7 +96,7 @@ macro_rules! flavor {
             type Width = $crate::flavor!(@width $($width)*);
             type Pointer = $crate::flavor!(@pointer $($width)*);
             type Storage<T> = $crate::macro_support::Vec<T>;
-            type Indexes = $crate::flavor!(@indexes $index, $($indexes)*);
+            type Indexes = $crate::flavor!(@indexes $($indexes)*);
         }
     };
 
@@ -102,8 +104,8 @@ macro_rules! flavor {
     (@width) => { usize };
     (@pointer $ty:ty) => { <$ty as $crate::pointer::Width>::Pointer };
     (@pointer) => { <usize as $crate::pointer::Width>::Pointer };
-    (@indexes $index:ty, $ty:ty) => { $ty };
-    (@indexes $index:ty,) => { $crate::macro_support::Vec<$crate::macro_support::TreeIndex<$index, Self::Pointer>> };
+    (@indexes $ty:ty) => { $ty };
+    (@indexes) => { $crate::macro_support::DefaultIndexes<Self> };
 }
 
 flavor! {
@@ -134,16 +136,13 @@ pub trait Flavor {
     /// The type of an index used by a tree.
     type Index: Index<Length = Self::Length>;
     /// The length used in the flavor.
-    #[doc(hidden)]
     type Length: Length;
     /// The width used in the flavor.
     type Width: Width<Pointer = Self::Pointer>;
     /// The pointer in use.
-    #[doc(hidden)]
     type Pointer: Pointer;
     /// The storage type used in the tree.
-    type Storage<T>: Storage<T, Error = Self::Error> + DerefMut<Target = [T]>;
+    type Storage<T>: Storage<T, Error = Self::Error>;
     /// How indexes are stored in the tree.
-    #[doc(hidden)]
-    type Indexes: Indexes<Self::Index, Self::Pointer, Error = Self::Error>;
+    type Indexes: Storage<TreeIndex<Self>, Error = Self::Error>;
 }

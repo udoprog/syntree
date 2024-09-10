@@ -7,8 +7,8 @@ use alloc::vec::Vec;
 use std::collections::HashMap;
 
 use crate::error::Error;
-use crate::flavor::Flavor;
-use crate::index::{Index, Indexes};
+use crate::flavor::{Flavor, Storage};
+use crate::index::{Index, TreeIndex};
 use crate::links::Links;
 use crate::node::Node;
 use crate::pointer::Pointer;
@@ -228,7 +228,10 @@ where
             };
 
             let span = if !node.has_children() && !node.span().is_empty() {
-                output.indexes_mut().push(cursor, node_id)?;
+                output.indexes_mut().push(TreeIndex {
+                    index: cursor,
+                    id: node_id,
+                })?;
                 let start = cursor;
                 cursor = cursor
                     .checked_add_len(node.span().len())
