@@ -1,5 +1,51 @@
+use core::convert::Infallible;
+use core::ops::DerefMut;
+
 use crate::index::{Index, Indexes, Length};
 use crate::pointer::{Pointer, Width};
+
+/// Storage being used in a tree.
+pub trait Storage<T>
+where
+    Self: Sized,
+{
+    /// A storage error.
+    type Error: 'static;
+
+    /// Empty storage.
+    const EMPTY: Self;
+
+    /// Constructstorage with the given capacity.
+    fn with_capacity(capacity: usize) -> Result<Self, Self::Error>;
+
+    /// Get the capacity of the underlying storage.
+    fn capacity(&self) -> usize;
+
+    /// Push an item into storage.
+    fn push(&mut self, item: T) -> Result<(), Self::Error>;
+}
+
+impl<T> Storage<T> for alloc::vec::Vec<T> {
+    type Error = Infallible;
+
+    const EMPTY: Self = alloc::vec::Vec::new();
+
+    #[inline]
+    fn with_capacity(capacity: usize) -> Result<Self, Self::Error> {
+        Ok(alloc::vec::Vec::with_capacity(capacity))
+    }
+
+    #[inline]
+    fn capacity(&self) -> usize {
+        alloc::vec::Vec::capacity(self)
+    }
+
+    #[inline]
+    fn push(&mut self, item: T) -> Result<(), Self::Error> {
+        alloc::vec::Vec::push(self, item);
+        Ok(())
+    }
+}
 
 /// Declare a new flavor.
 ///
@@ -33,6 +79,7 @@ macro_rules! flavor {
         $vis:vis struct $ty:ident {
             type Index = $index:ty;
             $(type Width = $width:ty;)?
+            $(type Storage = $storage:ty;)?
             $(type Indexes = $indexes:ty;)?
         }
     ) => {
@@ -41,10 +88,12 @@ macro_rules! flavor {
         $vis struct $ty;
 
         impl $crate::Flavor for $ty {
+            type Error = core::convert::Infallible;
             type Index = $index;
             type Length = <$index as $crate::index::Index>::Length;
             type Width = $crate::flavor!(@width $($width)*);
             type Pointer = $crate::flavor!(@pointer $($width)*);
+            type Storage<T> = $crate::macro_support::Vec<T>;
             type Indexes = $crate::flavor!(@indexes $index, $($indexes)*);
         }
     };
@@ -80,6 +129,8 @@ flavor! {
 ///
 /// [spans]: crate::Span
 pub trait Flavor {
+    /// The error raised by the type of the tree.
+    type Error;
     /// The type of an index used by a tree.
     type Index: Index<Length = Self::Length>;
     /// The length used in the flavor.
@@ -90,7 +141,9 @@ pub trait Flavor {
     /// The pointer in use.
     #[doc(hidden)]
     type Pointer: Pointer;
+    /// The storage type used in the tree.
+    type Storage<T>: Storage<T, Error = Self::Error> + DerefMut<Target = [T]>;
     /// How indexes are stored in the tree.
     #[doc(hidden)]
-    type Indexes: Indexes<Self::Index, Self::Pointer>;
+    type Indexes: Indexes<Self::Index, Self::Pointer, Error = Self::Error>;
 }

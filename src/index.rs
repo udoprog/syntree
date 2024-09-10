@@ -1,6 +1,7 @@
 //! Types that can be used to refer to indexes in a [Span][crate::Span].
 
 use core::cmp;
+use core::convert::Infallible;
 
 use alloc::vec::Vec;
 
@@ -47,11 +48,13 @@ pub trait Index: Sized + Copy + cmp::Ord + cmp::Eq + self::sealed::Sealed {
 }
 
 #[doc(hidden)]
-pub trait Indexes<I, P>: self::sealed::Sealed {
+pub trait Indexes<I, P> {
     const EMPTY: Self;
 
+    type Error;
+
     #[doc(hidden)]
-    fn push(&mut self, cursor: I, id: P);
+    fn push(&mut self, cursor: I, id: P) -> Result<(), Self::Error>;
 
     #[doc(hidden)]
     fn get(&self, index: usize) -> Option<&P>;
@@ -170,9 +173,12 @@ where
 impl<I, P> Indexes<I, P> for Vec<TreeIndex<I, P>> {
     const EMPTY: Self = Self::new();
 
+    type Error = Infallible;
+
     #[inline]
-    fn push(&mut self, index: I, id: P) {
-        Vec::push(self, TreeIndex { index, id })
+    fn push(&mut self, index: I, id: P) -> Result<(), Self::Error> {
+        Vec::push(self, TreeIndex { index, id });
+        Ok(())
     }
 
     #[inline]

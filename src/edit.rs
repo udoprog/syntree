@@ -174,8 +174,8 @@ where
     /// );
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn modify(&mut self, tree: &Tree<T, F>) -> Result<Tree<T, F>, Error> {
-        let mut output = Tree::<T, F>::with_capacity(tree.capacity());
+    pub fn modify(&mut self, tree: &Tree<T, F>) -> Result<Tree<T, F>, Error<F::Error>> {
+        let mut output = Tree::<T, F>::with_capacity(tree.capacity())?;
 
         let mut refactor = RefactorWalk {
             parents: Vec::new(),
@@ -228,7 +228,7 @@ where
             };
 
             let span = if !node.has_children() && !node.span().is_empty() {
-                output.indexes_mut().push(cursor, node_id);
+                output.indexes_mut().push(cursor, node_id)?;
                 let start = cursor;
                 cursor = cursor
                     .checked_add_len(node.span().len())
@@ -257,7 +257,7 @@ where
                 next: None,
                 first: None,
                 last: None,
-            });
+            })?;
 
             current = refactor.step(node, node_id);
         }

@@ -1,9 +1,8 @@
 use core::fmt;
 use core::ops::{Deref, Range};
 
-use alloc::vec::Vec;
-
-use crate::flavor::Flavor;
+use crate::error::Error;
+use crate::flavor::{Flavor, Storage};
 use crate::index::{BinarySearch, Index, Indexes};
 use crate::links::Links;
 use crate::node::{Children, Walk, WalkEvents};
@@ -34,7 +33,7 @@ where
     F: Flavor,
 {
     /// Links in the tree.
-    tree: Vec<Links<T, F::Index, F::Pointer>>,
+    tree: F::Storage<Links<T, F::Index, F::Pointer>>,
     /// The span of the whole tree.
     span: Span<F::Index>,
     /// Token indexes for range searches. This contains the value of the token
@@ -55,7 +54,7 @@ where
     /// Construct a new empty tree.
     pub(crate) const fn new_with() -> Self {
         Self {
-            tree: Vec::new(),
+            tree: F::Storage::EMPTY,
             span: Span::point(F::Index::EMPTY),
             indexes: F::Indexes::EMPTY,
             first: None,
@@ -65,14 +64,14 @@ where
 
     /// Construct a new tree with the given capacity.
     #[cfg(feature = "std")]
-    pub(crate) fn with_capacity(capacity: usize) -> Self {
-        Self {
-            tree: Vec::with_capacity(capacity),
+    pub(crate) fn with_capacity(capacity: usize) -> Result<Self, Error<F::Error>> {
+        Ok(Self {
+            tree: F::Storage::with_capacity(capacity)?,
             span: Span::point(F::Index::EMPTY),
             indexes: F::Indexes::EMPTY,
             first: None,
             last: None,
-        }
+        })
     }
 
     /// Get the span of the current node. The span of a node is the complete
@@ -190,7 +189,7 @@ where
     ///
     /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, F> {
-        Walk::new(self.tree.as_slice(), self.first, Event::Next)
+        Walk::new(&self.tree, self.first, Event::Next)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -198,7 +197,7 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T, F> {
-        WalkEvents::new(self.tree.as_slice(), self.first, Event::Next)
+        WalkEvents::new(&self.tree, self.first, Event::Next)
     }
 
     /// Get the first child node in the tree.
@@ -253,8 +252,8 @@ where
     }
 
     /// Push a new node into the tree with the specified links.
-    pub(crate) fn push(&mut self, links: Links<T, F::Index, F::Pointer>) {
-        self.tree.push(links);
+    pub(crate) fn push(&mut self, links: Links<T, F::Index, F::Pointer>) -> Result<(), F::Error> {
+        self.tree.push(links)
     }
 
     /// Push the given index.
@@ -552,6 +551,7 @@ impl<T, F> Clone for Tree<T, F>
 where
     T: Copy,
     F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
+    F::Storage<Links<T, F::Index, F::Pointer>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {

@@ -37,7 +37,7 @@ impl rowan::Language for Lang {
     }
 }
 
-fn syntree_build<F>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, F>, Error>
+fn syntree_build<F>(strings: &[Box<str>], count: usize) -> Result<Tree<Syntax, F>, Error<F::Error>>
 where
     F: syntree::Flavor<Length: From<usize>>,
 {
@@ -84,7 +84,7 @@ fn rowan_tree(n: usize, strings: &[Box<str>]) -> SyntaxNode<Lang> {
     SyntaxNode::new_root(builder.finish())
 }
 
-fn syntree_tree<F>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, F>, Error>
+fn syntree_tree<F>(n: usize, strings: &[Box<str>]) -> Result<Tree<Syntax, F>, Error<F::Error>>
 where
     F: syntree::Flavor<Length: From<usize>>,
 {
