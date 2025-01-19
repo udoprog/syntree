@@ -36,9 +36,10 @@ where
     Iter: Iterator<Item = (Syntax, usize)>,
 {
     fn peek(&mut self) -> Result<Option<Syntax>, Error> {
-        while self.iter.peek().map_or(false, |&(t, _)| t == Whitespace) {
+        while self.iter.peek().is_some_and(|&(t, _)| t == Whitespace) {
             self.bump()?;
         }
+
         Ok(self.iter.peek().map(|&(t, _)| t))
     }
 
@@ -73,7 +74,7 @@ where
         let c = self.builder.checkpoint()?;
         next(self)?;
 
-        while self.peek()?.map_or(false, |t| tokens.contains(&t)) {
+        while self.peek()?.is_some_and(|t| tokens.contains(&t)) {
             self.bump()?;
             next(self)?;
             self.builder.close_at(&c, Operation)?;

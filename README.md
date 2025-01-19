@@ -145,7 +145,21 @@ can be changed from its default using the [`Builder::new_with`] constructor:
 ```rust
 use syntree::{Builder, Span, Tree};
 
-let mut tree = Builder::<_, usize, u16>::new_with();
+syntree::flavor! {
+    struct FlavorU16 {
+        type Index = usize;
+        type Width = u16;
+    }
+};
+
+syntree::flavor! {
+    struct FlavorU32 {
+        type Index = usize;
+        type Width = u32;
+    }
+};
+
+let mut tree = Builder::<_, FlavorU16>::new_with();
 
 tree.open("root")?;
 tree.open("child")?;
@@ -157,7 +171,7 @@ tree.close()?;
 
 let tree = tree.build()?;
 
-let expected: Tree<_, usize, u32> = syntree::tree_with! {
+let expected: Tree<_, FlavorU32> = syntree::tree_with! {
     "root" => {
         "child" => { ("token", 100) },
         "child2" => {}
@@ -172,9 +186,16 @@ Combined with [`Empty`], this allows for building trees without spans, if
 that is something you want to do:
 
 ```rust
-use syntree::{Builder, Empty, Tree};
+use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
 
-let mut tree = Builder::<_, Empty, u32>::new_with();
+syntree::flavor! {
+    struct FlavorEmpty {
+        type Index = Empty;
+        type Indexes = EmptyVec<TreeIndex<Self>>;
+    }
+};
+
+let mut tree = Builder::<_, FlavorEmpty>::new_with();
 
 tree.open("root")?;
 tree.open("child")?;
@@ -186,7 +207,7 @@ tree.close()?;
 
 let tree = tree.build()?;
 
-let expected: Tree<_, Empty, usize> = syntree::tree_with! {
+let expected: Tree<_, FlavorEmpty> = syntree::tree_with! {
     "root" => {
         "child" => { "token" },
         "child2" => {}
