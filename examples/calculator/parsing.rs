@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
         loop {
             let t = self.peek()?;
 
-            if t.syntax == Eof || any.iter().any(|s| *s == t.syntax) {
+            if t.syntax == Eof || any.contains(&t.syntax) {
                 break;
             }
 
