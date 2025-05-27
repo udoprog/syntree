@@ -34,9 +34,9 @@ This crate provides a way to efficiently model [abstract syntax trees]. The
 nodes of the tree are typically represented by variants in an enum, but
 [could be whatever you want][any-syntax].
 
-Each tree consists of *nodes* and *tokens*. Siblings are intermediary
-elements in the tree which encapsulate zero or more other nodes or tokens,
-while tokens are leaf elements representing exact source locations.
+Each tree consists of *nodes* and *tokens*. Nodes are intermediary elements
+in the tree which encapsulate zero or more other nodes or tokens, while
+tokens are leaf elements representing exact source locations.
 
 An example tree for the simple expression `256 / 2 + 64 * 2` could be
 represented like this:
