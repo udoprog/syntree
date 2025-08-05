@@ -235,7 +235,7 @@ fn generate_random(count: usize, min: usize, max: usize) -> Vec<Box<str>> {
 
     for _ in 0..count {
         let target = (rng.gen::<usize>() % (max - min)) + min;
-        assert!(target >= min && target < max, "target was {}", target);
+        assert!(target >= min && target < max, "target was {target}");
 
         while s.len() < target {
             s.extend(char::from_u32(rng.next_u32()).filter(|c| !c.is_whitespace()));
