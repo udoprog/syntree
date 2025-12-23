@@ -123,3 +123,30 @@ fn test_nested_checkpoints2() -> Result<()> {
     assert_eq!(tree, expected);
     Ok(())
 }
+
+#[test]
+fn test_checkpoints_around_close() -> Result<()> {
+    let mut tree = syntree::Builder::new();
+
+    tree.open("operation")?;
+    tree.token("b", 3)?;
+    let _ = tree.checkpoint()?; // this line *shouldn't* affect anything but it triggers the bug
+    tree.close()?;
+    let b = tree.checkpoint()?;
+    tree.token("a", 3)?;
+    tree.close_at(&b, "operation")?;
+
+    let tree = tree.build()?;
+
+    let expected = syntree::tree! {
+        "operation" => {
+            ("b", 3)
+        },
+        "operation" => {
+            ("a", 3)
+        }
+    };
+
+    assert_eq!(tree, expected);
+    Ok(())
+}
