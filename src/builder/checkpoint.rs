@@ -32,6 +32,10 @@ where
         self.0.get().node
     }
 
+    pub(crate) fn parent(&self) -> Option<P> {
+        self.0.get().parent
+    }
+
     pub(crate) fn get(&self) -> (P, Option<P>) {
         let Inner { node, parent } = self.0.get();
         (node, parent)
