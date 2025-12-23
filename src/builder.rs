@@ -618,7 +618,7 @@ where
         let node = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         if let Some(c) = &self.checkpoint {
-            if c.node() == node {
+            if c.node() == node && c.parent() == self.parent {
                 return Ok(c.clone());
             }
         }
