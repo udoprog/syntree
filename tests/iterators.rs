@@ -321,9 +321,7 @@ fn walk_events_depth_after_full_walk() -> Res {
             (Next, "root2"),
         ]
     );
-    // Leaving the last root decrements depth before finding no parent, so an
-    // exhausted tree walk reports -1 rather than 0.
-    assert_eq!(it.depth(), -1);
+    assert_eq!(it.depth(), 0);
 
     let root = tree.first().ok_or("missing root")?;
     let mut it = root.walk_events();
@@ -341,9 +339,10 @@ fn walk_events_depth_after_full_walk() -> Res {
             (Down, "a1", 1),
             (Up, "a", 0),
             (Up, "root", 0),
-            (Next, "root2", -1),
+            (Next, "root2", 0),
         ]
     );
+    assert_eq!(it.depth(), 0);
     Ok(())
 }
 
