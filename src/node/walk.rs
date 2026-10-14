@@ -87,6 +87,9 @@ where
     F: Flavor,
 {
     iter: WalkEvents<'a, T, F>,
+    // A tree-level walk has no single node to stay inside, so `inside` must
+    // not stop when the walk climbs back to the top level.
+    bounded: bool,
 }
 
 impl<'a, T, F> Walk<'a, T, F>
@@ -94,7 +97,7 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// Construct a new walk.
+    /// Construct a new walk starting at a node.
     #[inline]
     pub(crate) fn new(
         tree: &'a [Links<T, F::Index, F::Pointer>],
@@ -103,11 +106,30 @@ where
     ) -> Self {
         Self {
             iter: WalkEvents::new(tree, node, e),
+            bounded: true,
+        }
+    }
+
+    /// Construct a new walk over every root of a tree.
+    #[inline]
+    pub(crate) fn tree(
+        tree: &'a [Links<T, F::Index, F::Pointer>],
+        node: Option<F::Pointer>,
+    ) -> Self {
+        Self {
+            iter: WalkEvents::new(tree, node, Event::Next),
+            bounded: false,
         }
     }
 
     /// Convert this iterator into one that limits the walk to inside the
-    /// current node, visiting every node exactly once.
+    /// node it started at, visiting every node exactly once.
+    ///
+    /// The scope is the node the walk was constructed from, such as through
+    /// [`Node::walk`] or [`Node::walk_from`], even if this iterator has already
+    /// been advanced. A walk constructed through
+    /// [`Tree::walk`][crate::Tree::walk] has the whole tree as its scope, so it
+    /// visits the remaining nodes under every root.
     ///
     /// # Examples
     ///
@@ -139,12 +161,24 @@ where
     /// let empty: [&str; 0] = [];
     /// assert_eq!(values, empty);
     ///
+    /// let values = tree.walk().inside().map(|n| n.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+    ///
+    /// let mut walk = n1.walk();
+    /// assert_eq!(walk.next().map(|n| n.value()), Some("n1"));
+    /// assert_eq!(walk.next().map(|n| n.value()), Some("n3"));
+    /// let values = walk.inside().map(|n| n.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["n4", "n5"]);
+    ///
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
     #[must_use]
     pub fn inside(self) -> Inside<'a, T, F> {
-        Inside { iter: self.iter }
+        Inside {
+            iter: self.iter,
+            bounded: self.bounded,
+        }
     }
 
     /// Convert this iterator into one which includes depths.
@@ -231,6 +265,7 @@ where
     fn clone(&self) -> Self {
         Self {
             iter: self.iter.clone(),
+            bounded: self.bounded,
         }
     }
 }
@@ -244,6 +279,7 @@ where
     fn default() -> Self {
         Self {
             iter: WalkEvents::default(),
+            bounded: true,
         }
     }
 }
@@ -382,8 +418,13 @@ where
     }
 }
 
-/// An iterator that limits the walk to inside the current node, visiting every
-/// node exactly once. This is constructed with [`Walk::inside`].
+/// An iterator that limits the walk to inside the node it started at, visiting
+/// every node exactly once. This is constructed with [`Walk::inside`].
+///
+/// The scope is the node the [`Walk`] was constructed from, even if it was
+/// advanced before calling [`Walk::inside`]. For a walk constructed through
+/// [`Tree::walk`][crate::Tree::walk] the scope is the whole tree, covering
+/// every root.
 ///
 /// # Examples
 ///
@@ -415,6 +456,9 @@ where
 /// let empty: [&str; 0] = [];
 /// assert_eq!(values, empty);
 ///
+/// let values = tree.walk().inside().map(|n| n.value()).collect::<Vec<_>>();
+/// assert_eq!(values, ["n1", "n3", "n4", "n5", "n6", "n7"]);
+///
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 pub struct Inside<'a, T, F>
@@ -423,6 +467,7 @@ where
     F: Flavor,
 {
     iter: WalkEvents<'a, T, F>,
+    bounded: bool,
 }
 
 impl<'a, T, F> Iterator for Inside<'a, T, F>
@@ -437,7 +482,7 @@ where
         loop {
             let (event, node) = self.iter.next()?;
 
-            if self.iter.depth() <= 0 {
+            if self.bounded && self.iter.depth() <= 0 {
                 self.iter = WalkEvents::default();
             }
 
@@ -464,6 +509,7 @@ where
     fn clone(&self) -> Self {
         Self {
             iter: self.iter.clone(),
+            bounded: self.bounded,
         }
     }
 }
@@ -477,6 +523,7 @@ where
     fn default() -> Self {
         Self {
             iter: WalkEvents::default(),
+            bounded: true,
         }
     }
 }

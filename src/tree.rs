@@ -186,7 +186,7 @@ where
     ///
     /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, F> {
-        Walk::new(&self.tree, self.first, Event::Next)
+        Walk::tree(&self.tree, self.first)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
