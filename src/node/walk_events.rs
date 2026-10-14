@@ -176,6 +176,9 @@ where
     /// returned to. When a walk started at a node leaves that node's subtree,
     /// for example by climbing up to its parent, the depth becomes negative.
     ///
+    /// Once the iterator is exhausted, the depth is that of the last node it
+    /// returned.
+    ///
     /// [`next`]: Iterator::next
     ///
     /// # Examples
@@ -262,8 +265,9 @@ where
             }
         }
 
+        let parent = links.parent?;
         self.depth = self.depth.checked_sub(1)?;
-        Some((links.parent?, Event::Up))
+        Some((parent, Event::Up))
     }
 }
 
