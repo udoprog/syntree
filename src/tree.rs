@@ -329,10 +329,20 @@ where
         self.span.range()
     }
 
-    /// Query for the node that matches the given range.
+    /// Query for the smallest node which contains the given [Range].
     ///
-    /// This query finds the node which contains the entirety of the given
-    /// [Range].
+    /// A node contains the range when it starts at or before `range.start`,
+    /// ends at or after `range.end`, and `range.start` lies before its end.
+    /// Tokens are nodes too, so a range within a single token returns that
+    /// token, however deeply it is nested.
+    ///
+    /// * Returns `None` if `range.start > range.end`, or if no node contains
+    ///   the range, such as one which spans two nodes at the root of the tree.
+    /// * An empty range on the boundary between two tokens belongs to the token
+    ///   which starts there. An empty range at the end of the tree is contained
+    ///   by no node and returns `None`.
+    /// * Only tokens with a non-empty span and their ancestors are considered,
+    ///   so empty nodes and empty tokens are never returned.
     ///
     /// Tokens are looked up by binary search, which assumes they were added
     /// to the tree in non-decreasing order of their spans.
@@ -347,43 +357,46 @@ where
     ///         },
     ///         "child2" => {
     ///             "nested1" => {
-    ///                 ("token1", 4),
+    ///                 ("token2", 4),
     ///             },
-    ///             ("token4", 1),
+    ///             ("token3", 1),
     ///         },
     ///         "child3" => {
-    ///             ("token5", 5)
+    ///             ("token4", 5)
     ///         }
     ///     },
     ///     "root2" => {}
     /// };
     ///
     /// let node = tree.node_with_range(0..0).ok_or("missing 0")?;
-    /// assert_eq!(node.value(), "child1");
+    /// assert_eq!(node.value(), "token1");
     ///
-    /// let node = tree.node_with_range(0..3).ok_or("missing 0")?;
-    /// assert_eq!(node.value(), "child1");
+    /// let node = tree.node_with_range(0..3).ok_or("missing 0..3")?;
+    /// assert_eq!(node.value(), "token1");
     ///
     /// let node = tree.node_with_range(3..3).ok_or("missing 3")?;
-    /// assert_eq!(node.value(), "nested1");
+    /// assert_eq!(node.value(), "token2");
     ///
     /// let node = tree.node_with_range(3..7).ok_or("missing 3..7")?;
-    /// assert_eq!(node.value(), "nested1");
-    ///
-    /// let node = tree.node_with_range(7..7).ok_or("missing 7")?;
-    /// assert_eq!(node.value(), "child2");
+    /// assert_eq!(node.value(), "token2");
+    /// assert_eq!(node.parent().map(|n| n.value()), Some("nested1"));
     ///
     /// let node = tree.node_with_range(7..8).ok_or("missing 7..8")?;
+    /// assert_eq!(node.value(), "token3");
+    ///
+    /// let node = tree.node_with_range(3..8).ok_or("missing 3..8")?;
     /// assert_eq!(node.value(), "child2");
     ///
-    /// let node = tree.node_with_range(8..8).ok_or("missing 8")?;
-    /// assert_eq!(node.value(), "child3");
-    ///
-    /// let node = tree.node_with_range(8..13).ok_or("missing 9")?;
-    /// assert_eq!(node.value(), "child3");
+    /// let node = tree.node_with_range(8..13).ok_or("missing 8..13")?;
+    /// assert_eq!(node.value(), "token4");
     ///
     /// let node = tree.node_with_range(2..4).ok_or("missing 2..4")?;
     /// assert_eq!(node.value(), "root");
+    ///
+    /// // The end of the tree, where the empty "root2" sits.
+    /// assert!(tree.node_with_range(13..13).is_none());
+    /// assert!(tree.node_with_range(0..14).is_none());
+    /// assert!(tree.node_with_range(4..2).is_none());
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
@@ -401,8 +414,11 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let child = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
-    /// assert_eq!(child.value(), "child");
+    /// let lit = tree.node_with_range(0..3).ok_or("missing at 0..3")?;
+    /// assert_eq!(lit.value(), "lit");
+    /// assert_eq!(lit.parent().map(|n| n.value()), Some("child"));
+    ///
+    /// assert!(tree.node_with_range(2..4).is_none());
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
@@ -412,10 +428,12 @@ where
         self.node_with_span_internal(start, end)
     }
 
-    /// Query the tree for the first node which encapsulates the whole `span`.
+    /// Query for the smallest node which contains the given [Span].
     ///
-    /// This query finds the node which contains the entirety of the given
-    /// [Span].
+    /// This behaves like [Tree::node_with_range]: tokens are returned when
+    /// they contain the span, and `None` is returned if `span.start >
+    /// span.end`, if no node contains the span, or for an empty span at the
+    /// end of the tree. Empty nodes and empty tokens are never returned.
     ///
     /// Tokens are looked up by binary search, which assumes they were added
     /// to the tree in non-decreasing order of their spans.
@@ -432,43 +450,43 @@ where
     ///         },
     ///         "child2" => {
     ///             "nested1" => {
-    ///                 ("token1", 4),
+    ///                 ("token2", 4),
     ///             },
-    ///             ("token4", 1),
+    ///             ("token3", 1),
     ///         },
     ///         "child3" => {
-    ///             ("token5", 5)
+    ///             ("token4", 5)
     ///         }
     ///     },
     ///     "root2" => {}
     /// };
     ///
     /// let node = tree.node_with_span(Span::point(0)).ok_or("missing 0")?;
-    /// assert_eq!(node.value(), "child1");
+    /// assert_eq!(node.value(), "token1");
     ///
-    /// let node = tree.node_with_span(Span::new(0, 3)).ok_or("missing 0")?;
-    /// assert_eq!(node.value(), "child1");
+    /// let node = tree.node_with_span(Span::new(0, 3)).ok_or("missing 0..3")?;
+    /// assert_eq!(node.value(), "token1");
     ///
     /// let node = tree.node_with_span(Span::point(3)).ok_or("missing 3")?;
-    /// assert_eq!(node.value(), "nested1");
+    /// assert_eq!(node.value(), "token2");
     ///
     /// let node = tree.node_with_span(Span::new(3, 7)).ok_or("missing 3..7")?;
-    /// assert_eq!(node.value(), "nested1");
-    ///
-    /// let node = tree.node_with_span(Span::point(7)).ok_or("missing 7")?;
-    /// assert_eq!(node.value(), "child2");
+    /// assert_eq!(node.value(), "token2");
     ///
     /// let node = tree.node_with_span(Span::new(7, 8)).ok_or("missing 7..8")?;
+    /// assert_eq!(node.value(), "token3");
+    ///
+    /// let node = tree.node_with_span(Span::new(3, 8)).ok_or("missing 3..8")?;
     /// assert_eq!(node.value(), "child2");
     ///
-    /// let node = tree.node_with_span(Span::point(8)).ok_or("missing 8")?;
-    /// assert_eq!(node.value(), "child3");
-    ///
-    /// let node = tree.node_with_span(Span::new(8, 13)).ok_or("missing 9")?;
-    /// assert_eq!(node.value(), "child3");
+    /// let node = tree.node_with_span(Span::new(8, 13)).ok_or("missing 8..13")?;
+    /// assert_eq!(node.value(), "token4");
     ///
     /// let node = tree.node_with_span(Span::new(2, 4)).ok_or("missing 2..4")?;
     /// assert_eq!(node.value(), "root");
+    ///
+    /// assert!(tree.node_with_span(Span::point(13)).is_none());
+    /// assert!(tree.node_with_span(Span::new(4, 2)).is_none());
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
@@ -482,37 +500,32 @@ where
     /// let c = tree.checkpoint()?;
     ///
     /// tree.open("child1")?;
-    /// tree.token("lit", 3)?;
+    /// tree.token("lit1", 3)?;
     /// tree.close()?;
     ///
     /// tree.open("child2")?;
-    /// tree.token("lit", 2)?;
+    /// tree.token("lit2", 2)?;
     /// tree.close()?;
     ///
     /// tree.close_at(&c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
-    /// let child = tree.node_with_span(Span::point(0)).ok_or("missing at point 5")?;
-    /// assert_eq!(child.value(), "child1");
+    /// let node = tree.node_with_span(Span::point(0)).ok_or("missing at point 0")?;
+    /// assert_eq!(node.value(), "lit1");
     ///
-    /// let child = tree.node_with_span(Span::new(0, 3)).ok_or("missing at 0..3")?;
-    /// assert_eq!(child.value(), "child1");
+    /// let node = tree.node_with_span(Span::new(0, 3)).ok_or("missing at 0..3")?;
+    /// assert_eq!(node.value(), "lit1");
+    /// assert_eq!(node.parent().map(|n| n.value()), Some("child1"));
     ///
-    /// let child = tree.node_with_span(Span::new(3, 5)).ok_or("missing at 3..5")?;
-    /// assert_eq!(child.value(), "child2");
+    /// let node = tree.node_with_span(Span::point(3)).ok_or("missing at point 3")?;
+    /// assert_eq!(node.value(), "lit2");
     ///
-    /// let child = tree.node_with_span(Span::new(4, 5)).ok_or("missing at 4..5")?;
-    /// assert_eq!(child.value(), "child2");
+    /// let node = tree.node_with_span(Span::new(3, 5)).ok_or("missing at 3..5")?;
+    /// assert_eq!(node.value(), "lit2");
     ///
-    /// let child = tree.node_with_span(Span::new(3, 4)).ok_or("missing at 3..4")?;
-    /// assert_eq!(child.value(), "child2");
-    ///
-    /// let child = tree.node_with_span(Span::point(3)).ok_or("missing at point 5")?;
-    /// assert_eq!(child.value(), "child2");
-    ///
-    /// let child = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
-    /// assert_eq!(child.value(), "root");
+    /// let node = tree.node_with_span(Span::new(2, 5)).ok_or("missing at 2..5")?;
+    /// assert_eq!(node.value(), "root");
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
@@ -521,24 +534,63 @@ where
     }
 
     fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Node<'_, T, F>> {
-        let result = self.indexes.binary_search_by(|f| f.index.cmp(&start));
+        if start > end {
+            return None;
+        }
 
-        let n = match result {
+        // Index of the first token which ends after `start`.
+        let n = match self.indexes.binary_search_by(|f| f.index.cmp(&start)) {
             Ok(n) => n.saturating_add(1),
             Err(n) => n,
         };
 
-        let mut node = self.get(self.indexes.get(n)?.id)?;
+        let next = self.indexes.get(n).and_then(|i| self.get(i.id));
 
-        while let Some(parent) = node.parent() {
-            node = parent;
+        let found = next.and_then(|node| smallest_containing(node, start, end));
 
-            if parent.span().end >= end {
-                break;
-            }
+        // Only explicit spans leave gaps between tokens. When `start` falls in
+        // one, a node spanning the gap can instead contain the preceding token.
+        if next.is_some_and(|node| node.span().start <= start) {
+            return found;
         }
 
-        Some(node)
+        let preceding = n
+            .checked_sub(1)
+            .and_then(|n| self.indexes.get(n))
+            .and_then(|i| self.get(i.id))
+            .and_then(|node| smallest_containing(node, start, end));
+
+        match (found, preceding) {
+            (Some(a), Some(b))
+                if a.span().start <= b.span().start && b.span().end <= a.span().end =>
+            {
+                Some(b)
+            }
+            (None, b) => b,
+            (a, _) => a,
+        }
+    }
+}
+
+/// Climb from `node` to the first node which contains `start..end`, where
+/// `start` must lie strictly before the end of the node.
+fn smallest_containing<'a, T, F>(
+    mut node: Node<'a, T, F>,
+    start: F::Index,
+    end: F::Index,
+) -> Option<Node<'a, T, F>>
+where
+    T: Copy,
+    F: Flavor,
+{
+    loop {
+        let span = node.span();
+
+        if span.start <= start && start < span.end && end <= span.end {
+            return Some(node);
+        }
+
+        node = node.parent()?;
     }
 }
 

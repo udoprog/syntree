@@ -15,15 +15,11 @@ fn main() -> Result<()> {
 
     print::print(std::io::stdout(), &tree)?;
 
-    let child = tree.node_with_range(0..3).context("missing at 0..3")?;
-    assert_eq!(child.value(), "child");
-
-    let lit = tree
-        .first()
-        .and_then(|n| n.first())
-        .and_then(|n| n.first())
-        .context("expected lit")?;
+    let lit = tree.node_with_range(0..3).context("missing at 0..3")?;
     assert_eq!(lit.value(), "lit");
+
+    let child = lit.parent().context("missing child")?;
+    assert_eq!(child.value(), "child");
 
     let root = tree.first().context("missing root")?;
     assert_eq!(root.parent(), None);

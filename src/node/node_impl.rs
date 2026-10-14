@@ -457,8 +457,8 @@ where
     ///     }
     /// };
     ///
-    /// let node = tree.node_with_range(3..3).ok_or("missing 0")?;
-    /// assert_eq!(node.value(), "child4");
+    /// let node = tree.node_with_range(3..3).ok_or("missing 3")?;
+    /// assert_eq!(node.value(), "token1");
     ///
     /// let found = node.find_preceding(|n| n.span().end == 3 && n.has_children());
     /// let found = found.ok_or("expected preceding node")?;

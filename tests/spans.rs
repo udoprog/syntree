@@ -24,13 +24,13 @@ fn token_with_range_queries() -> Result<()> {
     let tree = b.build()?;
 
     let node = tree.node_with_range(1..2).context("missing 1..2")?;
-    assert_eq!(node.value(), "x");
+    assert_eq!(node.value(), "a");
     let node = tree.node_with_range(0..3).context("missing 0..3")?;
-    assert_eq!(node.value(), "x");
+    assert_eq!(node.value(), "a");
     let node = tree.node_with_range(4..5).context("missing 4..5")?;
-    assert_eq!(node.value(), "y");
+    assert_eq!(node.value(), "b");
     let node = tree.node_with_range(3..3).context("missing 3..3")?;
-    assert_eq!(node.value(), "y");
+    assert_eq!(node.value(), "b");
     let node = tree.node_with_range(2..4).context("missing 2..4")?;
     assert_eq!(node.value(), "root");
     assert!(tree.node_with_range(6..7).is_none());
@@ -170,6 +170,8 @@ fn close_at_with_at_root_updates_tree_span() -> Result<()> {
     assert_eq!(*find(&tree, "custom")?.span(), Span::new(0, 6));
     assert_eq!(*tree.span(), Span::new(0, 8));
     let node = tree.node_with_range(1..2).context("missing 1..2")?;
+    assert_eq!(node.value(), "lit");
+    let node = tree.node_with_range(0..6).context("missing 0..6")?;
     assert_eq!(node.value(), "custom");
     let node = tree.node_with_range(7..8).context("missing 7..8")?;
     assert_eq!(node.value(), "lit2");

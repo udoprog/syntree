@@ -24,7 +24,7 @@ fn clone_tree_default_flavor() -> Result<()> {
     let tree: Tree<&str, FlavorDefault> = syntree::tree! { "a" => { ("b", 1) } };
     let cloned = tree.clone();
     assert_eq!(tree, cloned);
-    assert_eq!(cloned.node_with_range(0..1).map(|n| n.value()), Some("a"));
+    assert_eq!(cloned.node_with_range(0..1).map(|n| n.value()), Some("b"));
     Ok(())
 }
 
@@ -33,10 +33,7 @@ fn clone_tree_custom_flavor() -> Result<()> {
     let tree = build::<FlavorU8>()?.build()?;
     let cloned = tree.clone();
     assert_eq!(tree, cloned);
-    assert_eq!(
-        cloned.node_with_range(0..3).map(|n| n.value()),
-        Some("root")
-    );
+    assert_eq!(cloned.node_with_range(0..3).map(|n| n.value()), Some("lit"));
     Ok(())
 }
 
