@@ -737,75 +737,7 @@ where
         c: &Checkpoint<F::Pointer>,
         data: T,
     ) -> Result<F::Pointer, Error<F::Error>> {
-        let (id, parent) = c.get();
-
-        if parent != self.parent {
-            return Err(Error::CloseAtError);
-        }
-
-        let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
-
-        let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, Span::point(self.cursor))?;
-
-            if new_id != id {
-                return Err(Error::MissingNode(new_id.get()));
-            }
-
-            self.sibling = Some(new_id);
-            return Ok(new_id);
-        };
-
-        let parent = links.parent.replace(new_id);
-        let prev = links.prev.take();
-
-        // Restructuring is necessary to calculate the full span of the newly
-        // inserted node and update parent references to point to the newly
-        // inserted node.
-        let (last, span) = if let Some(next) = links.next {
-            let span = links.span;
-            let (last, end) = restructure_close_at(&mut self.tree, new_id, next)?;
-            (last, Span::new(span.start, end))
-        } else {
-            (id, links.span)
-        };
-
-        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
-            if parent.first == Some(id) {
-                parent.first = Some(new_id);
-            }
-
-            if parent.last == Some(id) {
-                parent.last = Some(new_id);
-            }
-        }
-
-        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
-            prev.next = Some(new_id);
-        }
-
-        // If we're replacing the first node of the tree, the newly inserted
-        // node should be set as the first node.
-        let (first, _) = self.tree.links_mut();
-
-        if *first == Some(id) {
-            *first = Some(new_id);
-        }
-
-        // Do necessary accounting.
-        self.tree.push(Links {
-            data: Cell::new(data),
-            span,
-            prev,
-            parent,
-            next: None,
-            first: Some(id),
-            last: Some(last),
-        })?;
-
-        self.sibling = Some(new_id);
-        c.set(new_id, parent);
-        Ok(new_id)
+        self.close_at_inner(c, data, None)
     }
 
     /// Insert a node with a custom length.
@@ -845,6 +777,17 @@ where
         data: T,
         span: Span<F::Index>,
     ) -> Result<F::Pointer, Error<F::Error>> {
+        self.close_at_inner(c, data, Some(span))
+    }
+
+    /// Wrap everything since the checkpoint in a new node, using `span` or the
+    /// span covered by the wrapped nodes when it is `None`.
+    fn close_at_inner(
+        &mut self,
+        c: &Checkpoint<F::Pointer>,
+        data: T,
+        span: Option<Span<F::Index>>,
+    ) -> Result<F::Pointer, Error<F::Error>> {
         let (id, parent) = c.get();
 
         if parent != self.parent {
@@ -854,7 +797,7 @@ where
         let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, span)?;
+            let new_id = self.insert(data, span.unwrap_or(Span::point(self.cursor)))?;
 
             if new_id != id {
                 return Err(Error::MissingNode(new_id.get()));
@@ -866,43 +809,40 @@ where
 
         let parent = links.parent.replace(new_id);
         let prev = links.prev.take();
+        let start = links.span.start;
 
-        // Restructuring is necessary to calculate the full span of the newly
-        // inserted node and update parent references to point to the newly
-        // inserted node.
-        let last = if let Some(next) = links.next {
-            let (last, _) = restructure_close_at(&mut self.tree, new_id, next)?;
-            last
-        } else {
-            id
+        // Re-parent the siblings following the checkpointed node, which also
+        // gives the end of the wrapped span.
+        let (last, end) = match links.next {
+            Some(next) => restructure_close_at(&mut self.tree, new_id, next)?,
+            None => (id, links.span.end),
         };
 
-        if let Some(parent) = parent.and_then(|id| self.tree.get_mut(id)) {
-            if parent.first == Some(id) {
-                parent.first = Some(new_id);
+        // The wrapper takes every node from the checkpoint onwards, so it is
+        // always the last node at its level.
+        let level = match parent {
+            Some(parent) => self
+                .tree
+                .get_mut(parent)
+                .map(|links| (&mut links.first, &mut links.last)),
+            None => Some(self.tree.links_mut()),
+        };
+
+        if let Some((first, last)) = level {
+            if *first == Some(id) {
+                *first = Some(new_id);
             }
 
-            if parent.last == Some(id) {
-                parent.last = Some(new_id);
-            }
+            *last = Some(new_id);
         }
 
         if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
             prev.next = Some(new_id);
         }
 
-        // If we're replacing the first node of the tree, the newly inserted
-        // node should be set as the first node.
-        let (first, _) = self.tree.links_mut();
-
-        if *first == Some(id) {
-            *first = Some(new_id);
-        }
-
-        // Do necessary accounting.
         self.tree.push(Links {
             data: Cell::new(data),
-            span,
+            span: span.unwrap_or(Span::new(start, end)),
             prev,
             parent,
             next: None,
