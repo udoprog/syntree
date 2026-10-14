@@ -1,18 +1,15 @@
 //! Types associated with performing immutable editing of a tree.
 
-use core::cell::Cell;
+use core::marker::PhantomData;
 
 use alloc::vec::Vec;
 
 use std::collections::HashMap;
 
+use crate::builder::Builder;
 use crate::error::Error;
-use crate::flavor::{Flavor, Storage};
-use crate::index::{Index, TreeIndex};
-use crate::links::Links;
+use crate::flavor::Flavor;
 use crate::node::Node;
-use crate::pointer::Pointer;
-use crate::span::Span;
 use crate::tree::Tree;
 
 #[derive(Debug)]
@@ -79,8 +76,7 @@ where
     F: Flavor,
 {
     changes: HashMap<F::Pointer, Change>,
-    #[allow(unused)]
-    trees: Vec<Tree<T, F>>,
+    _marker: PhantomData<T>,
 }
 
 impl<T, F> ChangeSet<T, F>
@@ -175,98 +171,39 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, F>) -> Result<Tree<T, F>, Error<F::Error>> {
-        let mut output = Tree::<T, F>::with_capacity(tree.capacity())?;
+        let mut output = Builder::<T, F>::with_capacity(tree.capacity())?;
+        let mut parents = Vec::<Node<'_, T, F>>::new();
+        let mut current = tree.first();
 
-        let mut refactor = RefactorWalk {
-            parents: Vec::new(),
-            prev: None,
-        };
+        loop {
+            let Some(node) = current else {
+                let Some(parent) = parents.pop() else {
+                    break;
+                };
 
-        let mut cursor = F::Index::EMPTY;
-
-        // The specified sub-tree depth is being deleted.
-        let mut current = tree.first().map(|node| (node, false));
-
-        while let Some((mut node, mut first)) = current.take() {
-            let node_id = F::Pointer::new(output.len()).ok_or(Error::Overflow)?;
-
-            if let Some(change) = self.changes.get(&node_id) {
-                match change {
-                    Change::Delete => {
-                        let Some(skipped) = refactor.skip_subtree(node, first) else {
-                            continue;
-                        };
-
-                        node = skipped.node;
-                        first = skipped.first;
-                    }
-                }
-            }
-
-            if refactor.parents.is_empty() {
-                let (first, last) = output.links_mut();
-
-                if first.is_none() {
-                    *first = Some(node_id);
-                }
-
-                *last = Some(node_id);
-            }
-
-            // Since we are the first node in the sequence we're obligated to
-            // set the first child of the parent.
-            let prev = if first {
-                None
-            } else {
-                let prev = refactor.prev.take();
-
-                if let Some(prev) = prev.and_then(|id| output.get_mut(id)) {
-                    prev.next = Some(node_id);
-                }
-
-                prev
+                output.close()?;
+                current = parent.next();
+                continue;
             };
 
-            let span = if !node.has_children() && !node.span().is_empty() {
-                output.indexes_mut().push(TreeIndex {
-                    index: cursor,
-                    id: node_id,
-                })?;
-                let start = cursor;
-                cursor = cursor
-                    .checked_add_len(node.span().len())
-                    .ok_or(Error::Overflow)?;
-                Span::new(start, cursor)
-            } else {
-                Span::point(cursor)
-            };
-
-            let parent = refactor.parents.last().map(|n| n.1);
-
-            if let Some(parent) = parent.and_then(|id| output.get_mut(id)) {
-                if parent.first.is_none() {
-                    parent.first = Some(node_id);
-                }
-
-                parent.last = Some(node_id);
-                parent.span.end = span.end;
+            if let Some(Change::Delete) = self.changes.get(&node.id()) {
+                current = node.next();
+                continue;
             }
 
-            output.push(Links {
-                data: Cell::new(node.value()),
-                span,
-                parent,
-                prev,
-                next: None,
-                first: None,
-                last: None,
-            })?;
-
-            current = refactor.step(node, node_id);
+            if let Some(first) = node.first() {
+                output.open(node.value())?;
+                parents.push(node);
+                current = Some(first);
+            } else {
+                // Leaves are laid out back-to-back, so removed spans are
+                // compacted away.
+                output.token(node.value(), node.span().len())?;
+                current = node.next();
+            }
         }
 
-        output.span_mut().end = cursor;
-        Ok(output)
+        output.build()
     }
 }
 
@@ -279,68 +216,7 @@ where
     fn default() -> Self {
         Self {
             changes: HashMap::new(),
-            trees: Vec::new(),
+            _marker: PhantomData,
         }
-    }
-}
-
-/// The state of the skipped subtree.
-struct Skipped<'a, T, F>
-where
-    T: Copy,
-    F: Flavor,
-{
-    node: Node<'a, T, F>,
-    first: bool,
-}
-
-struct RefactorWalk<'a, T, F>
-where
-    T: Copy,
-    F: Flavor,
-{
-    parents: Vec<(Node<'a, T, F>, F::Pointer)>,
-    prev: Option<F::Pointer>,
-}
-
-impl<'a, T, F> RefactorWalk<'a, T, F>
-where
-    T: Copy,
-    F: Flavor,
-{
-    fn skip_subtree(&mut self, node: Node<'a, T, F>, first: bool) -> Option<Skipped<'a, T, F>> {
-        if let Some(next) = node.next() {
-            return Some(Skipped { node: next, first });
-        }
-
-        let (node, parent_id) = self.parents.pop()?;
-        self.prev = Some(parent_id);
-        Some(Skipped { node, first: false })
-    }
-
-    /// Advance the iteration.
-    fn step(
-        &mut self,
-        node: Node<'a, T, F>,
-        node_id: F::Pointer,
-    ) -> Option<(Node<'a, T, F>, bool)> {
-        if let Some(next) = node.first() {
-            self.parents.push((node, node_id));
-            return Some((next, true));
-        }
-
-        if let Some(next) = node.next() {
-            self.prev = Some(node_id);
-            return Some((next, false));
-        }
-
-        while let Some((parent, prev_id)) = self.parents.pop() {
-            if let Some(next) = parent.next() {
-                self.prev = Some(prev_id);
-                return Some((next, false));
-            }
-        }
-
-        None
     }
 }

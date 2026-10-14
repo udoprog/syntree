@@ -175,6 +175,17 @@ where
         }
     }
 
+    #[cfg(feature = "std")]
+    pub(crate) fn with_capacity(capacity: usize) -> Result<Self, Error<F::Error>> {
+        Ok(Builder {
+            tree: Tree::with_capacity(capacity)?,
+            parent: None,
+            checkpoint: None,
+            sibling: None,
+            cursor: F::Index::EMPTY,
+        })
+    }
+
     /// Get a reference to the current cursor position of the syntax tree.
     ///
     /// The cursor position is the position in which it's been advanced so far
