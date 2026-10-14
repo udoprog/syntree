@@ -328,15 +328,39 @@
 //! queried. Something which `rowan` solves for you, but `syntree` leaves as an
 //! exercise to the reader.
 //!
+//! <br>
+//!
+//! ## Features
+//!
+//! * `alloc` (default) stores trees in `Vec`s.
+//! * `std` (default) enables [`edit`] and [`print`], and implies `alloc`.
+//!
+//! Without `alloc` the default storage is [`EmptyVec`], which discards
+//! everything pushed into it. A tree built with [`Builder::new`] or any flavor
+//! using default storage then holds nothing, and building it fails with an
+//! error such as [`Error::MissingNode`]. To build trees without `alloc`,
+//! declare a flavor through [`flavor!`] with its own `type Storage<T>` and
+//! `type Indexes`, such as a fixed-capacity array implementing [`Storage`].
+//!
+//! The crate always needs an allocator, since checkpoints are reference
+//! counted.
+//!
 //! [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
+//! [`Builder::new`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new
 //! [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
 //! [`close`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.close
+//! [`edit`]: https://docs.rs/syntree/latest/syntree/edit/index.html
 //! [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
+//! [`EmptyVec`]: https://docs.rs/syntree/latest/syntree/struct.EmptyVec.html
+//! [`Error::MissingNode`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.MissingNode
 //! [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
+//! [`flavor!`]: https://docs.rs/syntree/latest/syntree/macro.flavor.html
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
+//! [`print`]: https://docs.rs/syntree/latest/syntree/print/index.html
 //! [`rowan`]: https://docs.rs/rowan/latest/rowan/
 //! [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
+//! [`Storage`]: https://docs.rs/syntree/latest/syntree/trait.Storage.html
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html

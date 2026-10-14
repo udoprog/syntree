@@ -37,10 +37,13 @@ jobs:
           - ""
           - "--no-default-features --features alloc"
           - "--no-default-features --features alloc,std"
+          - "--no-default-features"
+          - "--no-default-features --features std"
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo build ${{matrix.args}}
+    - run: cargo test --test no_alloc ${{matrix.args}}
 
   clippy:
     runs-on: ubuntu-latest

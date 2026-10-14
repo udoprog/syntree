@@ -20,7 +20,7 @@ autobenches = false
 [features]
 default = ["alloc", "std"]
 alloc = []
-std = []
+std = ["alloc"]
 
 [dev-dependencies]
 anyhow = "1.0.70"
