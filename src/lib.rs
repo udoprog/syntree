@@ -137,27 +137,29 @@
 //!
 //! ## Compact or empty spans
 //!
-//! Spans by default uses `u32`-based indexes and `usize`-based pointers, this
-//! can be changed from its default using the [`Builder::new_with`] constructor:
+//! The [`Flavor`] of a tree decides the types used for its spans and pointers.
+//! The default flavor, [`FlavorDefault`], uses `u32` indexes for spans and
+//! `usize`-based pointers to address nodes. A custom flavor declared with
+//! [`flavor!`] can change both, and is used through constructors such as
+//! [`Builder::new_with`]:
+//!
+//! * `type Index` is the type of span positions: `u32`, `usize`, or [`Empty`]
+//!   for no spans at all (see below).
+//! * `type Width` is the width of node pointers, such as `u8`, `u16`, `u32`
+//!   or `usize`. It bounds how many elements a tree can hold, adding more
+//!   fails with [`Error::Overflow`].
 //!
 //! ```
-//! use syntree::{Builder, Span, Tree};
+//! use syntree::{Builder, Span};
 //!
 //! syntree::flavor! {
-//!     struct FlavorU16 {
-//!         type Index = usize;
+//!     struct FlavorCompact {
+//!         type Index = u32;
 //!         type Width = u16;
 //!     }
 //! };
 //!
-//! syntree::flavor! {
-//!     struct FlavorU32 {
-//!         type Index = usize;
-//!         type Width = u32;
-//!     }
-//! };
-//!
-//! let mut tree = Builder::<_, FlavorU16>::new_with();
+//! let mut tree = Builder::<_, FlavorCompact>::new_with();
 //!
 //! tree.open("root")?;
 //! tree.open("child")?;
@@ -169,7 +171,9 @@
 //!
 //! let tree = tree.build()?;
 //!
-//! let expected: Tree<_, FlavorU32> = syntree::tree_with! {
+//! // Trees of different flavors compare equal if their structure, values and
+//! // spans do.
+//! let expected = syntree::tree! {
 //!     "root" => {
 //!         "child" => { ("token", 100) },
 //!         "child2" => {}
@@ -181,8 +185,11 @@
 //! # Ok::<_, Box<dyn core::error::Error>>(())
 //! ```
 //!
-//! Combined with [`Empty`], this allows for building trees without spans, if
-//! that is something you want to do:
+//! Using [`Empty`] as the index allows for building trees without spans, if
+//! that is something you want to do. A tree also keeps the indexes of its
+//! tokens in `type Indexes` for lookups such as [`Tree::node_with_span`].
+//! Without spans there is nothing to look up, so they can be discarded by
+//! storing them in [`EmptyVec`]:
 //!
 //! ```
 //! use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
@@ -241,7 +248,7 @@
 //!     /// A string referenced somewhere else using the provided ID.
 //!     Synthetic(usize),
 //!     /// A literal string from the source.
-//!     Lit,
+//!     Literal,
 //!     /// Whitespace.
 //!     Whitespace,
 //!     /// A lexer error.
@@ -271,7 +278,7 @@
 //!
 //! ```text
 //! Tree:
-//! Lit@0..5 "Hello"
+//! Literal@0..5 "Hello"
 //! Whitespace@5..6 " "
 //! Synthetic(0)@6..12 "$world"
 //! Eval:
@@ -352,8 +359,11 @@
 //! [`edit`]: https://docs.rs/syntree/latest/syntree/edit/index.html
 //! [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
 //! [`EmptyVec`]: https://docs.rs/syntree/latest/syntree/struct.EmptyVec.html
+//! [`Error::Overflow`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.Overflow
 //! [`Error::MissingNode`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.MissingNode
 //! [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
+//! [`Flavor`]: https://docs.rs/syntree/latest/syntree/trait.Flavor.html
+//! [`FlavorDefault`]: https://docs.rs/syntree/latest/syntree/struct.FlavorDefault.html
 //! [`flavor!`]: https://docs.rs/syntree/latest/syntree/macro.flavor.html
 //! [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 //! [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
@@ -363,6 +373,7 @@
 //! [`Storage`]: https://docs.rs/syntree/latest/syntree/trait.Storage.html
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
+//! [`Tree::node_with_span`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html#method.node_with_span
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 //! [any-syntax]: https://github.com/udoprog/syntree/blob/main/examples/iterator.rs
@@ -390,6 +401,7 @@ mod macros;
 mod builder;
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod edit;
 
 mod empty;

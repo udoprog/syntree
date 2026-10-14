@@ -12,8 +12,13 @@ use crate::tree::Tree;
 
 /// Pretty-print a tree without a source.
 ///
-/// This will replace all source references with `+`. If you have a source
-/// available you can use [`print_with_source`] instead.
+/// Each element is printed on its own line as its value and span, indented
+/// by depth. Elements without children are followed by a source reference,
+/// which this function replaces with `+`. If you have a source available you
+/// can use [`print_with_source`] instead.
+///
+/// Elements are told apart by whether they have children, so a node without
+/// children is printed exactly like a token.
 ///
 /// # Examples
 ///
@@ -71,6 +76,14 @@ where
 }
 
 /// Pretty-print a tree with the source spans printed.
+///
+/// This prints like [`print`], except that the source reference of each
+/// element without children is the text of `source` covered by its span. If
+/// the span is out of range of `source` or does not fall on character
+/// boundaries, `+` is printed instead.
+///
+/// Elements are told apart by whether they have children, so a node without
+/// children is printed exactly like a token.
 ///
 /// # Examples
 ///

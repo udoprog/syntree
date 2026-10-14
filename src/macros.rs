@@ -1,5 +1,31 @@
 /// Helper macro for building a tree in place.
 ///
+/// The tree is built with [`Builder::new`], so it uses the default flavor. Use
+/// [`tree_with!`] to build a tree of another flavor.
+///
+/// Each element is one of:
+/// * `value` a token with an empty span, see [`Builder::token_empty`].
+/// * `(value, len)` a token of length `len`, see [`Builder::token`].
+/// * `(value, (start, end))` a token with an explicit span, see
+///   [`Builder::token_with`].
+/// * `value => { .. }` a node whose span covers its children, see
+///   [`Builder::open`].
+/// * `(value, (start, end)) => { .. }` a node with an explicit span, see
+///   [`Builder::open_with`].
+///
+/// Elements are separated by commas. The macro expands to builder calls
+/// followed by `?`, so it can only be used in a function (or doctest) returning
+/// a `Result` whose error type implements `From<Error<F::Error>>`, where `F` is
+/// the flavor of the tree.
+///
+/// [`Builder::new`]: crate::Builder::new
+/// [`Builder::token_empty`]: crate::Builder::token_empty
+/// [`Builder::token`]: crate::Builder::token
+/// [`Builder::token_with`]: crate::Builder::token_with
+/// [`Builder::open`]: crate::Builder::open
+/// [`Builder::open_with`]: crate::Builder::open_with
+/// [`tree_with!`]: crate::tree_with
+///
 /// # Examples
 ///
 /// ```
@@ -44,6 +70,25 @@
 /// };
 ///
 /// assert_eq!(expected, tree);
+/// # Ok::<_,  Box<dyn core::error::Error>>(())
+/// ```
+///
+/// Explicit spans:
+///
+/// ```
+/// use syntree::Span;
+///
+/// let tree = syntree::tree! {
+///     ("root", (0, 10)) => {
+///         ("token", (2, 5)),
+///     }
+/// };
+///
+/// let root = tree.first().ok_or("missing root")?;
+/// assert_eq!(root.span(), Span::new(0, 10));
+///
+/// let token = root.first().ok_or("missing token")?;
+/// assert_eq!(token.span(), Span::new(2, 5));
 /// # Ok::<_,  Box<dyn core::error::Error>>(())
 /// ```
 #[macro_export]
@@ -110,7 +155,19 @@ macro_rules! tree {
     }};
 }
 
-/// Helper macro for building a tree in place with a custom span.
+/// Helper macro for building a tree in place with a custom flavor.
+///
+/// This takes the same input as [`tree!`], but builds the tree with
+/// [`Builder::new_with`]. The flavor is inferred from the type the result is
+/// used as, so it usually needs a type annotation such as
+/// `let tree: Tree<_, MyFlavor> = ..`.
+///
+/// Like [`tree!`], it expands to builder calls followed by `?`, so it can only
+/// be used in a function returning a `Result` whose error type implements
+/// `From<Error<F::Error>>`, where `F` is the flavor of the tree.
+///
+/// [`tree!`]: crate::tree
+/// [`Builder::new_with`]: crate::Builder::new_with
 ///
 /// # Examples
 ///
