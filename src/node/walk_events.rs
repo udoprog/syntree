@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -168,9 +169,76 @@ where
         }
     }
 
-    /// Get current depth.
+    /// Get the depth of the node that the next call to [`next`] returns,
+    /// relative to the node the walk started at, which has depth `0`.
+    ///
+    /// A node emitted with [`Event::Up`] has the depth of the node being
+    /// returned to. When a walk started at a node leaves that node's subtree,
+    /// for example by climbing up to its parent, the depth becomes negative.
+    ///
+    /// [`next`]: Iterator::next
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::node::Event::*;
+    ///
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "c1" => {
+    ///             "c2" => {},
+    ///         },
+    ///         "c3" => {}
+    ///     }
+    /// };
+    ///
+    /// let mut it = tree.walk_events();
+    /// let mut out = Vec::new();
+    ///
+    /// loop {
+    ///     let depth = it.depth();
+    ///     let Some((event, node)) = it.next() else { break };
+    ///     out.push((depth, event, node.value()));
+    /// }
+    ///
+    /// assert_eq!(
+    ///     out,
+    ///     [
+    ///         (0, Next, "root"),
+    ///         (1, Down, "c1"),
+    ///         (2, Down, "c2"),
+    ///         (1, Up, "c1"),
+    ///         (1, Next, "c3"),
+    ///         (0, Up, "root"),
+    ///     ]
+    /// );
+    ///
+    /// let c1 = tree.first().and_then(|n| n.first()).ok_or("missing c1")?;
+    ///
+    /// let mut it = c1.walk_events();
+    /// let mut out = Vec::new();
+    ///
+    /// loop {
+    ///     let depth = it.depth();
+    ///     let Some((event, node)) = it.next() else { break };
+    ///     out.push((depth, event, node.value()));
+    /// }
+    ///
+    /// assert_eq!(
+    ///     out,
+    ///     [
+    ///         (0, Next, "c1"),
+    ///         (1, Down, "c2"),
+    ///         (0, Up, "c1"),
+    ///         (0, Next, "c3"),
+    ///         (-1, Up, "root"),
+    ///     ]
+    /// );
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
     #[inline]
-    pub(crate) const fn depth(&self) -> isize {
+    #[must_use]
+    pub const fn depth(&self) -> isize {
         self.depth
     }
 
@@ -243,6 +311,11 @@ where
         let node = Node::new(links, self.tree);
         Some((event, node))
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::from(self.node.is_some()), None)
+    }
 }
 
 impl<T, F> FusedIterator for WalkEvents<'_, T, F>
@@ -250,4 +323,22 @@ where
     T: Copy,
     F: Flavor,
 {
+}
+
+impl<T, F> fmt::Debug for WalkEvents<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let next = self.node.and_then(|(id, event)| {
+            let links = self.tree.get(id.get())?;
+            Some((event, Node::<T, F>::new(links, self.tree)))
+        });
+
+        f.debug_struct("WalkEvents")
+            .field("next", &next)
+            .field("depth", &self.depth)
+            .finish()
+    }
 }

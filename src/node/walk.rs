@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -461,6 +462,37 @@ where
 ///
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
+///
+/// The iterator can be named, for example to store it in a struct:
+///
+/// ```
+/// use syntree::node::Inside;
+/// use syntree::FlavorDefault;
+///
+/// struct Values<'a> {
+///     iter: Inside<'a, &'static str, FlavorDefault>,
+/// }
+///
+/// impl Iterator for Values<'_> {
+///     type Item = &'static str;
+///
+///     fn next(&mut self) -> Option<Self::Item> {
+///         Some(self.iter.next()?.value())
+///     }
+/// }
+///
+/// let tree = syntree::tree! {
+///     "n1" => {
+///         "n2" => {}
+///     },
+///     "n3" => {}
+/// };
+///
+/// let n1 = tree.first().ok_or("missing n1")?;
+/// let values = Values { iter: n1.walk().inside() };
+/// assert_eq!(values.collect::<Vec<_>>(), ["n1", "n2"]);
+/// # Ok::<_, Box<dyn core::error::Error>>(())
+/// ```
 pub struct Inside<'a, T, F>
 where
     T: Copy,
@@ -525,5 +557,41 @@ where
             iter: WalkEvents::default(),
             bounded: true,
         }
+    }
+}
+
+impl<T, F> fmt::Debug for Walk<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Walk")
+            .field("events", &self.iter)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<T, F> fmt::Debug for WithDepths<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WithDepths")
+            .field("events", &self.iter)
+            .finish()
+    }
+}
+
+impl<T, F> fmt::Debug for Inside<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Inside")
+            .field("events", &self.iter)
+            .finish_non_exhaustive()
     }
 }

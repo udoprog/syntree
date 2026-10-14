@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -128,6 +129,11 @@ where
         self.node = node.parent();
         Some(node)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::from(self.node.is_some()), None)
+    }
 }
 
 impl<T, F> FusedIterator for Ancestors<'_, T, F>
@@ -156,5 +162,17 @@ where
     #[inline]
     fn default() -> Self {
         Self { node: None }
+    }
+}
+
+impl<T, F> fmt::Debug for Ancestors<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ancestors")
+            .field("next", &self.node)
+            .finish()
     }
 }

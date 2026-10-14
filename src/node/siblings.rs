@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -158,6 +159,11 @@ where
         self.links = links.next.and_then(|id| self.tree.get(id.get()));
         Some(Node::new(links, self.tree))
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::from(self.links.is_some()), Some(self.tree.len()))
+    }
 }
 
 impl<T, F> FusedIterator for Siblings<'_, T, F>
@@ -192,5 +198,16 @@ where
             tree: &[],
             links: None,
         }
+    }
+}
+
+impl<T, F> fmt::Debug for Siblings<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let next = self.links.map(|links| Node::<T, F>::new(links, self.tree));
+        f.debug_struct("Siblings").field("next", &next).finish()
     }
 }

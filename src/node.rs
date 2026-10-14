@@ -13,5 +13,5 @@ pub use self::children::Children;
 pub(crate) use self::node_impl::Node;
 pub use self::siblings::Siblings;
 pub use self::skip_tokens::SkipTokens;
-pub use self::walk::{Walk, WithDepths};
+pub use self::walk::{Inside, Walk, WithDepths};
 pub use self::walk_events::{Event, WalkEvents};

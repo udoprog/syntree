@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -159,5 +160,16 @@ where
         Self {
             iter: Default::default(),
         }
+    }
+}
+
+impl<U> fmt::Debug for SkipTokens<U>
+where
+    U: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SkipTokens")
+            .field("iter", &self.iter)
+            .finish()
     }
 }

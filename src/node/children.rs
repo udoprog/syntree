@@ -1,3 +1,4 @@
+use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
@@ -167,6 +168,12 @@ where
 
         Some(Node::new(node, self.tree))
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let lower = self.first.is_some() && self.last.is_some();
+        (usize::from(lower), Some(self.tree.len()))
+    }
 }
 
 impl<T, F> DoubleEndedIterator for Children<'_, T, F>
@@ -221,5 +228,23 @@ where
             first: None,
             last: None,
         }
+    }
+}
+
+impl<T, F> fmt::Debug for Children<'_, T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let node = |id: Option<F::Pointer>| {
+            let links = self.tree.get(id?.get())?;
+            Some(Node::<T, F>::new(links, self.tree))
+        };
+
+        f.debug_struct("Children")
+            .field("first", &node(self.first))
+            .field("last", &node(self.last))
+            .finish()
     }
 }
