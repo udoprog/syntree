@@ -17,15 +17,22 @@ pub use self::checkpoint::Checkpoint;
 ///
 /// # Type parameters and bounds
 ///
-/// The three type parameters of the tree determines the following properties:
+/// The two type parameters of the builder determine the following properties:
 /// * `T` is the data stored in the tree.
-/// * `I` determines the numerical bounds of spans stored in the tree through
-///   the [Index] trait, if set to [Empty][crate::Empty] the tree does not store
-///   any spans.
-/// * `W` determines the bounds of pointers in the tree through the [Width]
-///   trait, this decides how many elements that can be stored in the tree.
+/// * `F` is the [Flavor], declared with [`flavor!`][crate::flavor!]. Its
+///   [`Index`][Flavor::Index] determines the numerical bounds of spans, and if
+///   set to [Empty][crate::Empty] the tree does not store any spans. Its
+///   [`Width`][Flavor::Width] determines the bounds of pointers in the tree,
+///   which decides how many nodes can be stored in it. It also selects the
+///   [`Storage`][Flavor::Storage] used and its error type.
 ///
 /// To use the default values, use the [Builder::new][Builder::new] constructor.
+///
+/// # Errors
+///
+/// Besides the errors documented on each method, any method which adds a node
+/// or token can fail with [`Error::Flavor`] if the flavor's storage fails to
+/// grow.
 ///
 /// # Examples
 ///
@@ -231,25 +238,25 @@ where
     /// # Examples
     ///
     /// ```
+    /// use syntree::Span;
+    ///
     /// let mut tree = syntree::Builder::new();
     ///
-    /// assert_eq!(*tree.cursor(), 0);
     /// tree.open("child")?;
-    /// assert_eq!(*tree.cursor(), 0);
     /// tree.token("lit", 4)?;
-    /// assert_eq!(*tree.cursor(), 4);
+    /// // Skip two units of input which are not part of the tree.
+    /// tree.set_cursor(6);
+    /// assert_eq!(*tree.cursor(), 6);
+    /// tree.token("lit", 2)?;
     /// tree.close()?;
-    /// assert_eq!(*tree.cursor(), 4);
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected = syntree::tree! {
-    ///     "child" => {
-    ///         ("lit", 4)
-    ///     }
-    /// };
+    /// let child = tree.first().ok_or("missing child")?;
+    /// assert_eq!(child.span(), &Span::new(0, 8));
     ///
-    /// assert_eq!(tree, expected);
+    /// let spans = child.children().map(|n| *n.span()).collect::<Vec<_>>();
+    /// assert_eq!(spans, [Span::new(0, 4), Span::new(6, 8)]);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn set_cursor(&mut self, cursor: F::Index) {
@@ -259,7 +266,7 @@ where
     /// Start a node with the given `data`.
     ///
     /// This pushes a new link with the given type onto the stack which links
-    /// itself onto the last sibling node that ben introduced either through
+    /// itself onto the last sibling node that was introduced either through
     /// [`Builder::close`], [`Builder::close_at`], or
     /// [`Builder::close_at_with`].
     ///
@@ -293,7 +300,7 @@ where
     /// Start a node with the given `data` and span.
     ///
     /// This pushes a new link with the given type onto the stack which links
-    /// itself onto the last sibling node that ben introduced either through
+    /// itself onto the last sibling node that was introduced either through
     /// [`Builder::close`], [`Builder::close_at`] or [`Builder::close_at_with`].
     ///
     /// This does not advance the cursor position, in order to fix tree
@@ -599,11 +606,6 @@ where
     /// Errors with [`Error::Overflow`] in case we run out of node
     /// identifiers.
     ///
-    /// # Panics
-    ///
-    /// This panics if the number of nodes are too many to fit in a vector on
-    /// your architecture. This corresponds to [`usize::MAX`].
-    ///
     /// # Examples
     ///
     /// ```
@@ -810,12 +812,13 @@ where
         let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
         let Some(links) = self.tree.get_mut(id) else {
-            let new_id = self.insert(data, span.unwrap_or(Span::point(self.cursor)))?;
-
-            if new_id != id {
-                return Err(Error::MissingNode(new_id.get()));
+            // Nothing was added since the checkpoint, so wrap an empty node.
+            // Any other missing id means the checkpoint is from another tree.
+            if id != new_id {
+                return Err(Error::MissingNode(id.get()));
             }
 
+            let new_id = self.insert(data, span.unwrap_or(Span::point(self.cursor)))?;
             self.sibling = Some(new_id);
             return Ok(new_id);
         };

@@ -14,13 +14,14 @@ use crate::{Flavor, Index, Pointer, Span, Storage, Width};
 ///
 /// # Type parameters and bounds
 ///
-/// The three type parameters of the tree determines the following properties:
+/// The two type parameters of the tree determine the following properties:
 /// * `T` is the data stored in the tree.
-/// * `I` determines the numerical bounds of spans stored in the tree through
-///   the [Index] trait, if set to [Empty][crate::Empty] the tree does not store
-///   any spans.
-/// * `W` determines the bounds of pointers in the tree through the [Width]
-///   trait, this decides how many elements that can be stored in the tree.
+/// * `F` is the [Flavor], declared with [`flavor!`][crate::flavor!]. Its
+///   [`Index`][Flavor::Index] determines the numerical bounds of spans, and if
+///   set to [Empty][crate::Empty] the tree does not store any spans. Its
+///   [`Width`][Flavor::Width] determines the bounds of pointers in the tree,
+///   which decides how many nodes can be stored in it. It also selects the
+///   [`Storage`][Flavor::Storage] used and its error type.
 ///
 /// To use the default values, use the [Builder::new][crate::Builder::new]
 /// constructor.
@@ -133,7 +134,7 @@ where
     }
 
     /// Check if the current tree is empty. In that it doesn't have any
-    /// childrens at the root of the tree.
+    /// children at the root of the tree.
     ///
     /// # Examples
     ///
@@ -266,7 +267,7 @@ where
         self.tree.get_mut(index.get())
     }
 
-    /// Get the ndoe at the given index.
+    /// Get the node at the given index.
     ///
     /// Note that an id might be re-used across different trees. This behavior
     /// is never unsafe, but is not well-defined.

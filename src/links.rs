@@ -26,7 +26,7 @@ where
     pub(crate) last: Option<P>,
 }
 
-// These tests might not always pass, due to alignment. But it's nice to ensure
+// Links should be no larger than their fields, give or take alignment padding.
 #[test]
 fn test_size() {
     macro_rules! test {

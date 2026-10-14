@@ -9,6 +9,12 @@ mod sealed {
 
 /// A pointer type that is derived from the pointer [Width].
 pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::Sealed {
+    /// Construct a pointer without checking that `value` is in bounds.
+    ///
+    /// # Safety
+    ///
+    /// The `value` must be in bounds for the pointer type, that is
+    /// [`Pointer::new(value)`][Pointer::new] must return `Some`.
     #[doc(hidden)]
     unsafe fn new_unchecked(value: usize) -> Self;
 
@@ -49,9 +55,6 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
 ///
 /// This is determined by a primitive unsigned types such as `u32` or `usize`.
 pub trait Width: self::sealed::Sealed {
-    #[doc(hidden)]
-    const EMPTY: Self;
-
     /// The pointer type associated with a specific width.
     ///
     /// # Examples
@@ -77,7 +80,6 @@ pub trait Width: self::sealed::Sealed {
 macro_rules! implement {
     ($ty:ident, $non_zero:ident, $e:ident) => {
         impl Width for $ty {
-            const EMPTY: Self = 0;
             type Pointer = $e;
         }
 
@@ -147,12 +149,6 @@ macro_rules! implement {
         /// # Ok::<_, Box<dyn core::error::Error>>(())
         /// ```
         impl crate::pointer::Pointer for $e {
-            /// Unsafely construct a pointer value.
-            ///
-            /// # Safety
-            ///
-            /// Caller must ensure that the value is a legal value for the
-            /// target pointer type.
             #[inline]
             unsafe fn new_unchecked(value: usize) -> Self {
                 let value = value as $ty;
@@ -182,9 +178,7 @@ macro_rules! implement {
         impl Default for $e {
             #[inline]
             fn default() -> Self {
-                // SAFETY: we know that 1 is a legal value and that it
-                // corresponds to zero.
-                unsafe { Self($non_zero::new_unchecked(1)) }
+                Self($non_zero::MIN)
             }
         }
 

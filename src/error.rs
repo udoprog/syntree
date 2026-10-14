@@ -65,9 +65,10 @@ pub enum Error<E = Infallible> {
     CloseAtError,
     /// Numerical overflow.
     ///
-    /// This only happens under extreme circumstances or if a feature is enabled
-    /// which narrows the width of an identifier to the degree that this error
-    /// is easier to accomplish.
+    /// This happens when the tree has more nodes than the flavor's
+    /// [`Width`][crate::Flavor::Width] can address, or when a span would exceed
+    /// its [`Index`][crate::Flavor::Index]. A narrow width such as `u8` makes
+    /// this easy to reach.
     ///
     /// # Examples
     ///
@@ -112,7 +113,7 @@ pub enum Error<E = Infallible> {
     ///
     /// let c = b.checkpoint()?;
     ///
-    /// assert_eq!(a.close_at(&c, "operation"), Err(Error::MissingNode(0)));
+    /// assert_eq!(a.close_at(&c, "operation"), Err(Error::MissingNode(1)));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     MissingNode(usize),

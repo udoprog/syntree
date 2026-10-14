@@ -540,8 +540,8 @@ where
         let base = self.tree.as_ptr() as usize;
         let id = (current - base) / size_of::<Links<T, F::Index, F::Pointer>>();
         debug_assert!(id < self.tree.len(), "identifier outside of tree length");
-        // SAFETY: It's impossible to construct a node with an offset which is
-        // not a legal `NonMax`.
+        // SAFETY: `id < self.tree.len()`, and every push into the tree storage
+        // is gated by `Pointer::new(len)`, so `Pointer::new(id)` is `Some`.
         unsafe { F::Pointer::new_unchecked(id) }
     }
 }

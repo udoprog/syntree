@@ -74,7 +74,7 @@ where
     }
 }
 
-/// The parent of the checkpoint.
+/// The shared state of a checkpoint.
 #[derive(Debug, Clone, Copy)]
 struct Inner<P> {
     // The node being wrapped by the checkpoint.

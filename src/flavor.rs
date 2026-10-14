@@ -16,7 +16,7 @@ where
     /// Empty storage.
     const EMPTY: Self;
 
-    /// Constructstorage with the given capacity.
+    /// Construct storage with the given capacity.
     fn with_capacity(capacity: usize) -> Result<Self, Self::Error>;
 
     /// Get the capacity of the underlying storage.
