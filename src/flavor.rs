@@ -51,9 +51,26 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 
 /// Declare a new flavor.
 ///
-/// The available type parameters are:
-/// * `type Index` which declares the index to use.
-/// * `type Width` which declares the width to use, defaults to `usize`.
+/// The associated types are declared in this order, and all but `Index` are
+/// optional:
+/// * `type Index = ..;` the [Index] used for spans.
+/// * `type Width = ..;` the [Width] which bounds pointers, defaults to `usize`.
+/// * `type Error = ..;` the error raised by storage, defaults to
+///   [`Infallible`].
+/// * `type Storage<T> = ..;` the [Storage] used for tree data, defaults to
+///   `Vec<T>` (or [`EmptyVec<T>`] without the `alloc` feature).
+/// * `type Indexes = ..;` the [Storage] of [`TreeIndex<Self>`], defaults to
+///   `Vec<TreeIndex<Self>>` (or [`EmptyVec`] without the `alloc` feature),
+///   regardless of `Storage`.
+///
+/// The `Error` of both `Storage` and `Indexes` must be the flavor's `Error`,
+/// so a flavor with a custom `Error` needs to declare both of them. Errors
+/// raised by storage are reported as [`Error::Flavor`].
+///
+/// [`Infallible`]: core::convert::Infallible
+/// [`EmptyVec<T>`]: crate::EmptyVec
+/// [`EmptyVec`]: crate::EmptyVec
+/// [`Error::Flavor`]: crate::Error::Flavor
 ///
 /// # Examples
 ///
@@ -74,6 +91,74 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 ///     }
 /// }
 /// ```
+///
+/// A flavor with custom fallible storage:
+///
+/// ```
+/// use core::ops::{Deref, DerefMut};
+/// use syntree::{Builder, Error, Storage, TreeIndex};
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Full;
+///
+/// /// Storage which holds at most one item.
+/// struct One<T>(Option<T>);
+///
+/// impl<T> Deref for One<T> {
+///     type Target = [T];
+///
+///     fn deref(&self) -> &[T] {
+///         self.0.as_slice()
+///     }
+/// }
+///
+/// impl<T> DerefMut for One<T> {
+///     fn deref_mut(&mut self) -> &mut [T] {
+///         self.0.as_mut_slice()
+///     }
+/// }
+///
+/// impl<T> Storage<T> for One<T> {
+///     type Error = Full;
+///
+///     const EMPTY: Self = One(None);
+///
+///     fn with_capacity(capacity: usize) -> Result<Self, Full> {
+///         if capacity > 1 {
+///             return Err(Full);
+///         }
+///
+///         Ok(One(None))
+///     }
+///
+///     fn capacity(&self) -> usize {
+///         1
+///     }
+///
+///     fn push(&mut self, item: T) -> Result<(), Full> {
+///         if self.0.is_some() {
+///             return Err(Full);
+///         }
+///
+///         self.0 = Some(item);
+///         Ok(())
+///     }
+/// }
+///
+/// syntree::flavor! {
+///     struct FlavorOne {
+///         type Index = u32;
+///         type Error = Full;
+///         type Storage<T> = One<T>;
+///         type Indexes = One<TreeIndex<Self>>;
+///     }
+/// }
+///
+/// let mut tree: Builder<_, FlavorOne> = Builder::new_with();
+/// tree.token("a", 1)?;
+/// assert_eq!(tree.token("b", 1), Err(Error::Flavor(Full)));
+/// # Ok::<_, Error<Full>>(())
+/// ```
 #[macro_export]
 macro_rules! flavor {
     (
@@ -81,7 +166,8 @@ macro_rules! flavor {
         $vis:vis struct $ty:ident {
             type Index = $index:ty;
             $(type Width = $width:ty;)?
-            $(type Storage = $storage:ty;)?
+            $(type Error = $error:ty;)?
+            $(type Storage<$t:ident> = $storage:ty;)?
             $(type Indexes = $indexes:ty;)?
         }
     ) => {
@@ -91,20 +177,24 @@ macro_rules! flavor {
         $vis struct $ty;
 
         impl $crate::Flavor for $ty {
-            type Error = core::convert::Infallible;
+            type Error = $crate::flavor!(@error $($error)*);
             type Index = $index;
             type Length = <$index as $crate::Index>::Length;
             type Width = $crate::flavor!(@width $($width)*);
             type Pointer = $crate::flavor!(@pointer $($width)*);
-            type Storage<T> = $crate::macro_support::Vec<T>;
+            $crate::flavor!(@storage $($t $storage)*);
             type Indexes = $crate::flavor!(@indexes $($indexes)*);
         }
     };
 
+    (@error $ty:ty) => { $ty };
+    (@error) => { ::core::convert::Infallible };
     (@width $ty:ty) => { $ty };
     (@width) => { usize };
     (@pointer $ty:ty) => { <$ty as $crate::pointer::Width>::Pointer };
     (@pointer) => { <usize as $crate::pointer::Width>::Pointer };
+    (@storage $t:ident $ty:ty) => { type Storage<$t> = $ty; };
+    (@storage) => { type Storage<T> = $crate::macro_support::Vec<T>; };
     (@indexes $ty:ty) => { $ty };
     (@indexes) => { $crate::macro_support::DefaultIndexes<Self> };
 }
