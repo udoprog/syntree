@@ -224,7 +224,9 @@ where
     /// Set the cursor position of the syntax tree.
     ///
     /// This is used to implicitly set spans when using spanless constructions
-    /// methods.
+    /// methods. Range queries such as [`Tree::node_with_range`] assume that
+    /// tokens are added in non-decreasing order, so the cursor should not be
+    /// moved backwards past an already added token.
     ///
     /// # Examples
     ///
@@ -425,7 +427,6 @@ where
 
         if !len.is_empty() {
             self.cursor = self.cursor.checked_add_len(len).ok_or(Error::Overflow)?;
-            self.tree.span_mut().end = self.cursor;
         }
 
         let id = self.insert(value, Span::new(start, self.cursor))?;
@@ -442,6 +443,11 @@ where
     }
 
     /// Insert a token with a custom span.
+    ///
+    /// The span is joined into the spans of the enclosing nodes and the tree.
+    /// Range queries such as [`Tree::node_with_range`] assume that tokens are
+    /// added in non-decreasing order of their spans, so a token should not
+    /// start before the end of the previous one.
     ///
     /// # Errors
     ///
@@ -461,14 +467,13 @@ where
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected = syntree::tree! {
-    ///     ("child", (0, 10)) => {
-    ///         ("lit", (2, 4)),
-    ///         ("lit2", (4, 6)),
-    ///     }
-    /// };
+    /// let child = tree.first().ok_or("missing child")?;
+    /// assert_eq!(child.span(), &Span::new(0, 10));
     ///
-    /// assert_eq!(tree, expected);
+    /// let spans = child.children().map(|n| (n.value(), *n.span())).collect::<Vec<_>>();
+    /// assert_eq!(spans, [("lit", Span::new(2, 4)), ("lit2", Span::new(4, 6))]);
+    ///
+    /// assert_eq!(tree.span(), &Span::new(0, 10));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     ///
@@ -482,20 +487,20 @@ where
     /// tree.open("child")?;
     /// tree.token_with("lit", Span::new(2, 4))?;
     /// tree.token_with("lit2", Span::new(4, 6))?;
+    /// assert_eq!(*tree.cursor(), 6);
     /// tree.token("lit3", 6)?;
     /// tree.close()?;
     ///
     /// let tree = tree.build()?;
     ///
-    /// let expected = syntree::tree! {
-    ///     ("child", (0, 6)) => {
-    ///         ("lit", (2, 4)),
-    ///         ("lit2", (4, 6)),
-    ///         ("lit3", (6, 12)),
-    ///     }
-    /// };
+    /// let child = tree.first().ok_or("missing child")?;
+    /// assert_eq!(child.span(), &Span::new(0, 12));
     ///
-    /// assert_eq!(tree, expected);
+    /// let lit3 = child.last().ok_or("missing lit3")?;
+    /// assert_eq!(lit3.value(), "lit3");
+    /// assert_eq!(lit3.span(), &Span::new(6, 12));
+    ///
+    /// assert_eq!(tree.span(), &Span::new(0, 12));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn token_with(
@@ -504,15 +509,13 @@ where
         span: Span<F::Index>,
     ) -> Result<F::Pointer, Error<F::Error>> {
         let id = self.insert(value, span)?;
-
         self.sibling = Some(id);
-        self.tree.indexes_mut().push(TreeIndex {
-            index: span.start,
-            id,
-        })?;
 
-        if let Some(parent) = self.parent.and_then(|id| self.tree.get_mut(id)) {
-            parent.span = parent.span.join(&span);
+        if !span.is_empty() {
+            self.tree.indexes_mut().push(TreeIndex {
+                index: span.end,
+                id,
+            })?;
         }
 
         self.cursor = span.end;
@@ -777,9 +780,8 @@ where
     ///
     /// let root = tree.first().ok_or("missing root")?;
     /// assert_eq!(root.value(), "custom");
-    /// assert_eq!(root.span().start, 0);
-    /// assert_eq!(root.span().end, 6);
-    ///
+    /// assert_eq!(root.span(), &Span::new(0, 6));
+    /// assert_eq!(tree.span(), &Span::new(0, 8));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn close_at_with(
@@ -849,6 +851,14 @@ where
 
         if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
             prev.next = Some(new_id);
+        }
+
+        if let Some(span) = span {
+            if let Some(links) = parent.and_then(|id| self.tree.get_mut(id)) {
+                links.span = links.span.join(&span);
+            }
+
+            self.join_tree_span(&span);
         }
 
         self.tree.push(Links {
@@ -945,7 +955,7 @@ where
                 }
 
                 node.last = Some(new);
-                node.span.end = span.end;
+                node.span = node.span.join(&span);
             }
         } else {
             let (first, last) = self.tree.links_mut();
@@ -961,7 +971,17 @@ where
             node.next = Some(new);
         }
 
+        self.join_tree_span(&span);
         Ok(new)
+    }
+
+    /// Extend the span of the whole tree to cover `span`. Empty spans are
+    /// ignored, like they are when indexing tokens.
+    fn join_tree_span(&mut self, span: &Span<F::Index>) {
+        if !span.is_empty() {
+            let tree = self.tree.span_mut();
+            *tree = tree.join(span);
+        }
     }
 }
 

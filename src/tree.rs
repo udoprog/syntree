@@ -333,6 +333,9 @@ where
     /// This query finds the node which contains the entirety of the given
     /// [Range].
     ///
+    /// Tokens are looked up by binary search, which assumes they were added
+    /// to the tree in non-decreasing order of their spans.
+    ///
     /// # Examples
     ///
     /// ```
@@ -412,6 +415,9 @@ where
     ///
     /// This query finds the node which contains the entirety of the given
     /// [Span].
+    ///
+    /// Tokens are looked up by binary search, which assumes they were added
+    /// to the tree in non-decreasing order of their spans.
     ///
     /// # Examples
     ///
