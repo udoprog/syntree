@@ -6,14 +6,17 @@ use crate::node::Node;
 
 /// Wrapped around an iterator that excludes nodes without children.
 ///
-/// See [`Siblings::skip_tokens`] or [`Walk::skip_tokens`].
+/// See [`Children::skip_tokens`], [`Siblings::skip_tokens`],
+/// [`Ancestors::skip_tokens`] or [`Walk::skip_tokens`].
 ///
+/// [`Children::skip_tokens`]: crate::node::Children::skip_tokens
 /// [`Siblings::skip_tokens`]: crate::node::Siblings::skip_tokens
+/// [`Ancestors::skip_tokens`]: crate::node::Ancestors::skip_tokens
 /// [`Walk::skip_tokens`]: crate::node::Walk::skip_tokens
 ///
 /// # Examples
 ///
-/// Filtering childless nodes from a [`Siblings`] iterator:
+/// Filtering childless nodes from a [`Children`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
@@ -23,7 +26,7 @@ use crate::node::Node;
 ///     },
 ///     ("token3", 1),
 ///     "child2" => {
-///         "toke4"
+///         "token4"
 ///     },
 ///     ("token5", 1),
 ///     "child3" => {
@@ -32,7 +35,7 @@ use crate::node::Node;
 ///     ("token7", 1)
 /// };
 ///
-/// let mut it = tree.children().skip_tokens();
+/// let it = tree.children().skip_tokens();
 ///
 /// assert_eq!(
 ///     it.map(|n| n.value()).collect::<Vec<_>>(),
@@ -59,7 +62,7 @@ use crate::node::Node;
 ///     }
 /// };
 ///
-/// let mut it = tree.walk().skip_tokens();
+/// let it = tree.walk().skip_tokens();
 ///
 /// assert_eq!(
 ///     it.map(|n| n.value()).collect::<Vec<_>>(),
@@ -68,7 +71,7 @@ use crate::node::Node;
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
-/// [`Siblings`]: crate::node::Siblings
+/// [`Children`]: crate::node::Children
 /// [`Walk`]: crate::node::Walk
 pub struct SkipTokens<U> {
     iter: U,

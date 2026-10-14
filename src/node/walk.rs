@@ -184,6 +184,8 @@ where
 
     /// Convert this iterator into one which includes depths.
     ///
+    /// See [`WithDepths`] for how depths are counted.
+    ///
     /// # Examples
     ///
     /// ```
@@ -219,6 +221,10 @@ where
 
     /// Get the next node with a corresponding depth.
     ///
+    /// Depths are relative to the node the walk started at and become negative
+    /// once a walk started from a [`Node`] leaves that node's subtree, see
+    /// [`WithDepths`].
+    ///
     /// Alternatively you can use [`WithDepths`] through [`Walk::with_depths`].
     ///
     /// # Examples
@@ -246,14 +252,7 @@ where
     #[inline]
     #[must_use]
     pub fn next_with_depth(&mut self) -> Option<(isize, Node<'a, T, F>)> {
-        loop {
-            let depth = self.iter.depth();
-            let (event, node) = self.iter.next()?;
-
-            if !matches!(event, Event::Up) {
-                return Some((depth, node));
-            }
-        }
+        next_with_depth(&mut self.iter)
     }
 }
 
@@ -312,7 +311,14 @@ where
 }
 
 /// An iterator that walks over the entire tree, visiting every node exactly
-/// once. This is constructed with [`Walk::with_depths`].
+/// once and yielding each node together with its depth. This is constructed
+/// with [`Walk::with_depths`].
+///
+/// Depths are relative to the node the walk started at, which has depth `0`.
+/// A walk started from a [`Node`] continues past the end of that node's
+/// subtree into the following siblings of its ancestors, and those nodes have
+/// negative depths. This is why depths are [`isize`]. A walk started through
+/// [`Tree::walk`][crate::Tree::walk] gives every root depth `0`.
 ///
 /// # Examples
 ///
@@ -358,6 +364,36 @@ where
 /// );
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
+///
+/// Leaving the subtree of the starting node gives negative depths:
+///
+/// ```
+/// let tree = syntree::tree! {
+///     "root" => {
+///         "b" => {
+///             "b1" => {}
+///         },
+///         "c" => {},
+///         "d" => {}
+///     },
+///     "root2" => {
+///         "e" => {}
+///     }
+/// };
+///
+/// let b1 = tree.walk().find(|n| n.value() == "b1").ok_or("missing b1")?;
+///
+/// assert_eq!(
+///     b1.walk().with_depths().map(|(d, n)| (d, n.value())).collect::<Vec<_>>(),
+///     [(0, "b1"), (-1, "c"), (-1, "d"), (-2, "root2"), (-1, "e")]
+/// );
+///
+/// assert_eq!(
+///     tree.walk().with_depths().map(|(d, n)| (d, n.value())).collect::<Vec<_>>(),
+///     [(0, "root"), (1, "b"), (2, "b1"), (1, "c"), (1, "d"), (0, "root2"), (1, "e")]
+/// );
+/// # Ok::<_, Box<dyn core::error::Error>>(())
+/// ```
 pub struct WithDepths<'a, T, F>
 where
     T: Copy,
@@ -375,13 +411,22 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let depth = self.iter.depth();
-            let (event, node) = self.iter.next()?;
+        next_with_depth(&mut self.iter)
+    }
+}
 
-            if !matches!(event, Event::Up) {
-                return Some((depth, node));
-            }
+#[inline]
+fn next_with_depth<'a, T, F>(iter: &mut WalkEvents<'a, T, F>) -> Option<(isize, Node<'a, T, F>)>
+where
+    T: Copy,
+    F: Flavor,
+{
+    loop {
+        let depth = iter.depth();
+        let (event, node) = iter.next()?;
+
+        if !matches!(event, Event::Up) {
+            return Some((depth, node));
         }
     }
 }

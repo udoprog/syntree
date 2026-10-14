@@ -6,8 +6,8 @@ use crate::links::Links;
 use crate::node::{Node, SkipTokens};
 use crate::pointer::Pointer;
 
-/// An iterator that iterates over the [`Node::next`] elements of a node. This is
-/// typically used for iterating over the children of a tree.
+/// An iterator that iterates over a node and its [`Node::next`] siblings.
+/// Previous siblings are not included.
 ///
 /// Note that this iterator also implements [Default], allowing it to
 /// effectively create an empty iterator in case a particular sibling is not
@@ -77,7 +77,7 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// Construct a new child iterator.
+    /// Construct a new sibling iterator starting at the given node.
     #[inline]
     pub(crate) const fn new(
         tree: &'a [Links<T, F::Index, F::Pointer>],

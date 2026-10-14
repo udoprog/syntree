@@ -12,15 +12,13 @@ use crate::span::Span;
 ///
 /// # Type parameters and bounds
 ///
-/// The three type parameters of the tree determines the following properties:
+/// The two type parameters of the tree determine the following properties:
 /// * `T` is the data stored in the tree.
 /// * `F` determines the [Flavor] of the tree, defining numerical bounds of
-///   spans stored in the tree.
+///   spans and node identifiers stored in the tree.
 ///
-/// To use the default values, use the [Builder::new][crate::Builder::new]
-/// constructor.
-///
-/// [Empty]: crate::Empty
+/// A tree built through [Builder::new][crate::Builder::new] uses
+/// [`FlavorDefault`][crate::FlavorDefault].
 pub struct Node<'a, T, F>
 where
     T: Copy,
@@ -180,7 +178,8 @@ where
         self.links.first.is_none()
     }
 
-    /// Get the ancestors of this node.
+    /// Get an iterator over this node and its ancestors, starting with the
+    /// node itself and ending with its root.
     ///
     /// See [Ancestors] for documentation.
     #[must_use]
@@ -188,9 +187,33 @@ where
         Ancestors::new(Some(*self))
     }
 
-    /// Get an iterator over the siblings of this node, including itself.
+    /// Get an iterator over this node and its following siblings.
+    ///
+    /// Previous siblings are not included.
     ///
     /// See [Siblings] for documentation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let tree = syntree::tree! {
+    ///     "root" => {
+    ///         "a",
+    ///         "b",
+    ///         "c",
+    ///         "d",
+    ///     }
+    /// };
+    ///
+    /// let c = tree.first().and_then(|n| n.last()).and_then(|n| n.prev()).ok_or("missing c")?;
+    /// assert_eq!(c.value(), "c");
+    ///
+    /// assert_eq!(
+    ///     c.siblings().map(|n| n.value()).collect::<Vec<_>>(),
+    ///     ["c", "d"]
+    /// );
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
     #[must_use]
     pub fn siblings(&self) -> Siblings<'a, T, F> {
         Siblings::new(self.tree, self.links)
@@ -204,8 +227,12 @@ where
         Children::new(self.tree, self.links.first, self.links.last)
     }
 
-    /// Walk the subtree forward starting with the first child of the current
+    /// Walk the tree forward in depth-first order starting with the current
     /// node.
+    ///
+    /// The walk does not stop at the end of this node's subtree, it continues
+    /// with the following siblings of this node and of its ancestors. Use
+    /// [`Walk::inside`] to only visit this node and its descendants.
     ///
     /// See [Walk] for documentation.
     #[must_use]
@@ -398,12 +425,18 @@ where
         self.node_at(self.links.last?)
     }
 
-    /// Find a preceeding node which matches the given predicate.
+    /// Find a preceding node which matches the given predicate.
     ///
-    /// A "preceeding node" is one which constitutes tokens the immediately
-    /// preceedes the ones of the current node, so this function scans first the
-    /// parents of the current node for a matching [`Node::prev`] sibling, and
-    /// then traverses that matches [`Node::last`].
+    /// A "preceding node" is one whose tokens immediately precede the tokens of
+    /// the current node. This is found in two steps:
+    ///
+    /// 1. Starting with the current node and moving through its ancestors, find
+    ///    the first [`Node::prev`] sibling which matches the predicate.
+    /// 2. From that sibling, descend through [`Node::last`] children for as
+    ///    long as each matches the predicate, and return the last match.
+    ///
+    /// Step 2 stops at the first [`Node::last`] child which does not match, so
+    /// a matching node nested below a non-matching last child is not found.
     ///
     /// # Examples
     ///
@@ -428,7 +461,7 @@ where
     /// assert_eq!(node.value(), "child4");
     ///
     /// let found = node.find_preceding(|n| n.span().end == 3 && n.has_children());
-    /// let found = found.expect("expected preceeding node");
+    /// let found = found.ok_or("expected preceding node")?;
     /// assert_eq!(found.value(), "child2");
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
@@ -436,23 +469,18 @@ where
     where
         P: FnMut(Node<'a, T, F>) -> bool,
     {
-        // Step 1: Scan upwards until we find a previous s
         let mut n = *self;
 
         let mut n = loop {
-            let Some(prev) = n.prev() else {
-                n = n.parent()?;
-                continue;
-            };
-
-            if predicate(prev) {
-                break prev;
+            if let Some(prev) = n.prev() {
+                if predicate(prev) {
+                    break prev;
+                }
             }
 
             n = n.parent()?;
         };
 
-        // Step 2: Scan last node while it matches the predicate.
         loop {
             let Some(last) = n.last() else {
                 return Some(n);
@@ -587,6 +615,27 @@ where
 {
 }
 
+/// Nodes compare equal when their [values][Node::value] and
+/// [spans][Node::span] are equal, regardless of their position in a tree.
+///
+/// Compare [`Node::id`] to check whether two nodes are the same node.
+///
+/// # Examples
+///
+/// ```
+/// let tree = syntree::tree! {
+///     "x" => {
+///         ("x", 0)
+///     }
+/// };
+///
+/// let root = tree.first().ok_or("missing root")?;
+/// let child = root.first().ok_or("missing child")?;
+///
+/// assert_eq!(root, child);
+/// assert_ne!(root.id(), child.id());
+/// # Ok::<_, Box<dyn core::error::Error>>(())
+/// ```
 impl<T, A, B> PartialEq<Node<'_, T, A>> for Node<'_, T, B>
 where
     T: Copy + PartialEq,
