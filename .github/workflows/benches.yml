@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   benches:
     runs-on: ubuntu-latest
@@ -12,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup toolchain install nightly --profile minimal
       - run: rustup default nightly
-      - run: cargo bench --all --package benches -- --output-format bencher | tee output.txt
+      - run: cargo bench -p benches -- --output-format bencher | tee output.txt
       - uses: actions/cache@v4
         with:
           path: ./cache

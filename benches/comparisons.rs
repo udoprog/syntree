@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand::{prelude::StdRng, Rng, RngCore, SeedableRng};
+use rand::{prelude::StdRng, Rng, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
 use syntree::{Builder, Error, FlavorDefault, Tree, TreeIndex};
 
@@ -107,13 +107,6 @@ fn setup(c: &mut Criterion) {
     syntree::flavor! {
         struct FlavorUsize {
             type Index = usize;
-        }
-    }
-
-    syntree::flavor! {
-        struct FlavorU32 {
-            type Index = usize;
-            type Width = u32;
         }
     }
 
@@ -229,16 +222,23 @@ criterion_main!(benches);
 
 fn generate_random(count: usize, min: usize, max: usize) -> Vec<Box<str>> {
     let mut rng = StdRng::seed_from_u64(0x12345678);
-    let mut s = String::with_capacity(16);
+    let mut s = String::with_capacity(max * 4);
 
     let mut output = Vec::with_capacity(count);
 
     for _ in 0..count {
-        let target = (rng.gen::<usize>() % (max - min)) + min;
-        assert!(target >= min && target < max, "target was {target}");
+        let target = rng.gen_range(min..max);
+        s.clear();
 
-        while s.len() < target {
-            s.extend(char::from_u32(rng.next_u32()).filter(|c| !c.is_whitespace()));
+        let mut len = 0;
+
+        while len < target {
+            let c = rng.gen::<char>();
+
+            if !c.is_whitespace() {
+                s.push(c);
+                len += 1;
+            }
         }
 
         output.push(s.as_str().into());
