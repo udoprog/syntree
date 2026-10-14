@@ -39,16 +39,12 @@ pub(crate) enum EvalErrorKind {
     #[error("numerical overflow")]
     Overflow,
 
-    #[error("numerical underflow")]
-    Underflow,
-
-    #[error("divide by zero")]
+    #[error("divide by zero or overflow")]
     DivideByZero,
 }
 
 use EvalErrorKind::{
-    BadNumber, DivideByZero, Expected, ExpectedOperator, Missing, Overflow, Underflow,
-    UnexpectedOperator,
+    BadNumber, DivideByZero, Expected, ExpectedOperator, Missing, Overflow, UnexpectedOperator,
 };
 
 fn pow(a: i64, b: i64) -> Option<i64> {
@@ -87,7 +83,7 @@ where
 
                     let (calculate, error): (fn(i64, i64) -> Option<i64>, _) = match op.value() {
                         Plus => (i64::checked_add, Overflow),
-                        Minus => (i64::checked_sub, Underflow),
+                        Minus => (i64::checked_sub, Overflow),
                         Mul => (i64::checked_mul, Overflow),
                         Div => (i64::checked_div, DivideByZero),
                         Pow => (pow, Overflow),

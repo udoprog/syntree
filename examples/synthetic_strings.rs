@@ -82,7 +82,7 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
         Some((syntax, end.saturating_sub(start)))
     });
 
-    /// Consume all available whitespace.
+    /// Consume all characters matching `cond`.
     fn eat(it: &mut Peekable<impl Iterator<Item = (usize, char)>>, cond: fn(char) -> bool) {
         while it.peek().filter(|&(_, c)| cond(*c)).is_some() {
             it.next();
@@ -91,7 +91,7 @@ fn lexer<'a>(source: &'a str, storage: &'a Storage) -> impl Iterator<Item = (Syn
 }
 
 fn main() -> Result<()> {
-    let source = std::env::args().skip(1).collect::<String>();
+    let source = std::env::args().skip(1).collect::<Vec<_>>().join(" ");
 
     let mut storage = Storage::default();
     storage.insert("world", "Earth");

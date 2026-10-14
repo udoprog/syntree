@@ -6,7 +6,6 @@ use anyhow::Result;
 use syntree::{print, Builder, Error, FlavorDefault, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
 enum Syntax {
     Add,
     Sub,
@@ -71,6 +70,7 @@ where
         tokens: &[Syntax],
         next: fn(&mut Self) -> Result<(), Error>,
     ) -> Result<(), Error> {
+        self.peek()?;
         let c = self.builder.checkpoint()?;
         next(self)?;
 
@@ -129,7 +129,7 @@ fn lexer(source: &str) -> impl Iterator<Item = (Syntax, usize)> + '_ {
         Some((syntax, end.saturating_sub(start)))
     });
 
-    /// Consume all available whitespace.
+    /// Consume all characters matching `cond`.
     fn eat(it: &mut Peekable<impl Iterator<Item = (usize, char)>>, cond: fn(char) -> bool) {
         while it.peek().filter(|&(_, c)| cond(*c)).is_some() {
             it.next();
@@ -138,7 +138,7 @@ fn lexer(source: &str) -> impl Iterator<Item = (Syntax, usize)> + '_ {
 }
 
 fn main() -> Result<()> {
-    let source = std::env::args().skip(1).collect::<String>();
+    let source = std::env::args().skip(1).collect::<Vec<_>>().join(" ");
 
     let iter = lexer(&source);
 

@@ -1,4 +1,5 @@
-/// A simple calculator only capable of addition and subtraction.
+//! A calculator supporting `+`, `-`, `*`, `/`, `^` and parentheses.
+
 mod eval;
 mod grammar;
 mod lexer;
@@ -13,7 +14,6 @@ use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
 enum Syntax {
     Number,
     Plus,
@@ -30,13 +30,13 @@ enum Syntax {
     Operation,
     // Precedence group.
     Group,
-    // Enf of file.
+    // End of file.
     Eof,
     Error,
 }
 
 fn main() -> Result<()> {
-    let source = std::env::args().skip(1).collect::<String>();
+    let source = std::env::args().skip(1).collect::<Vec<_>>().join(" ");
 
     let mut p = parsing::Parser::new(&source);
     grammar::root(&mut p)?;
@@ -55,7 +55,7 @@ fn main() -> Result<()> {
                 let file = SimpleFile::new("<cli>", &source);
 
                 let diagnostic = Diagnostic::error()
-                    .with_message("parse error")
+                    .with_message("evaluation error")
                     .with_labels(vec![
                         Label::primary((), e.span.range()).with_message(e.to_string())
                     ]);
