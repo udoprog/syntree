@@ -356,6 +356,27 @@ fn close_at_error() -> Result<()> {
 }
 
 #[test]
+fn close_at_foreign_checkpoint_leaves_builder_unchanged() -> Result<()> {
+    let mut a = syntree::Builder::new();
+    let mut b = syntree::Builder::new();
+
+    b.token("x", 1)?;
+    let c = b.checkpoint()?;
+
+    assert_eq!(a.close_at(&c, "w"), Err(Error::MissingNode(1)));
+    assert_eq!(
+        a.close_at_with(&c, "w", Span::new(0, 1)),
+        Err(Error::MissingNode(1))
+    );
+
+    a.token("y", 2)?;
+
+    let tree = a.build()?;
+    assert_eq!(tree, syntree::tree! { ("y", 2) });
+    Ok(())
+}
+
+#[test]
 fn close_at_empty_checkpoint_reused() -> Result<()> {
     let mut tree = syntree::Builder::new();
 
