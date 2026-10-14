@@ -1,6 +1,7 @@
 mod checkpoint;
 
 use core::cell::Cell;
+use core::fmt;
 
 use crate::links::Links;
 use crate::{
@@ -50,7 +51,6 @@ pub use self::checkpoint::Checkpoint;
 /// assert_eq!(tree, expected);
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
-#[derive(Debug)]
 pub struct Builder<T, F = FlavorDefault>
 where
     T: Copy,
@@ -976,10 +976,28 @@ where
         Self {
             tree: self.tree.clone(),
             parent: self.parent,
-            checkpoint: self.checkpoint.clone(),
+            // Not shared, so that checkpoints handed out by the clone are
+            // independent of the original.
+            checkpoint: self.checkpoint.as_ref().map(Checkpoint::deep_clone),
             sibling: self.sibling,
             cursor: self.cursor,
         }
+    }
+}
+
+impl<T, F> fmt::Debug for Builder<T, F>
+where
+    T: Copy + fmt::Debug,
+    F: Flavor<Index: fmt::Debug>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Builder")
+            .field("tree", &self.tree)
+            .field("checkpoint", &self.checkpoint)
+            .field("parent", &self.parent)
+            .field("sibling", &self.sibling)
+            .field("cursor", &self.cursor)
+            .finish()
     }
 }
 

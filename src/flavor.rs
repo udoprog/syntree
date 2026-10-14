@@ -86,6 +86,7 @@ macro_rules! flavor {
         }
     ) => {
         $(#[doc = $doc])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         #[non_exhaustive]
         $vis struct $ty;
 
