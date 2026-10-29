@@ -60,7 +60,7 @@ fn main() -> Result<()> {
                         Label::primary((), e.span.range()).with_message(e.to_string())
                     ]);
 
-                term::emit(&mut o.lock(), &config, &file, &diagnostic)?;
+                term::emit_to_write_style(&mut o.lock(), &config, &file, &diagnostic)?;
             }
         }
     }

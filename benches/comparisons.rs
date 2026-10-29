@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand::{prelude::StdRng, Rng, SeedableRng};
+use rand::{prelude::StdRng, RngExt, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
 use syntree::{Builder, Error, FlavorDefault, Tree, TreeIndex};
 
@@ -227,13 +227,13 @@ fn generate_random(count: usize, min: usize, max: usize) -> Vec<Box<str>> {
     let mut output = Vec::with_capacity(count);
 
     for _ in 0..count {
-        let target = rng.gen_range(min..max);
+        let target = rng.random_range(min..max);
         s.clear();
 
         let mut len = 0;
 
         while len < target {
-            let c = rng.gen::<char>();
+            let c = rng.random::<char>();
 
             if !c.is_whitespace() {
                 s.push(c);
