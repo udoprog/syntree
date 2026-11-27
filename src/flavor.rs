@@ -76,7 +76,9 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 /// The associated types are declared in this order, and all but `Index` are
 /// optional:
 /// * `type Index = ..;` the [Index] used for spans.
-/// * `type Width = ..;` the [Width] which bounds pointers, defaults to `usize`.
+/// * `type Width = ..;` the [Width] which bounds pointers, defaults to `u32`
+///   like [`FlavorDefault`]. Declare `type Width = usize;` for trees that need
+///   more nodes than a `u32` width can address.
 /// * `type Error = ..;` the error raised by storage, defaults to
 ///   [`Infallible`].
 /// * `type Storage<T> = ..;` the [Storage] used for tree data, defaults to
@@ -89,6 +91,7 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 /// [`Infallible`]: core::convert::Infallible
 /// [`EmptyVec<T>`]: crate::EmptyVec
 /// [`Error::Flavor`]: crate::Error::Flavor
+/// [`FlavorDefault`]: crate::FlavorDefault
 ///
 /// # Examples
 ///
@@ -204,9 +207,9 @@ macro_rules! flavor {
     (@error $ty:ty) => { $ty };
     (@error) => { ::core::convert::Infallible };
     (@width $ty:ty) => { $ty };
-    (@width) => { usize };
+    (@width) => { u32 };
     (@pointer $ty:ty) => { <$ty as $crate::pointer::Width>::Pointer };
-    (@pointer) => { <usize as $crate::pointer::Width>::Pointer };
+    (@pointer) => { <u32 as $crate::pointer::Width>::Pointer };
     (@storage $t:ident $ty:ty) => { type Storage<$t> = $ty; };
     (@storage) => { type Storage<T> = $crate::macro_support::Vec<T>; };
 }

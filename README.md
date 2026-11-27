@@ -187,8 +187,8 @@ both, and is used through constructors such as [`Builder::new_with`]:
 * `type Index` is the type of span positions: `u32`, `usize`, or [`Empty`]
   for no spans at all (see below).
 * `type Width` is the width of node pointers, such as `u8`, `u16`, `u32`
-  or `usize`. It bounds how many elements a tree can hold, adding more
-  fails with [`Error::Overflow`].
+  or `usize`, and defaults to `u32`. It bounds how many elements a tree
+  can hold, adding more fails with [`Error::Overflow`].
 
 ```rust
 use syntree::{Builder, Span};

@@ -107,6 +107,7 @@ fn setup(c: &mut Criterion) {
     syntree::flavor! {
         struct FlavorUsize {
             type Index = usize;
+            type Width = usize;
         }
     }
 
