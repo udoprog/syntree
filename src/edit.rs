@@ -270,7 +270,7 @@ where
         // Stepping a `Children` iterator is constant time, unlike stepping
         // from a token with `Token::next`.
         let mut stack = Vec::<Children<'_, T, F>>::new();
-        stack.push(tree.children());
+        stack.push(tree.children().with_trivia());
 
         while let Some(children) = stack.last_mut() {
             let Some(element) = children.next() else {
@@ -291,7 +291,10 @@ where
             match element {
                 NodeOrToken::Node(node) => {
                     output.open(node.value())?;
-                    stack.push(node.children());
+                    stack.push(node.children().with_trivia());
+                }
+                NodeOrToken::Token(token) if token.is_trivia() => {
+                    output.trivia(token.value(), token.span().len())?;
                 }
                 NodeOrToken::Token(token) => {
                     output.token(token.value(), token.span().len())?;

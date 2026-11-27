@@ -60,7 +60,7 @@ fn check_siblings<'a>(
             "parent of {child:?}"
         );
         assert_eq!(child.prev().map(key), prev.map(key), "prev of {child:?}");
-        check_siblings(child.children(), Some(child), child.last());
+        check_siblings(child.children().with_trivia(), Some(child), child.last());
         prev = Some(child);
     }
 
@@ -72,7 +72,7 @@ fn check_siblings<'a>(
 fn check(actual: &T, expected: &T) {
     assert_eq!(actual, expected);
     assert_eq!(actual.span(), expected.span());
-    check_siblings(actual.children(), None, actual.last());
+    check_siblings(actual.children().with_trivia(), None, actual.last());
 
     for node in expected.walk().filter(|n| !n.has_children()) {
         let span = node.span();
@@ -361,5 +361,91 @@ fn remove_by_id_and_gaps_compact() -> Result<()> {
     let mut change_set = ChangeSet::new();
     change_set.remove_node(a);
     assert!(change_set.modify(&tree)?.is_empty());
+    Ok(())
+}
+
+/// `ROOT { ws CHILD { a ws b } c ws }` with every `ws` as trivia.
+fn trivia_sample(remove_child: bool, remove_c: bool) -> Result<T> {
+    let mut b = syntree::Builder::new();
+    b.open("root")?;
+    b.trivia("ws", 1)?;
+
+    if !remove_child {
+        b.open("child")?;
+        b.token("a", 1)?;
+        b.trivia("ws", 1)?;
+        b.token("b", 2)?;
+        b.close()?;
+    }
+
+    if !remove_c {
+        b.token("c", 3)?;
+    }
+
+    b.trivia("ws", 1)?;
+    b.close()?;
+    Ok(b.build()?)
+}
+
+fn trivia_flags(tree: &T) -> Vec<(&'static str, bool)> {
+    tree.walk()
+        .with_trivia()
+        .filter_map(|e| e.into_token())
+        .map(|t| (t.value(), t.is_trivia()))
+        .collect()
+}
+
+#[test]
+fn modify_keeps_trivia() -> Result<()> {
+    let tree = trivia_sample(false, false)?;
+
+    let empty = ChangeSet::new().modify(&tree)?;
+    check(&empty, &tree);
+    assert_eq!(trivia_flags(&empty), trivia_flags(&tree));
+
+    let actual = modify(&tree, &["c"])?;
+    let expected = trivia_sample(false, true)?;
+    check(&actual, &expected);
+    assert_eq!(
+        trivia_flags(&actual),
+        [
+            ("ws", true),
+            ("a", false),
+            ("ws", true),
+            ("b", false),
+            ("ws", true)
+        ]
+    );
+
+    let actual = modify(&tree, &["child"])?;
+    check(&actual, &trivia_sample(true, false)?);
+    Ok(())
+}
+
+#[test]
+fn modify_removes_trivia() -> Result<()> {
+    let tree = trivia_sample(false, false)?;
+
+    let ws = tree
+        .walk()
+        .with_trivia()
+        .filter(|e| e.is_trivia())
+        .last()
+        .context("missing trivia")?;
+
+    let mut change_set = ChangeSet::new();
+    change_set.remove(ws);
+    let actual = change_set.modify(&tree)?;
+
+    assert_eq!(
+        trivia_flags(&actual),
+        [
+            ("ws", true),
+            ("a", false),
+            ("ws", true),
+            ("b", false),
+            ("c", false)
+        ]
+    );
     Ok(())
 }

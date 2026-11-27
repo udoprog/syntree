@@ -967,7 +967,9 @@ where
             F: Flavor<Index: fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_list().entries(self.0.walk().with_depths()).finish()
+                f.debug_list()
+                    .entries(self.0.walk().with_trivia().with_depths())
+                    .finish()
             }
         }
 
