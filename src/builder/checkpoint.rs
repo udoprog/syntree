@@ -80,8 +80,10 @@ impl<P> fmt::Debug for Checkpoint<P> {
 /// The state of a checkpoint, stored in the builder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Inner<P> {
-    /// The node being wrapped by the checkpoint.
-    pub(crate) node: P,
-    /// The parent node of the context being checkpointed.
+    /// The number of token entries when the checkpoint was taken.
+    pub(crate) tok: usize,
+    /// The last interior node at the level when the checkpoint was taken.
+    pub(crate) before: Option<P>,
+    /// The node being built when the checkpoint was taken.
     pub(crate) parent: Option<P>,
 }

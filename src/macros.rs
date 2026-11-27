@@ -172,12 +172,11 @@ macro_rules! tree {
 /// # Examples
 ///
 /// ```
-/// use syntree::{Empty, EmptyVec, Tree, TreeIndex};
+/// use syntree::{Empty, Tree};
 ///
 /// syntree::flavor! {
 ///     struct FlavorEmpty {
 ///         type Index = Empty;
-///         type Indexes = EmptyVec<TreeIndex<Self>>;
 ///     }
 /// };
 ///

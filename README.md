@@ -187,18 +187,14 @@ assert_eq!(tree.span(), Span::new(0, 100));
 ```
 
 Using [`Empty`] as the index allows for building trees without spans, if
-that is something you want to do. A tree also keeps the indexes of its
-tokens in `type Indexes` for lookups such as [`Tree::node_with_span`].
-Without spans there is nothing to look up, so they can be discarded by
-storing them in [`EmptyVec`]:
+that is something you want to do:
 
 ```rust
-use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
+use syntree::{Builder, Empty, Tree};
 
 syntree::flavor! {
     struct FlavorEmpty {
         type Index = Empty;
-        type Indexes = EmptyVec<TreeIndex<Self>>;
     }
 };
 
@@ -346,8 +342,8 @@ Without `alloc` the default storage is [`EmptyVec`], which discards
 everything pushed into it. A tree built with [`Builder::new`] or any flavor
 using default storage then holds nothing, and building it fails with an
 error such as [`Error::MissingNode`]. To build trees without `alloc`,
-declare a flavor through [`flavor!`] with its own `type Storage<T>` and
-`type Indexes`, such as a fixed-capacity array implementing [`Storage`].
+declare a flavor through [`flavor!`] with its own `type Storage<T>`, such
+as a fixed-capacity array implementing [`Storage`].
 
 Checkpoints are kept in the same storage, so no allocator is needed.
 

@@ -159,7 +159,7 @@ where
 
         if node.has_children() {
             writeln!(o, "{:n$}{:?}@{}", "", data, span)?;
-        } else if let Some(source) = source(span) {
+        } else if let Some(source) = source(&span) {
             writeln!(o, "{:n$}{:?}@{} {:?}", "", data, span, source)?;
         } else {
             writeln!(o, "{:n$}{:?}@{} +", "", data, span)?;

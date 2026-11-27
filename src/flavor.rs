@@ -2,7 +2,7 @@
 
 use core::ops::DerefMut;
 
-use crate::index::{Index, Length, TreeIndex};
+use crate::index::{Index, Length};
 use crate::pointer::{Pointer, Width};
 
 /// Storage being used in a tree.
@@ -81,28 +81,23 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 ///   [`Infallible`].
 /// * `type Storage<T> = ..;` the [Storage] used for tree data, defaults to
 ///   `Vec<T>` (or [`EmptyVec<T>`] without the `alloc` feature).
-/// * `type Indexes = ..;` the [Storage] of [`TreeIndex<Self>`], defaults to
-///   `Vec<TreeIndex<Self>>` (or [`EmptyVec`] without the `alloc` feature),
-///   regardless of `Storage`.
 ///
-/// The `Error` of both `Storage` and `Indexes` must be the flavor's `Error`,
-/// so a flavor with a custom `Error` needs to declare both of them. Errors
-/// raised by storage are reported as [`Error::Flavor`].
+/// The `Error` of `Storage` must be the flavor's `Error`, so a flavor with a
+/// custom `Error` needs to declare `Storage` too. Errors raised by storage are
+/// reported as [`Error::Flavor`].
 ///
 /// [`Infallible`]: core::convert::Infallible
 /// [`EmptyVec<T>`]: crate::EmptyVec
-/// [`EmptyVec`]: crate::EmptyVec
 /// [`Error::Flavor`]: crate::Error::Flavor
 ///
 /// # Examples
 ///
 /// ```
-/// use syntree::{Empty, EmptyVec, TreeIndex};
+/// use syntree::Empty;
 ///
 /// syntree::flavor! {
 ///     struct FlavorEmpty {
 ///         type Index = Empty;
-///         type Indexes = EmptyVec<TreeIndex<Self>>;
 ///     }
 /// }
 ///
@@ -118,7 +113,7 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 ///
 /// ```
 /// use core::ops::{Deref, DerefMut};
-/// use syntree::{Builder, Error, Storage, TreeIndex};
+/// use syntree::{Builder, Error, Storage};
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Full;
@@ -172,7 +167,6 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 ///         type Index = u32;
 ///         type Error = Full;
 ///         type Storage<T> = One<T>;
-///         type Indexes = One<TreeIndex<Self>>;
 ///     }
 /// }
 ///
@@ -190,7 +184,6 @@ macro_rules! flavor {
             $(type Width = $width:ty;)?
             $(type Error = $error:ty;)?
             $(type Storage<$t:ident> = $storage:ty;)?
-            $(type Indexes = $indexes:ty;)?
         }
     ) => {
         $(#[doc = $doc])*
@@ -205,7 +198,6 @@ macro_rules! flavor {
             type Width = $crate::flavor!(@width $($width)*);
             type Pointer = $crate::flavor!(@pointer $($width)*);
             $crate::flavor!(@storage $($t $storage)*);
-            type Indexes = $crate::flavor!(@indexes $($indexes)*);
         }
     };
 
@@ -217,8 +209,6 @@ macro_rules! flavor {
     (@pointer) => { <usize as $crate::pointer::Width>::Pointer };
     (@storage $t:ident $ty:ty) => { type Storage<$t> = $ty; };
     (@storage) => { type Storage<T> = $crate::macro_support::Vec<T>; };
-    (@indexes $ty:ty) => { $ty };
-    (@indexes) => { $crate::macro_support::DefaultIndexes<Self> };
 }
 
 flavor! {
@@ -226,19 +216,13 @@ flavor! {
     ///
     /// This corresponds to a `u32` index with a `u32` width.
     ///
-    /// A `u32` width keeps each node small, 32 rather than 56 bytes on 64-bit
-    /// targets with a 2-byte `T`, but bounds a tree to about 4 billion
-    /// elements. Adding more fails with [`Error::Overflow`]. A tree which
-    /// needs more can declare a flavor with `type Width = usize;` through
-    /// [`flavor!`].
-    ///
-    /// The token index ([`Flavor::Indexes`]) is only used by range queries
-    /// such as [`Tree::node_with_range`]. If you don't need them, turn it off
-    /// with `type Indexes = EmptyVec<TreeIndex<Self>>;` as in the [`flavor!`]
-    /// examples.
+    /// A `u32` width keeps entries small, on 64-bit targets with a 2-byte `T`
+    /// a token takes 12 rather than 16 bytes and a node 40 rather than 72, but
+    /// bounds a tree to about 4 billion tokens and as many nodes. Adding more
+    /// fails with [`Error::Overflow`]. A tree which needs more can declare a
+    /// flavor with `type Width = usize;` through [`flavor!`].
     ///
     /// [`Error::Overflow`]: crate::Error::Overflow
-    /// [`Tree::node_with_range`]: crate::Tree::node_with_range
     pub struct FlavorDefault {
         type Index = u32;
         type Width = u32;
@@ -270,6 +254,4 @@ pub trait Flavor {
     type Pointer: Pointer;
     /// The storage type used in the tree.
     type Storage<T>: Storage<T, Error = Self::Error>;
-    /// How indexes are stored in the tree.
-    type Indexes: Storage<TreeIndex<Self>, Error = Self::Error>;
 }

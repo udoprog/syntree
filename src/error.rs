@@ -87,7 +87,7 @@ pub enum Error<E = Infallible> {
     ///
     /// let mut tree: Builder<_, CustomFlavor> = Builder::new_with();
     ///
-    /// for d in 0..u8::MAX {
+    /// for d in 0..u8::MAX - 1 {
     ///     tree.token(d, 1)?;
     /// }
     ///
@@ -95,6 +95,25 @@ pub enum Error<E = Infallible> {
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     Overflow,
+    /// A token's span starts before the end of the token before it, or ends
+    /// before it starts. Tokens are stored in source order, so they can't
+    /// overlap, but an explicit span may leave a gap after the previous
+    /// token.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{Builder, Error, Span};
+    ///
+    /// let mut tree = Builder::new();
+    ///
+    /// tree.token("a", 3)?;
+    /// assert_eq!(tree.token_with("b", Span::new(2, 4)), Err(Error::TokenOrder));
+    /// assert_eq!(tree.token_with("b", Span::new(5, 4)), Err(Error::TokenOrder));
+    /// tree.token_with("b", Span::new(5, 6))?;
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    TokenOrder,
     /// The node of the given id is missing.
     ///
     /// This happens when the flavor's storage does not keep what is pushed into
@@ -160,6 +179,12 @@ where
                 write!(
                     f,
                     "trying to close a node which is not a sibling of the checkpoint being closed"
+                )
+            }
+            Error::TokenOrder => {
+                write!(
+                    f,
+                    "token starts before the end of the previous token, or ends before it starts"
                 )
             }
             Error::Overflow => {

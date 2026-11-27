@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
-use syntree::{Builder, FlavorDefault, Node, Span, Tree};
+use syntree::{Builder, Element, FlavorDefault, Span, Tree};
 
 fn find<'a>(
     tree: &'a Tree<&'static str, FlavorDefault>,
     value: &str,
-) -> Result<Node<'a, &'static str, FlavorDefault>> {
+) -> Result<Element<'a, &'static str, FlavorDefault>> {
     tree.walk()
         .find(|n| n.value() == value)
         .with_context(|| format!("missing {value}"))
@@ -112,9 +112,9 @@ fn open_with_span_not_shrunk_by_children() -> Result<()> {
     b.token_with("lit2", Span::new(4, 6))?;
     b.close()?;
     let tree = b.build()?;
-    assert_eq!(*find(&tree, "child")?.span(), Span::new(0, 10));
-    assert_eq!(*find(&tree, "lit")?.span(), Span::new(2, 4));
-    assert_eq!(*find(&tree, "lit2")?.span(), Span::new(4, 6));
+    assert_eq!(find(&tree, "child")?.span(), Span::new(0, 10));
+    assert_eq!(find(&tree, "lit")?.span(), Span::new(2, 4));
+    assert_eq!(find(&tree, "lit2")?.span(), Span::new(4, 6));
     assert_eq!(*tree.span(), Span::new(0, 10));
 
     let mut b = Builder::new();
@@ -123,8 +123,8 @@ fn open_with_span_not_shrunk_by_children() -> Result<()> {
     b.token("lit2", 2)?;
     b.close()?;
     let tree = b.build()?;
-    assert_eq!(*find(&tree, "child")?.span(), Span::new(0, 10));
-    assert_eq!(*find(&tree, "lit2")?.span(), Span::new(4, 6));
+    assert_eq!(find(&tree, "child")?.span(), Span::new(0, 10));
+    assert_eq!(find(&tree, "lit2")?.span(), Span::new(4, 6));
     Ok(())
 }
 
@@ -137,8 +137,8 @@ fn open_with_grows_to_cover_children() -> Result<()> {
     b.close()?;
     b.close()?;
     let tree = b.build()?;
-    assert_eq!(*find(&tree, "child")?.span(), Span::new(1, 6));
-    assert_eq!(*find(&tree, "root")?.span(), Span::new(0, 6));
+    assert_eq!(find(&tree, "child")?.span(), Span::new(1, 6));
+    assert_eq!(find(&tree, "root")?.span(), Span::new(0, 6));
     Ok(())
 }
 
@@ -152,8 +152,8 @@ fn close_at_with_joins_into_parent() -> Result<()> {
     b.close()?;
     let tree = b.build()?;
 
-    assert_eq!(*find(&tree, "w")?.span(), Span::new(0, 5));
-    assert_eq!(*find(&tree, "root")?.span(), Span::new(0, 5));
+    assert_eq!(find(&tree, "w")?.span(), Span::new(0, 5));
+    assert_eq!(find(&tree, "root")?.span(), Span::new(0, 5));
     assert_eq!(*tree.span(), Span::new(0, 5));
     Ok(())
 }
@@ -167,7 +167,7 @@ fn close_at_with_at_root_updates_tree_span() -> Result<()> {
     b.token_with("lit2", Span::new(6, 8))?;
     let tree = b.build()?;
 
-    assert_eq!(*find(&tree, "custom")?.span(), Span::new(0, 6));
+    assert_eq!(find(&tree, "custom")?.span(), Span::new(0, 6));
     assert_eq!(*tree.span(), Span::new(0, 8));
     let node = tree.node_with_range(1..2).context("missing 1..2")?;
     assert_eq!(node.value(), "lit");
@@ -187,8 +187,8 @@ fn close_at_with_empty_checkpoint() -> Result<()> {
     b.close()?;
     let tree = b.build()?;
 
-    assert_eq!(*find(&tree, "w")?.span(), Span::new(2, 5));
-    assert_eq!(*find(&tree, "root")?.span(), Span::new(0, 5));
+    assert_eq!(find(&tree, "w")?.span(), Span::new(2, 5));
+    assert_eq!(find(&tree, "root")?.span(), Span::new(0, 5));
     assert_eq!(*tree.span(), Span::new(0, 5));
     Ok(())
 }

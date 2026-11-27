@@ -156,7 +156,7 @@ fn values<'a, T, F, I>(nodes: I) -> Vec<T>
 where
     T: 'a + Copy,
     F: 'a + syntree::Flavor,
-    I: Iterator<Item = syntree::Node<'a, T, F>>,
+    I: Iterator<Item = syntree::Element<'a, T, F>>,
 {
     nodes.map(|n| n.value()).collect()
 }
@@ -172,11 +172,17 @@ fn close_at_root_updates_last() -> Result<()> {
 
     let tree = tree.build()?;
 
-    assert_eq!(tree.last().map(|n| n.id()), Some(w));
+    assert_eq!(
+        tree.last().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(w)
+    );
     assert_eq!(values(tree.children()), ["w"]);
     assert_eq!(values(tree.children().rev()), ["w"]);
 
-    let node = tree.last().context("missing w")?;
+    let node = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing w")?;
     assert_eq!(node.value(), "w");
     assert_eq!(node.next().map(|n| n.value()), None);
     assert_eq!(node.last().map(|n| n.value()), Some("b"));
@@ -200,7 +206,10 @@ fn close_at_root_after_sibling_updates_last() -> Result<()> {
     assert_eq!(values(tree.children()), ["x", "w"]);
     assert_eq!(values(tree.children().rev()), ["w", "x"]);
 
-    let node = tree.last().context("missing w")?;
+    let node = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing w")?;
     assert_eq!(node.value(), "w");
     assert_eq!(node.prev().map(|n| n.value()), Some("x"));
     assert_eq!(node.next().map(|n| n.value()), None);
@@ -221,12 +230,18 @@ fn close_at_nested_updates_parent_last() -> Result<()> {
 
     let tree = tree.build()?;
 
-    let root = tree.first().context("missing root")?;
+    let root = tree
+        .first()
+        .and_then(|n| n.into_node())
+        .context("missing root")?;
     assert_eq!(root.last().map(|n| n.value()), Some("w"));
     assert_eq!(values(root.children()), ["w"]);
     assert_eq!(values(root.children().rev()), ["w"]);
 
-    let node = root.last().context("missing w")?;
+    let node = root
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing w")?;
     assert_eq!(node.parent().map(|n| n.value()), Some("root"));
     assert_eq!(node.next().map(|n| n.value()), None);
     assert_eq!(values(node.children().rev()), ["b", "a"]);
@@ -250,7 +265,10 @@ fn balanced_checkpoint_last() -> Result<()> {
     let tree = tree.build()?;
 
     assert_eq!(values(tree.children().rev()), [Root]);
-    let root = tree.last().context("missing root")?;
+    let root = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing root")?;
     assert_eq!(values(root.children().rev()), [Number, Whitespace, Number]);
     Ok(())
 }
@@ -266,10 +284,16 @@ fn close_at_with_root_updates_last() -> Result<()> {
 
     let tree = tree.build()?;
 
-    assert_eq!(tree.last().map(|n| n.id()), Some(w));
+    assert_eq!(
+        tree.last().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(w)
+    );
     assert_eq!(values(tree.children().rev()), ["w"]);
 
-    let node = tree.last().context("missing w")?;
+    let node = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing w")?;
     assert_eq!(node.span(), &Span::new(0, 5));
     assert_eq!(node.next().map(|n| n.value()), None);
     assert_eq!(values(node.children().rev()), ["b", "a"]);
@@ -290,12 +314,18 @@ fn close_at_with_nested_updates_parent_last() -> Result<()> {
 
     let tree = tree.build()?;
 
-    let root = tree.first().context("missing root")?;
+    let root = tree
+        .first()
+        .and_then(|n| n.into_node())
+        .context("missing root")?;
     assert_eq!(root.last().map(|n| n.value()), Some("w"));
     assert_eq!(values(root.children()), ["x", "w"]);
     assert_eq!(values(root.children().rev()), ["w", "x"]);
 
-    let node = root.last().context("missing w")?;
+    let node = root
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing w")?;
     assert_eq!(node.span(), &Span::new(1, 3));
     assert_eq!(node.next().map(|n| n.value()), None);
     assert_eq!(values(node.children().rev()), ["b", "a"]);
@@ -323,7 +353,10 @@ fn close_at_followed_by_tokens() -> Result<()> {
     assert_eq!(values(tree.children()), ["root", "v", "e"]);
     assert_eq!(values(tree.children().rev()), ["e", "v", "root"]);
 
-    let root = tree.first().context("missing root")?;
+    let root = tree
+        .first()
+        .and_then(|n| n.into_node())
+        .context("missing root")?;
     assert_eq!(values(root.children()), ["w", "c"]);
     assert_eq!(values(root.children().rev()), ["c", "w"]);
     Ok(())
@@ -396,12 +429,24 @@ fn close_at_empty_checkpoint_reused() -> Result<()> {
     };
 
     assert_eq!(tree, expected);
-    assert_eq!(tree.last().map(|n| n.id()), Some(outer));
+    assert_eq!(
+        tree.last().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(outer)
+    );
     assert_eq!(values(tree.children().rev()), ["outer", "x"]);
 
-    let node = tree.last().context("missing outer")?;
-    assert_eq!(node.first().map(|n| n.id()), Some(inner));
-    assert_eq!(node.last().map(|n| n.id()), Some(inner));
+    let node = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing outer")?;
+    assert_eq!(
+        node.first().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(inner)
+    );
+    assert_eq!(
+        node.last().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(inner)
+    );
     assert_eq!(node.span(), &Span::point(1));
     Ok(())
 }
@@ -419,27 +464,54 @@ fn close_at_pointer_width_limit() -> Result<()> {
 
     let c = tree.checkpoint()?;
 
+    // A u8 pointer addresses 255 entries, and the number of tokens must
+    // itself fit in one.
     for d in 0..u8::MAX - 1 {
         tree.token(d, 1)?;
     }
 
-    let w = tree.close_at(c, 254)?;
-    assert_eq!(w.get(), 254);
-
-    assert_eq!(tree.checkpoint().err(), Some(Error::Overflow));
-    assert_eq!(tree.close_at(c, 255), Err(Error::Overflow));
     assert_eq!(tree.token(255, 1), Err(Error::Overflow));
+
+    let w = tree.close_at(c, 254)?;
+    assert_eq!(w.get(), 0);
 
     let tree = tree.build()?;
 
     assert_eq!(tree.len(), 255);
-    assert_eq!(tree.last().map(|n| n.id()), Some(w));
+    assert_eq!(
+        tree.last().and_then(|n| n.into_node()).map(|n| n.id()),
+        Some(w)
+    );
     assert_eq!(values(tree.children().rev()), [254]);
 
-    let node = tree.last().context("missing wrapper")?;
+    let node = tree
+        .last()
+        .and_then(|n| n.into_node())
+        .context("missing wrapper")?;
     assert_eq!(node.last().map(|n| n.value()), Some(253));
     assert_eq!(node.children().rev().count(), 254);
     assert_eq!(node.span(), &Span::new(0, 254));
+    Ok(())
+}
+
+#[test]
+fn node_pointer_width_limit() -> Result<()> {
+    let mut tree: syntree::Builder<u8, FlavorU8> = syntree::Builder::new_with();
+
+    // The largest pointer is reserved, so 254 interior nodes fit.
+    for d in 0..u8::MAX - 1 {
+        tree.open(d)?;
+        tree.close()?;
+    }
+
+    assert_eq!(tree.open(255), Err(Error::Overflow));
+
+    let c = tree.checkpoint()?;
+    assert_eq!(tree.close_at(c, 255), Err(Error::Overflow));
+
+    let tree = tree.build()?;
+    assert_eq!(tree.len(), 254);
+    assert_eq!(tree.children().count(), 254);
     Ok(())
 }
 

@@ -9,6 +9,11 @@ mod sealed {
 
 /// A pointer type that is derived from the pointer [Width].
 pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::Sealed {
+    /// The largest pointer value. It is reserved to mark gap entries in the
+    /// token array, so no node is ever given it.
+    #[doc(hidden)]
+    const GAP: Self;
+
     /// Construct a pointer without checking that `value` is in bounds.
     ///
     /// # Safety
@@ -149,6 +154,8 @@ macro_rules! implement {
         /// # Ok::<_, Box<dyn core::error::Error>>(())
         /// ```
         impl crate::pointer::Pointer for $e {
+            const GAP: Self = Self($non_zero::MAX);
+
             #[inline]
             unsafe fn new_unchecked(value: usize) -> Self {
                 let value = value as $ty;

@@ -1,11 +1,55 @@
-//! Central struct to keep track of all internal linking of a tree.
+//! The storage entries of a tree.
+//!
+//! A tree stores two flat arrays:
+//!
+//! * Tokens, in source order. A token stores only its end, its start is the
+//!   end of the token before it (or zero for the first one). Where an explicit
+//!   span leaves a gap after the previous token, a gap entry is stored in front
+//!   of the token to carry the gap's start. Gap entries are never visible
+//!   through the public API.
+//! * Interior nodes, which cover a range of the token array and link only to
+//!   other interior nodes.
+//!
+//! The children of a node are its tokens whose parent is the node, merged in
+//! token order with its chain of interior children. An interior child comes
+//! before the token at index `i` if the child's token range starts at or before
+//! `i`.
 
 use core::cell::Cell;
 
+use crate::pointer::Pointer;
 use crate::span::Span;
 
+/// A token entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Links<T, I, P>
+pub(crate) struct TokenLinks<T, I, P>
+where
+    T: Copy,
+{
+    /// The data in the token.
+    pub(crate) data: Cell<T>,
+    /// The end of the token. Its start is the end of the entry before it.
+    pub(crate) end: I,
+    /// The interior node the token belongs to, `None` at the root. A gap
+    /// entry holds [`Pointer::GAP`], which no node is ever given.
+    pub(crate) parent: Option<P>,
+}
+
+impl<T, I, P> TokenLinks<T, I, P>
+where
+    T: Copy,
+    P: Pointer,
+{
+    /// Test if this is a gap entry.
+    #[inline]
+    pub(crate) fn is_gap(&self) -> bool {
+        self.parent == Some(P::GAP)
+    }
+}
+
+/// An interior node entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NodeLinks<T, I, P>
 where
     T: Copy,
 {
@@ -13,36 +57,34 @@ where
     pub(crate) data: Cell<T>,
     /// Span of the node.
     pub(crate) span: Span<I>,
-    /// Parent node. These exists because they are needed when performing range
-    /// queries such as [Tree::node_with_range][crate::Tree::node_with_range].
+    /// The start of the token range covered by the node, as a token index.
+    pub(crate) tok_start: P,
+    /// The end of the token range covered by the node, exclusive. Only set
+    /// once the node is closed.
+    pub(crate) tok_end: P,
+    /// Parent node.
     pub(crate) parent: Option<P>,
-    /// The previous node.
+    /// The previous interior sibling.
     pub(crate) prev: Option<P>,
-    /// Next sibling node.
+    /// The next interior sibling.
     pub(crate) next: Option<P>,
-    /// First child node.
+    /// First interior child.
     pub(crate) first: Option<P>,
-    /// Last child node.
+    /// Last interior child.
     pub(crate) last: Option<P>,
 }
 
-// Links should be no larger than their fields, give or take alignment padding.
+// Entries should be no larger than their fields, give or take alignment
+// padding.
 #[test]
 fn test_size() {
-    macro_rules! test {
-        ($data:ty, $index:ty, $width:ty, $max_align:expr) => {
-            assert!(
-                (
-                    std::mem::size_of::<Links<$data, $index, <$width as crate::pointer::Width>::Pointer>>() as isize
-                    -
-                    (std::mem::size_of::<$data>() as isize + ((<$index>::BITS * 2) / 8) as isize + ((<$width>::BITS * 5) / 8) as isize)
-                ).abs() <= $max_align
-            );
-        }
-    }
+    use crate::pointer::Width;
+    use core::mem::size_of;
 
-    test!([u8; 8], u32, u16, 4);
-    test!([u8; 8], u32, u32, 4);
-    test!([u8; 8], u32, u64, 4);
-    test!([u8; 8], u32, u128, 4);
+    type P<W> = <W as Width>::Pointer;
+
+    assert_eq!(size_of::<TokenLinks<u16, u32, P<u32>>>(), 12);
+    assert_eq!(size_of::<NodeLinks<u16, u32, P<u32>>>(), 40);
+    assert_eq!(size_of::<TokenLinks<u16, u32, P<usize>>>(), 16);
+    assert_eq!(size_of::<NodeLinks<u16, u32, P<usize>>>(), 72);
 }

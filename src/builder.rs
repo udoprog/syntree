@@ -3,10 +3,8 @@ mod checkpoint;
 use core::cell::Cell;
 use core::fmt;
 
-use crate::links::Links;
-use crate::{
-    Error, Flavor, FlavorDefault, Index, Length, Pointer, Span, Storage, Tree, TreeIndex, Width,
-};
+use crate::links::{NodeLinks, TokenLinks};
+use crate::{Error, Flavor, FlavorDefault, Index, Length, Pointer, Span, Storage, Tree};
 
 pub use self::checkpoint::Checkpoint;
 use self::checkpoint::Inner;
@@ -72,7 +70,7 @@ where
     /// parent set in the tree, so that is what is used to traverse ancestors of
     /// a node.
     parent: Option<F::Pointer>,
-    /// Reference to last sibling inserted.
+    /// The last interior node at the current level.
     sibling: Option<F::Pointer>,
     /// The current cursor.
     cursor: F::Index,
@@ -135,13 +133,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
+    /// use syntree::{Builder, Empty, Tree};
     ///
     /// syntree::flavor! {
     ///     struct FlavorEmpty {
     ///         type Index = Empty;
     ///         type Width = u32;
-    ///         type Indexes = EmptyVec<TreeIndex<Self>>;
     ///     }
     /// }
     ///
@@ -183,16 +180,18 @@ where
         }
     }
 
-    /// Construct a new builder with capacity for `nodes` nodes.
+    /// Construct a new builder with capacity for `tokens` tokens.
     ///
-    /// Every call to [`Builder::open`] or [`Builder::token`] (and their
-    /// variants) adds one node. The token index used by range queries is
-    /// sized separately through [`Builder::with_capacities`].
+    /// Every call to [`Builder::token`] (and its variants) adds one token,
+    /// and a token with an explicit span which leaves a gap after the previous
+    /// token takes one more entry. Interior nodes, added by [`Builder::open`]
+    /// and [`Builder::close_at`], are sized separately through
+    /// [`Builder::with_capacities`].
     ///
     /// # Errors
     ///
     /// Errors with [`Error::Flavor`] if the flavor's storage can't hold
-    /// `nodes` nodes.
+    /// `tokens` tokens.
     ///
     /// # Examples
     ///
@@ -210,22 +209,19 @@ where
     /// assert!(tree.capacity() >= 2);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn with_capacity(nodes: usize) -> Result<Self, Error<F::Error>> {
-        Self::with_capacities(nodes, 0)
+    pub fn with_capacity(tokens: usize) -> Result<Self, Error<F::Error>> {
+        Self::with_capacities(0, tokens)
     }
 
-    /// Construct a new builder with capacity for `nodes` nodes and `indexes`
-    /// token indexes.
+    /// Construct a new builder with capacity for `nodes` interior nodes and
+    /// `tokens` tokens.
     ///
-    /// The token index has one entry per token with a non-empty span, so
-    /// `indexes` is at most the number of tokens. It's only used by range
-    /// queries such as [`Tree::node_with_range`], and a flavor which turns it
-    /// off with [`EmptyVec`][crate::EmptyVec] ignores `indexes`.
+    /// See [`Builder::with_capacity`] for what the counts mean.
     ///
     /// # Errors
     ///
     /// Errors with [`Error::Flavor`] if the flavor's storage can't hold
-    /// `nodes` nodes or `indexes` indexes.
+    /// `nodes` nodes or `tokens` tokens.
     ///
     /// # Examples
     ///
@@ -233,8 +229,8 @@ where
     /// use syntree::{Builder, FlavorDefault};
     ///
     /// let source = "a b";
-    /// // At most one token per byte, and one node per token plus the root.
-    /// let mut tree = Builder::<_, FlavorDefault>::with_capacities(source.len() + 1, source.len())?;
+    /// // At most one token per byte, and a root node.
+    /// let mut tree = Builder::<_, FlavorDefault>::with_capacities(1, source.len())?;
     ///
     /// tree.open("root")?;
     /// tree.token("word", 1)?;
@@ -244,11 +240,12 @@ where
     ///
     /// let tree = tree.build()?;
     /// assert_eq!(tree.len(), 4);
+    /// assert_eq!(tree.capacity(), 4);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn with_capacities(nodes: usize, indexes: usize) -> Result<Self, Error<F::Error>> {
+    pub fn with_capacities(nodes: usize, tokens: usize) -> Result<Self, Error<F::Error>> {
         Ok(Builder {
-            tree: Tree::with_capacity(nodes, indexes)?,
+            tree: Tree::with_capacity(nodes, tokens)?,
             parent: None,
             checkpoints: Storage::EMPTY,
             sibling: None,
@@ -256,21 +253,21 @@ where
         })
     }
 
-    /// Reserve capacity for at least `nodes` more nodes and `indexes` more
-    /// token indexes.
+    /// Reserve capacity for at least `nodes` more interior nodes and `tokens`
+    /// more tokens.
     ///
-    /// See [`Builder::with_capacities`] for what the counts mean.
+    /// See [`Builder::with_capacity`] for what the counts mean.
     ///
     /// # Errors
     ///
     /// Errors with [`Error::Flavor`] if the flavor's storage can't hold that
-    /// many more nodes or indexes.
+    /// many more nodes or tokens.
     ///
     /// # Examples
     ///
     /// ```
     /// let mut tree = syntree::Builder::new();
-    /// tree.reserve(2, 1)?;
+    /// tree.reserve(1, 1)?;
     ///
     /// tree.open("root")?;
     /// tree.token("token", 5)?;
@@ -280,8 +277,8 @@ where
     /// assert_eq!(tree.len(), 2);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn reserve(&mut self, nodes: usize, indexes: usize) -> Result<(), Error<F::Error>> {
-        self.tree.reserve(nodes, indexes)
+    pub fn reserve(&mut self, nodes: usize, tokens: usize) -> Result<(), Error<F::Error>> {
+        self.tree.reserve(nodes, tokens)
     }
 
     /// Get a reference to the current cursor position of the syntax tree.
@@ -468,25 +465,29 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn close(&mut self) -> Result<(), Error<F::Error>> {
-        let head = self.parent.take().ok_or(Error::CloseError)?;
+        let head = self.parent.ok_or(Error::CloseError)?;
+        let tok_end = F::Pointer::new(self.tree.tokens().len()).ok_or(Error::Overflow)?;
 
-        self.sibling = Some(head);
-
-        let &mut Links { parent, span, .. } = self
+        let links = self
             .tree
-            .get_mut(head)
+            .node_links_mut(head)
             .ok_or_else(|| Error::MissingNode(head.get()))?;
+
+        links.tok_end = tok_end;
+        let parent = links.parent;
+        let span = links.span;
 
         if let Some(id) = parent {
             let parent = self
                 .tree
-                .get_mut(id)
+                .node_links_mut(id)
                 .ok_or_else(|| Error::MissingNode(id.get()))?;
 
             parent.span = parent.span.join(&span);
-            self.parent = Some(id);
         }
 
+        self.parent = parent;
+        self.sibling = Some(head);
         self.cursor = span.end;
         Ok(())
     }
@@ -497,8 +498,10 @@ where
     ///
     /// # Errors
     ///
-    /// Errors with [`Error::Overflow`] in case we run out of node
-    /// identifiers.
+    /// Errors with [`Error::Overflow`] in case we run out of token
+    /// identifiers, or [`Error::TokenOrder`] if the token would start before
+    /// the end of the previous token, which happens after
+    /// [`Builder::set_cursor`] moves the cursor back.
     ///
     /// # Examples
     ///
@@ -523,33 +526,26 @@ where
     pub fn token(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error<F::Error>> {
         let start = self.cursor;
 
-        if !len.is_empty() {
-            self.cursor = self.cursor.checked_add_len(len).ok_or(Error::Overflow)?;
-        }
+        let end = if len.is_empty() {
+            start
+        } else {
+            start.checked_add_len(len).ok_or(Error::Overflow)?
+        };
 
-        let id = self.insert(value, Span::new(start, self.cursor))?;
-        self.sibling = Some(id);
-
-        if !len.is_empty() {
-            self.tree.indexes_mut().push(TreeIndex {
-                index: self.cursor,
-                id,
-            })?;
-        }
-
-        Ok(id)
+        self.insert_token(value, Span::new(start, end))
     }
 
     /// Insert a token with a custom span.
     ///
     /// The span is joined into the spans of the enclosing nodes and the tree.
-    /// Range queries such as [`Tree::node_with_range`] assume that tokens are
-    /// added in non-decreasing order of their spans, so a token should not
-    /// start before the end of the previous one.
+    /// Tokens are stored in source order, so a token can't start before the
+    /// end of the previous one, but it may leave a gap after it.
     ///
     /// # Errors
     ///
-    /// Errors with [`Error::Overflow`] in case we run out of node identifiers.
+    /// Errors with [`Error::Overflow`] in case we run out of token
+    /// identifiers, or [`Error::TokenOrder`] if `span` starts before the end
+    /// of the previous token or ends before it starts.
     ///
     /// # Examples
     ///
@@ -606,18 +602,7 @@ where
         value: T,
         span: Span<F::Index>,
     ) -> Result<F::Pointer, Error<F::Error>> {
-        let id = self.insert(value, span)?;
-        self.sibling = Some(id);
-
-        if !span.is_empty() {
-            self.tree.indexes_mut().push(TreeIndex {
-                index: span.end,
-                id,
-            })?;
-        }
-
-        self.cursor = span.end;
-        Ok(id)
+        self.insert_token(value, span)
     }
 
     /// Declare a token with the specified `value` and an empty length.
@@ -626,8 +611,10 @@ where
     ///
     /// # Errors
     ///
-    /// Errors with [`Error::Overflow`] in case we run out of node
-    /// identifiers.
+    /// Errors with [`Error::Overflow`] in case we run out of token
+    /// identifiers, or [`Error::TokenOrder`] if the token would start before
+    /// the end of the previous token, which happens after
+    /// [`Builder::set_cursor`] moves the cursor back.
     ///
     /// # Examples
     ///
@@ -662,8 +649,7 @@ where
     ///
     /// # Errors
     ///
-    /// Errors with [`Error::Overflow`] in case we run out of node
-    /// identifiers, or [`Error::Flavor`] if the checkpoint can't be stored.
+    /// Errors with [`Error::Flavor`] if the checkpoint can't be stored.
     ///
     /// # Examples
     ///
@@ -690,10 +676,9 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn checkpoint(&mut self) -> Result<Checkpoint<F::Pointer>, Error<F::Error>> {
-        let node = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
-
         let inner = Inner {
-            node,
+            tok: self.tree.tokens().len(),
+            before: self.sibling,
             parent: self.parent,
         };
 
@@ -869,7 +854,12 @@ where
         data: T,
         span: Option<Span<F::Index>>,
     ) -> Result<F::Pointer, Error<F::Error>> {
-        let Some(&Inner { node: id, parent }) = self.checkpoints.get(c.index()) else {
+        let Some(&Inner {
+            tok,
+            before,
+            parent,
+        }) = self.checkpoints.get(c.index())
+        else {
             return Err(Error::MissingCheckpoint(c.index()));
         };
 
@@ -877,80 +867,155 @@ where
             return Err(Error::CloseAtError);
         }
 
-        let new_id = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+        let tokens = self.tree.tokens().len();
 
-        let Some(links) = self.tree.get_mut(id) else {
-            // Nothing was added since the checkpoint, so wrap an empty node.
-            // Any other missing id means the checkpoint is from another tree.
-            if id != new_id {
-                return Err(Error::MissingNode(id.get()));
+        if tok > tokens {
+            return Err(Error::MissingCheckpoint(c.index()));
+        }
+
+        let new_id = self.next_node_id()?;
+        let tok_start = F::Pointer::new(tok).ok_or(Error::Overflow)?;
+        let tok_end = F::Pointer::new(tokens).ok_or(Error::Overflow)?;
+
+        // The first interior node to wrap. A checkpoint whose position was
+        // since wrapped by another `close_at` is stale: its interior sibling
+        // has a new parent, or the interior node now at its position starts
+        // before it.
+        let first = match before {
+            Some(id) => {
+                let links = self
+                    .tree
+                    .node_links(id)
+                    .ok_or_else(|| Error::MissingNode(id.get()))?;
+
+                if links.parent != parent {
+                    return Err(Error::CloseAtError);
+                }
+
+                links.next
             }
-
-            let new_id = self.insert(data, span.unwrap_or(Span::point(self.cursor)))?;
-            self.sibling = Some(new_id);
-            return Ok(new_id);
+            None => self.tree.level_first(parent),
         };
 
-        let parent = links.parent.replace(new_id);
-        let prev = links.prev.take();
-        let start = links.span.start;
-
-        // Re-parent the siblings following the checkpointed node, which also
-        // gives the end of the wrapped span.
-        let (last, end) = match links.next {
-            Some(next) => restructure_close_at(&mut self.tree, new_id, next)?,
-            None => (id, links.span.end),
-        };
-
-        // The wrapper takes every node from the checkpoint onwards, so it is
-        // always the last node at its level.
-        let level = match parent {
-            Some(parent) => self
+        if let Some(id) = first {
+            let links = self
                 .tree
-                .get_mut(parent)
-                .map(|links| (&mut links.first, &mut links.last)),
-            None => Some(self.tree.links_mut()),
+                .node_links(id)
+                .ok_or_else(|| Error::MissingNode(id.get()))?;
+
+            if links.tok_start.get() < tok {
+                return Err(Error::CloseAtError);
+            }
+        }
+
+        let level_last = match parent {
+            Some(id) => {
+                self.tree
+                    .node_links(id)
+                    .ok_or_else(|| Error::MissingNode(id.get()))?
+                    .last
+            }
+            None => *self.tree.links_mut().1,
         };
 
-        if let Some((first, last)) = level {
-            if *first == Some(id) {
-                *first = Some(new_id);
+        // The span of what is wrapped, from the first wrapped element to the
+        // last. Nothing is wrapped if no token or interior node was added at
+        // this level since the checkpoint.
+        let wrapped = if first.is_some() || tok < tokens {
+            let first = self.tree.next_at(parent, tok, first);
+            let last = self.tree.prev_at(parent, tokens, level_last);
+
+            match (
+                first.and_then(|id| self.tree.span_of(id)),
+                last.and_then(|id| self.tree.span_of(id)),
+            ) {
+                (Some(a), Some(b)) => Some(Span::new(a.start, b.end)),
+                _ => return Err(Error::MissingNode(tok)),
+            }
+        } else {
+            None
+        };
+
+        let node_span = match (span, wrapped) {
+            (Some(span), _) => span,
+            (None, Some(wrapped)) => wrapped,
+            (None, None) => Span::point(self.cursor),
+        };
+
+        // Re-parent the wrapped interior nodes.
+        let mut cur = first;
+
+        while let Some(id) = cur {
+            let links = self
+                .tree
+                .node_links_mut(id)
+                .ok_or_else(|| Error::MissingNode(id.get()))?;
+            links.parent = Some(new_id);
+            cur = links.next;
+        }
+
+        if let Some(links) = first.and_then(|id| self.tree.node_links_mut(id)) {
+            links.prev = None;
+        }
+
+        // Re-parent the wrapped tokens which belong to this level. Tokens
+        // inside wrapped interior nodes keep their parents.
+        for links in self.tree.tokens_mut().iter_mut().skip(tok) {
+            if links.parent == parent {
+                links.parent = Some(new_id);
+            }
+        }
+
+        // The wrapper takes everything from the checkpoint onwards, so it is
+        // always the last interior node at its level.
+        match before.and_then(|id| self.tree.node_links_mut(id)) {
+            Some(links) => {
+                links.next = Some(new_id);
+            }
+            None => {
+                let level = match parent {
+                    Some(id) => self.tree.node_links_mut(id).map(|links| &mut links.first),
+                    None => Some(self.tree.links_mut().0),
+                };
+
+                if let Some(level_first) = level {
+                    *level_first = Some(new_id);
+                }
+            }
+        }
+
+        let level = match parent {
+            Some(id) => self.tree.node_links_mut(id).map(|links| &mut links.last),
+            None => Some(self.tree.links_mut().1),
+        };
+
+        if let Some(level_last) = level {
+            *level_last = Some(new_id);
+        }
+
+        // An explicit span, or an empty wrapper, may reach outside of what
+        // the enclosing node and the tree already cover.
+        if span.is_some() || wrapped.is_none() {
+            if let Some(links) = parent.and_then(|id| self.tree.node_links_mut(id)) {
+                links.span = links.span.join(&node_span);
             }
 
-            *last = Some(new_id);
+            self.join_tree_span(&node_span);
         }
 
-        if let Some(prev) = prev.and_then(|id| self.tree.get_mut(id)) {
-            prev.next = Some(new_id);
-        }
-
-        if let Some(span) = span {
-            if let Some(links) = parent.and_then(|id| self.tree.get_mut(id)) {
-                links.span = links.span.join(&span);
-            }
-
-            self.join_tree_span(&span);
-        }
-
-        self.tree.push(Links {
+        self.tree.push_node(NodeLinks {
             data: Cell::new(data),
-            span: span.unwrap_or(Span::new(start, end)),
-            prev,
+            span: node_span,
+            tok_start,
+            tok_end,
             parent,
+            prev: before,
             next: None,
-            first: Some(id),
-            last: Some(last),
+            first,
+            last: first.and(level_last),
         })?;
 
         self.sibling = Some(new_id);
-
-        if let Some(inner) = self.checkpoints.get_mut(c.index()) {
-            *inner = Inner {
-                node: new_id,
-                parent,
-            };
-        }
-
         Ok(new_id)
     }
 
@@ -1012,13 +1077,16 @@ where
 
     /// Insert a new node.
     fn insert(&mut self, data: T, span: Span<F::Index>) -> Result<F::Pointer, Error<F::Error>> {
-        let new = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
+        let new = self.next_node_id()?;
+        let tok = F::Pointer::new(self.tree.tokens().len()).ok_or(Error::Overflow)?;
 
-        let prev = self.sibling.take();
+        let prev = self.sibling;
 
-        self.tree.push(Links {
+        self.tree.push_node(NodeLinks {
             data: Cell::new(data),
             span,
+            tok_start: tok,
+            tok_end: tok,
             parent: self.parent,
             prev,
             next: None,
@@ -1026,8 +1094,10 @@ where
             last: None,
         })?;
 
+        self.sibling = None;
+
         if let Some(id) = self.parent {
-            if let Some(node) = self.tree.links_at_mut(id) {
+            if let Some(node) = self.tree.node_links_mut(id) {
                 if node.first.is_none() {
                     node.first = Some(new);
                 }
@@ -1045,12 +1115,72 @@ where
             *last = Some(new);
         }
 
-        if let Some(node) = prev.and_then(|id| self.tree.links_at_mut(id)) {
+        if let Some(node) = prev.and_then(|id| self.tree.node_links_mut(id)) {
             node.next = Some(new);
         }
 
         self.join_tree_span(&span);
         Ok(new)
+    }
+
+    /// The id of the next interior node. The largest pointer is reserved to
+    /// mark gap entries.
+    fn next_node_id(&self) -> Result<F::Pointer, Error<F::Error>> {
+        match F::Pointer::new(self.tree.nodes().len()) {
+            Some(id) if id != F::Pointer::GAP => Ok(id),
+            _ => Err(Error::Overflow),
+        }
+    }
+
+    /// Insert a token, preceded by a gap entry if it doesn't start where the
+    /// previous token ends.
+    fn insert_token(
+        &mut self,
+        data: T,
+        span: Span<F::Index>,
+    ) -> Result<F::Pointer, Error<F::Error>> {
+        let prev_end = self.tree.tokens_end();
+
+        if span.start < prev_end || span.end < span.start {
+            return Err(Error::TokenOrder);
+        }
+
+        let gap = span.start > prev_end;
+
+        let mut index = self.tree.tokens().len();
+
+        if gap {
+            index = index.checked_add(1).ok_or(Error::Overflow)?;
+        }
+
+        let id = F::Pointer::new(index).ok_or(Error::Overflow)?;
+
+        // The number of tokens must itself fit in a pointer, since it is the
+        // end of the token range of the enclosing nodes.
+        let end = index.checked_add(1).ok_or(Error::Overflow)?;
+        F::Pointer::new(end).ok_or(Error::Overflow)?;
+
+        if gap {
+            self.tree.push_token(TokenLinks {
+                data: Cell::new(data),
+                end: span.start,
+                parent: Some(F::Pointer::GAP),
+            })?;
+        }
+
+        self.tree.push_token(TokenLinks {
+            data: Cell::new(data),
+            end: span.end,
+            parent: self.parent,
+        })?;
+
+        if let Some(node) = self.parent.and_then(|id| self.tree.node_links_mut(id)) {
+            node.span = node.span.join(&span);
+        }
+
+        self.join_tree_span(&span);
+        self.cursor = span.end;
+        Ok(id)
     }
 
     /// Extend the span of the whole tree to cover `span`. Empty spans are
@@ -1066,8 +1196,9 @@ where
 impl<T, F> Clone for Builder<T, F>
 where
     T: Copy,
-    F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
-    F::Storage<Links<T, F::Index, F::Pointer>>: Clone,
+    F: Flavor,
+    F::Storage<NodeLinks<T, F::Index, F::Pointer>>: Clone,
+    F::Storage<TokenLinks<T, F::Index, F::Pointer>>: Clone,
     F::Storage<Inner<F::Pointer>>: Clone,
 {
     #[inline]
@@ -1107,34 +1238,4 @@ where
     fn default() -> Self {
         Self::new_with()
     }
-}
-
-// Adjust span to encapsulate all children and check that we just inserted the
-// checkpointed node in the right location which should be the tail sibling of
-// the replaced node.
-#[allow(clippy::type_complexity)]
-fn restructure_close_at<T, F>(
-    tree: &mut Tree<T, F>,
-    parent_id: F::Pointer,
-    next: F::Pointer,
-) -> Result<(F::Pointer, F::Index), Error<F::Error>>
-where
-    T: Copy,
-    F: Flavor,
-{
-    let mut links = tree
-        .get_mut(next)
-        .ok_or_else(|| Error::MissingNode(next.get()))?;
-    let mut last = (next, links.span.end);
-    links.parent = Some(parent_id);
-
-    while let Some(next) = links.next {
-        links = tree
-            .get_mut(next)
-            .ok_or_else(|| Error::MissingNode(next.get()))?;
-        last = (next, links.span.end);
-        links.parent = Some(parent_id);
-    }
-
-    Ok(last)
 }

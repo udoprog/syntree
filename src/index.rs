@@ -1,9 +1,6 @@
 //! Types that can be used to refer to indexes in a [Span][crate::Span].
 
 use core::cmp;
-use core::fmt;
-
-use crate::flavor::Flavor;
 
 mod sealed {
     pub trait Sealed {}
@@ -123,41 +120,5 @@ impl Index for usize {
     #[inline]
     fn from_usize(value: usize) -> Option<Self> {
         Some(value)
-    }
-}
-
-/// A single span index entry for the given [Flavor] `F`.
-#[doc(hidden)]
-pub struct TreeIndex<F>
-where
-    F: ?Sized + Flavor,
-{
-    pub(crate) index: F::Index,
-    pub(crate) id: F::Pointer,
-}
-
-// Implemented by hand since deriving would require `F` itself to implement the
-// traits, which flavors are not required to.
-impl<F> Clone for TreeIndex<F>
-where
-    F: ?Sized + Flavor,
-{
-    #[inline]
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<F> Copy for TreeIndex<F> where F: ?Sized + Flavor {}
-
-impl<F> fmt::Debug for TreeIndex<F>
-where
-    F: ?Sized + Flavor<Index: fmt::Debug>,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TreeIndex")
-            .field("index", &self.index)
-            .field("id", &self.id)
-            .finish()
     }
 }

@@ -78,8 +78,7 @@ impl Length for Empty {
 /// An empty vector.
 ///
 /// This is [`Storage`] which discards every item pushed into it, and is the
-/// default storage without the `alloc` feature. It suits storage which is
-/// never read, such as the `Indexes` of a flavor with [`Empty`] spans.
+/// default storage without the `alloc` feature.
 pub struct EmptyVec<T>(PhantomData<T>);
 
 impl<T> Default for EmptyVec<T> {

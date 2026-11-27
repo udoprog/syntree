@@ -2,9 +2,9 @@ use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
-use crate::links::Links;
-use crate::node::Node;
+use crate::node::{Element, Id};
 use crate::pointer::Pointer;
+use crate::tree::Tree;
 
 /// An event indicating how a tree is being walked with [`WalkEvents`].
 ///
@@ -19,6 +19,10 @@ pub enum Event {
     /// Walk up a single step from a sub tree.
     Up,
 }
+
+/// The next element of a walk, how it is reached, and the next interior node
+/// at its level.
+type State<P> = (Id<P>, Event, Option<P>);
 
 /// A low-level iterator which walks the tree while emitting [Event] instances
 /// indicating *how* the structure is being navigated.
@@ -142,11 +146,11 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// The tree being iterated over.
-    tree: &'a [Links<T, F::Index, F::Pointer>],
-    // The current node.
-    node: Option<(F::Pointer, Event)>,
-    // Current depth being walked.
+    tree: Option<&'a Tree<T, F>>,
+    /// The next element, how it is reached, and the next interior node at its
+    /// level, which is only used when the element is a token.
+    node: Option<State<F::Pointer>>,
+    /// Current depth being walked.
     depth: isize,
 }
 
@@ -155,90 +159,23 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// Construct a new events walker.
+    /// Walk from `start`, where `next` is the next interior node at the level
+    /// of `start` if it is a token.
     #[inline]
     pub(crate) fn new(
-        tree: &'a [Links<T, F::Index, F::Pointer>],
-        node: Option<F::Pointer>,
-        e: Event,
+        tree: &'a Tree<T, F>,
+        start: Option<Id<F::Pointer>>,
+        next: Option<F::Pointer>,
     ) -> Self {
         Self {
-            tree,
-            node: node.map(|n| (n, e)),
+            tree: Some(tree),
+            node: start.map(|id| (id, Event::Next, next)),
             depth: 0,
         }
     }
 
-    /// Get the depth of the node that the next call to [`next`] returns,
-    /// relative to the node the walk started at, which has depth `0`.
-    ///
-    /// A node emitted with [`Event::Up`] has the depth of the node being
-    /// returned to. When a walk started at a node leaves that node's subtree,
-    /// for example by climbing up to its parent, the depth becomes negative.
-    ///
-    /// Once the iterator is exhausted, the depth is that of the last node it
-    /// returned.
-    ///
-    /// [`next`]: Iterator::next
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use syntree::node::Event::*;
-    ///
-    /// let tree = syntree::tree! {
-    ///     "root" => {
-    ///         "c1" => {
-    ///             "c2" => {},
-    ///         },
-    ///         "c3" => {}
-    ///     }
-    /// };
-    ///
-    /// let mut it = tree.walk_events();
-    /// let mut out = Vec::new();
-    ///
-    /// loop {
-    ///     let depth = it.depth();
-    ///     let Some((event, node)) = it.next() else { break };
-    ///     out.push((depth, event, node.value()));
-    /// }
-    ///
-    /// assert_eq!(
-    ///     out,
-    ///     [
-    ///         (0, Next, "root"),
-    ///         (1, Down, "c1"),
-    ///         (2, Down, "c2"),
-    ///         (1, Up, "c1"),
-    ///         (1, Next, "c3"),
-    ///         (0, Up, "root"),
-    ///     ]
-    /// );
-    ///
-    /// let c1 = tree.first().and_then(|n| n.first()).ok_or("missing c1")?;
-    ///
-    /// let mut it = c1.walk_events();
-    /// let mut out = Vec::new();
-    ///
-    /// loop {
-    ///     let depth = it.depth();
-    ///     let Some((event, node)) = it.next() else { break };
-    ///     out.push((depth, event, node.value()));
-    /// }
-    ///
-    /// assert_eq!(
-    ///     out,
-    ///     [
-    ///         (0, Next, "c1"),
-    ///         (1, Down, "c2"),
-    ///         (0, Up, "c1"),
-    ///         (0, Next, "c3"),
-    ///         (-1, Up, "root"),
-    ///     ]
-    /// );
-    /// # Ok::<_, Box<dyn core::error::Error>>(())
-    /// ```
+    /// Get the current depth of the walk, which starts at zero and changes
+    /// with every [`Event::Down`] and [`Event::Up`].
     #[inline]
     #[must_use]
     pub const fn depth(&self) -> isize {
@@ -247,27 +184,42 @@ where
 
     fn step(
         &mut self,
-        links: &Links<T, F::Index, F::Pointer>,
+        tree: &'a Tree<T, F>,
+        id: Id<F::Pointer>,
         event: Event,
-    ) -> Option<(F::Pointer, Event)> {
-        if let Event::Up = event {
-            if let Some(next) = links.next {
-                return Some((next, Event::Next));
-            }
-        } else {
-            if let Some(first) = links.first {
-                self.depth = self.depth.checked_add(1)?;
-                return Some((first, Event::Down));
-            }
+        next: Option<F::Pointer>,
+    ) -> Option<State<F::Pointer>> {
+        let parent = match id {
+            Id::Node(n) => {
+                let links = tree.node_links(n)?;
 
-            if let Some(next) = links.next {
-                return Some((next, Event::Next));
-            }
-        }
+                if !matches!(event, Event::Up) {
+                    if let Some(first) = tree.next_at(Some(n), links.tok_start.get(), links.first) {
+                        self.depth = self.depth.checked_add(1)?;
+                        return Some((first, Event::Down, links.first));
+                    }
+                }
 
-        let parent = links.parent?;
+                if let Some(id) = tree.next_at(links.parent, links.tok_end.get(), links.next) {
+                    return Some((id, Event::Next, links.next));
+                }
+
+                links.parent
+            }
+            Id::Token(t) => {
+                let index = t.get();
+                let links = tree.tokens().get(index)?;
+
+                if let Some(id) = tree.next_at(links.parent, index.checked_add(1)?, next) {
+                    return Some((id, Event::Next, next));
+                }
+
+                links.parent
+            }
+        };
+
         self.depth = self.depth.checked_sub(1)?;
-        Some((parent, Event::Up))
+        Some((Id::Node(parent?), Event::Up, None))
     }
 }
 
@@ -294,7 +246,7 @@ where
     #[inline]
     fn default() -> Self {
         Self {
-            tree: &[],
+            tree: None,
             node: None,
             depth: 0,
         }
@@ -306,14 +258,13 @@ where
     T: Copy,
     F: Flavor,
 {
-    type Item = (Event, Node<'a, T, F>);
+    type Item = (Event, Element<'a, T, F>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (node, event) = self.node.take()?;
-        let links = self.tree.get(node.get())?;
-        self.node = self.step(links, event);
-        let node = Node::new(links, self.tree);
-        Some((event, node))
+        let tree = self.tree?;
+        let (id, event, next) = self.node.take()?;
+        self.node = self.step(tree, id, event, next);
+        Some((event, tree.element(id)?))
     }
 
     #[inline]
@@ -335,10 +286,10 @@ where
     F: Flavor<Index: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let next = self.node.and_then(|(id, event)| {
-            let links = self.tree.get(id.get())?;
-            Some((event, Node::<T, F>::new(links, self.tree)))
-        });
+        let next = self
+            .tree
+            .zip(self.node)
+            .and_then(|(tree, (id, event, _))| Some((event, tree.element(id)?)));
 
         f.debug_struct("WalkEvents")
             .field("next", &next)

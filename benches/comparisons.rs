@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{prelude::StdRng, RngExt, SeedableRng};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use syntree::{Builder, Error, FlavorDefault, Tree, TreeIndex};
+use syntree::{Builder, Error, FlavorDefault, Tree};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
@@ -120,7 +120,6 @@ fn setup(c: &mut Criterion) {
     syntree::flavor! {
         struct FlavorEmpty {
             type Index = syntree::Empty;
-            type Indexes = syntree::EmptyVec<TreeIndex<Self>>;
         }
     }
 

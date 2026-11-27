@@ -1,6 +1,6 @@
 use core::ops::{Deref, DerefMut};
 
-use syntree::{Builder, Error, Storage, TreeIndex};
+use syntree::{Builder, Error, Storage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Full;
@@ -58,7 +58,6 @@ syntree::flavor! {
         type Index = u32;
         type Error = Full;
         type Storage<T> = Bounded<T>;
-        type Indexes = Bounded<TreeIndex<Self>>;
     }
 }
 
@@ -66,6 +65,8 @@ syntree::flavor! {
 fn custom_storage_and_error() {
     let mut b: Builder<&str, FlavorBounded> = Builder::new_with();
     b.open("root").unwrap();
+    // Nodes and tokens are stored apart, each holding at most two.
     b.token("a", 1).unwrap();
-    assert_eq!(b.token("b", 1), Err(Error::Flavor(Full)));
+    b.token("b", 1).unwrap();
+    assert_eq!(b.token("c", 1), Err(Error::Flavor(Full)));
 }

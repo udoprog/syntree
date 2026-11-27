@@ -1,9 +1,9 @@
 use core::fmt;
 use core::ops::Range;
 
-use crate::links::Links;
-use crate::node::{Children, Event, Node, Walk, WalkEvents};
-use crate::{Error, Flavor, Index, Pointer, Span, Storage, Width};
+use crate::links::{NodeLinks, TokenLinks};
+use crate::node::{Children, Element, Id, Node, NodeOrToken, Token, Walk, WalkEvents};
+use crate::{Error, Flavor, Index, Pointer, Span, Storage};
 
 /// A syntax tree.
 ///
@@ -23,23 +23,31 @@ use crate::{Error, Flavor, Index, Pointer, Span, Storage, Width};
 ///
 /// To use the default values, use the [Builder::new][crate::Builder::new]
 /// constructor.
+/// # Layout
+///
+/// Tokens are stored in a flat array in source order, and interior nodes (the
+/// ones opened with [`Builder::open`][crate::Builder::open] or wrapped with
+/// [`Builder::close_at`][crate::Builder::close_at]) in a second array. Node and
+/// token ids are indexes into their own array, so they are not dense: token ids
+/// skip the internal entries which carry the gaps explicit spans leave between
+/// tokens.
 pub struct Tree<T, F>
 where
     T: Copy,
     F: Flavor,
 {
-    /// Links in the tree.
-    tree: F::Storage<Links<T, F::Index, F::Pointer>>,
+    /// Interior nodes.
+    nodes: F::Storage<NodeLinks<T, F::Index, F::Pointer>>,
+    /// Tokens and gap entries, in source order.
+    tokens: F::Storage<TokenLinks<T, F::Index, F::Pointer>>,
     /// The span of the whole tree.
     span: Span<F::Index>,
-    /// Token indexes for range searches. This contains the value of the token
-    /// cursor each time it is modified and allow for binary searching for
-    /// sequences of nodes which corresponds to the given index.
-    indexes: F::Indexes,
-    /// The first node in the tree.
+    /// The first interior node at the root.
     first: Option<F::Pointer>,
-    /// The last node in the tree.
+    /// The last interior node at the root.
     last: Option<F::Pointer>,
+    /// The number of gap entries in `tokens`.
+    gaps: usize,
 }
 
 impl<T, F> Tree<T, F>
@@ -50,31 +58,33 @@ where
     /// Construct a new empty tree.
     pub(crate) const fn new_with() -> Self {
         Self {
-            tree: F::Storage::EMPTY,
+            nodes: F::Storage::EMPTY,
+            tokens: F::Storage::EMPTY,
             span: Span::point(F::Index::EMPTY),
-            indexes: F::Indexes::EMPTY,
             first: None,
             last: None,
+            gaps: 0,
         }
     }
 
-    /// Construct a new tree with capacity for `nodes` nodes and `indexes`
-    /// token indexes.
-    pub(crate) fn with_capacity(nodes: usize, indexes: usize) -> Result<Self, Error<F::Error>> {
+    /// Construct a new tree with capacity for `nodes` interior nodes and
+    /// `tokens` tokens.
+    pub(crate) fn with_capacity(nodes: usize, tokens: usize) -> Result<Self, Error<F::Error>> {
         Ok(Self {
-            tree: F::Storage::with_capacity(nodes)?,
+            nodes: F::Storage::with_capacity(nodes)?,
+            tokens: F::Storage::with_capacity(tokens)?,
             span: Span::point(F::Index::EMPTY),
-            indexes: F::Indexes::with_capacity(indexes)?,
             first: None,
             last: None,
+            gaps: 0,
         })
     }
 
-    /// Reserve capacity for `nodes` more nodes and `indexes` more token
-    /// indexes.
-    pub(crate) fn reserve(&mut self, nodes: usize, indexes: usize) -> Result<(), Error<F::Error>> {
-        self.tree.reserve(nodes)?;
-        self.indexes.reserve(indexes)?;
+    /// Reserve capacity for `nodes` more interior nodes and `tokens` more
+    /// tokens.
+    pub(crate) fn reserve(&mut self, nodes: usize, tokens: usize) -> Result<(), Error<F::Error>> {
+        self.nodes.reserve(nodes)?;
+        self.tokens.reserve(tokens)?;
         Ok(())
     }
 
@@ -136,7 +146,9 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn len(&self) -> usize {
-        self.tree.len()
+        self.nodes
+            .len()
+            .saturating_add(self.tokens.len().saturating_sub(self.gaps))
     }
 
     /// Check if the current tree is empty. In that it doesn't have any
@@ -151,7 +163,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.tree.is_empty()
+        self.nodes.is_empty() && self.tokens.is_empty()
     }
 
     /// Get the capacity of the tree.
@@ -178,14 +190,14 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn capacity(&self) -> usize {
-        self.tree.capacity()
+        self.nodes.capacity().saturating_add(self.tokens.capacity())
     }
 
     /// Get all root nodes in the tree.
     ///
     /// See [Children] for documentation.
     pub fn children(&self) -> Children<'_, T, F> {
-        Children::new(&self.tree, self.first, self.last)
+        Children::new(self, None, (0, self.first), (self.tokens.len(), self.last))
     }
 
     /// Walk the tree forwards in a depth-first fashion visiting every node
@@ -193,7 +205,7 @@ where
     ///
     /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, F> {
-        Walk::tree(&self.tree, self.first)
+        Walk::new(self, self.first_id(), self.first)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -201,7 +213,7 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T, F> {
-        WalkEvents::new(&self.tree, self.first, Event::Next)
+        WalkEvents::new(self, self.first_id(), self.first)
     }
 
     /// Get the first child node in the tree.
@@ -219,8 +231,8 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn first(&self) -> Option<Node<'_, T, F>> {
-        self.get(self.first?)
+    pub fn first(&self) -> Option<Element<'_, T, F>> {
+        self.element(self.first_id()?)
     }
 
     /// Get the last child node in the tree.
@@ -238,39 +250,205 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[inline]
-    pub fn last(&self) -> Option<Node<'_, T, F>> {
-        self.get(self.last?)
+    pub fn last(&self) -> Option<Element<'_, T, F>> {
+        self.element(self.prev_at(None, self.tokens.len(), self.last)?)
     }
 
-    /// Get the tree links mutably.
+    /// The id of the first element in the tree.
+    fn first_id(&self) -> Option<Id<F::Pointer>> {
+        self.next_at(None, 0, self.first)
+    }
+
+    /// The interior nodes of the tree.
+    pub(crate) fn nodes(&self) -> &[NodeLinks<T, F::Index, F::Pointer>] {
+        &self.nodes
+    }
+
+    /// The token entries of the tree, gap entries included.
+    pub(crate) fn tokens(&self) -> &[TokenLinks<T, F::Index, F::Pointer>] {
+        &self.tokens
+    }
+
+    /// The first and last interior nodes at the root, mutably.
     pub(crate) fn links_mut(&mut self) -> (&mut Option<F::Pointer>, &mut Option<F::Pointer>) {
         (&mut self.first, &mut self.last)
     }
 
-    /// Get a mutable reference to an element in the tree.
-    pub(crate) fn get_mut(
+    /// Get an interior node.
+    pub(crate) fn node_links(&self, id: F::Pointer) -> Option<&NodeLinks<T, F::Index, F::Pointer>> {
+        self.nodes.get(id.get())
+    }
+
+    /// Get an interior node mutably.
+    pub(crate) fn node_links_mut(
         &mut self,
         id: F::Pointer,
-    ) -> Option<&mut Links<T, F::Index, F::Pointer>> {
-        self.tree.get_mut(id.get())
+    ) -> Option<&mut NodeLinks<T, F::Index, F::Pointer>> {
+        self.nodes.get_mut(id.get())
     }
 
-    /// Push a new node into the tree with the specified links.
-    pub(crate) fn push(&mut self, links: Links<T, F::Index, F::Pointer>) -> Result<(), F::Error> {
-        self.tree.push(links)
+    /// Get the token entries mutably.
+    pub(crate) fn tokens_mut(&mut self) -> &mut [TokenLinks<T, F::Index, F::Pointer>] {
+        &mut self.tokens
     }
 
-    /// Push the given index.
-    pub(crate) fn indexes_mut(&mut self) -> &mut F::Indexes {
-        &mut self.indexes
-    }
-
-    /// Optionally get the links at the given location.
-    pub(crate) fn links_at_mut(
+    /// Push an interior node.
+    pub(crate) fn push_node(
         &mut self,
-        index: F::Pointer,
-    ) -> Option<&mut Links<T, F::Index, F::Pointer>> {
-        self.tree.get_mut(index.get())
+        links: NodeLinks<T, F::Index, F::Pointer>,
+    ) -> Result<(), F::Error> {
+        self.nodes.push(links)
+    }
+
+    /// Push a token entry.
+    pub(crate) fn push_token(
+        &mut self,
+        links: TokenLinks<T, F::Index, F::Pointer>,
+    ) -> Result<(), F::Error> {
+        if links.is_gap() {
+            self.gaps = self.gaps.saturating_add(1);
+        }
+
+        self.tokens.push(links)
+    }
+
+    /// The start of the token entry at `index`, which is the end of the entry
+    /// before it.
+    pub(crate) fn token_start(&self, index: usize) -> F::Index {
+        match index.checked_sub(1).and_then(|n| self.tokens.get(n)) {
+            Some(prev) => prev.end,
+            None => F::Index::EMPTY,
+        }
+    }
+
+    /// The end of the last token entry.
+    pub(crate) fn tokens_end(&self) -> F::Index {
+        self.token_start(self.tokens.len())
+    }
+
+    /// The span of an element.
+    pub(crate) fn span_of(&self, id: Id<F::Pointer>) -> Option<Span<F::Index>> {
+        match id {
+            Id::Node(id) => Some(self.node_links(id)?.span),
+            Id::Token(id) => {
+                let index = id.get();
+                let links = self.tokens.get(index)?;
+                Some(Span::new(self.token_start(index), links.end))
+            }
+        }
+    }
+
+    /// The element at a level which follows the position before token entry
+    /// `tok`, where `node` is the next interior node at the level, if any.
+    ///
+    /// This is the merge step between the token array and a chain of interior
+    /// nodes: an interior node comes first if its tokens start at or before
+    /// `tok`.
+    pub(crate) fn next_at(
+        &self,
+        parent: Option<F::Pointer>,
+        tok: usize,
+        node: Option<F::Pointer>,
+    ) -> Option<Id<F::Pointer>> {
+        if let Some(id) = node {
+            if self.node_links(id)?.tok_start.get() <= tok {
+                return Some(Id::Node(id));
+            }
+        }
+
+        let mut index = tok;
+        let mut links = self.tokens.get(index)?;
+
+        // A gap entry is always directly followed by its token.
+        if links.is_gap() {
+            index = index.checked_add(1)?;
+            links = self.tokens.get(index)?;
+        }
+
+        if links.parent != parent {
+            return None;
+        }
+
+        Some(Id::Token(F::Pointer::new(index)?))
+    }
+
+    /// The element at a level which precedes the position before token entry
+    /// `tok`, where `node` is the previous interior node at the level, if any.
+    pub(crate) fn prev_at(
+        &self,
+        parent: Option<F::Pointer>,
+        tok: usize,
+        node: Option<F::Pointer>,
+    ) -> Option<Id<F::Pointer>> {
+        let mut tok = tok;
+
+        // A position right after a gap entry is the same as the one before it,
+        // since nothing is ever placed between a gap and its token.
+        if let Some(index) = tok.checked_sub(1) {
+            if self.tokens.get(index).is_some_and(|links| links.is_gap()) {
+                tok = index;
+            }
+        }
+
+        if let Some(id) = node {
+            if self.node_links(id)?.tok_end.get() >= tok {
+                return Some(Id::Node(id));
+            }
+        }
+
+        let index = tok.checked_sub(1)?;
+        let links = self.tokens.get(index)?;
+
+        if links.is_gap() || links.parent != parent {
+            return None;
+        }
+
+        Some(Id::Token(F::Pointer::new(index)?))
+    }
+
+    /// The first interior node at a level.
+    pub(crate) fn level_first(&self, parent: Option<F::Pointer>) -> Option<F::Pointer> {
+        match parent {
+            Some(id) => self.node_links(id)?.first,
+            None => self.first,
+        }
+    }
+
+    /// The interior nodes at a level immediately before and after token entry
+    /// `index`.
+    ///
+    /// This walks the chain of interior nodes at the level, so it is linear in
+    /// their number.
+    pub(crate) fn nodes_around(
+        &self,
+        parent: Option<F::Pointer>,
+        index: usize,
+    ) -> (Option<F::Pointer>, Option<F::Pointer>) {
+        let mut prev = None;
+        let mut cur = self.level_first(parent);
+
+        while let Some(id) = cur {
+            let Some(links) = self.node_links(id) else {
+                break;
+            };
+
+            if links.tok_start.get() > index {
+                break;
+            }
+
+            prev = Some(id);
+            cur = links.next;
+        }
+
+        (prev, cur)
+    }
+
+    /// Construct an element handle.
+    pub(crate) fn element(&self, id: Id<F::Pointer>) -> Option<Element<'_, T, F>> {
+        match id {
+            Id::Node(id) => Some(NodeOrToken::Node(self.get(id)?)),
+            Id::Token(id) => Some(NodeOrToken::Token(self.token(id)?)),
+        }
     }
 
     /// Get the node at the given index.
@@ -304,8 +482,27 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn get(&self, id: F::Pointer) -> Option<Node<'_, T, F>> {
-        let cur = self.tree.get(id.get())?;
-        Some(Node::new(cur, &self.tree))
+        Node::new(self, id)
+    }
+
+    /// Get the token with the given id.
+    ///
+    /// Token ids are not dense, so not every id below the number of tokens
+    /// refers to a token.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// let id = tree.token("lit", 3)?;
+    /// let tree = tree.build()?;
+    ///
+    /// let token = tree.token(id).ok_or("missing token")?;
+    /// assert_eq!(token.value(), "lit");
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn token(&self, id: F::Pointer) -> Option<Token<'_, T, F>> {
+        Token::new(self, id)
     }
 
     /// Access the [Span] of the node as a [Range].
@@ -428,7 +625,7 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_range(&self, span: Range<usize>) -> Option<Node<'_, T, F>> {
+    pub fn node_with_range(&self, span: Range<usize>) -> Option<Element<'_, T, F>> {
         let start = F::Index::from_usize(span.start)?;
         let end = F::Index::from_usize(span.end)?;
         self.node_with_span_internal(start, end)
@@ -535,36 +732,63 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     #[must_use]
-    pub fn node_with_span(&self, span: Span<F::Index>) -> Option<Node<'_, T, F>> {
+    pub fn node_with_span(&self, span: Span<F::Index>) -> Option<Element<'_, T, F>> {
         self.node_with_span_internal(span.start, span.end)
     }
 
-    fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Node<'_, T, F>> {
+    fn node_with_span_internal(&self, start: F::Index, end: F::Index) -> Option<Element<'_, T, F>> {
         if start > end {
             return None;
         }
 
-        // Index of the first token which ends after `start`.
-        let n = match self.indexes.binary_search_by(|f| f.index.cmp(&start)) {
-            Ok(n) => n.saturating_add(1),
-            Err(n) => n,
+        // Index of the first entry which ends after `start`. Empty tokens
+        // never qualify, since the entry before them ends where they do.
+        let n = self.tokens.partition_point(|t| t.end <= start);
+
+        let mut next = n;
+
+        // `start` falls in a gap left by an explicit span, so the token after
+        // it starts after `start`.
+        let in_gap = match self.tokens.get(n) {
+            Some(links) if links.is_gap() => {
+                next = n.checked_add(1)?;
+                true
+            }
+            Some(..) => false,
+            None => true,
         };
 
-        let next = self.indexes.get(n).and_then(|i| self.get(i.id));
+        let found = F::Pointer::new(next)
+            .and_then(|id| self.element(Id::Token(id)))
+            .and_then(|e| smallest_containing(e, start, end));
 
-        let found = next.and_then(|node| smallest_containing(node, start, end));
-
-        // Only explicit spans leave gaps between tokens. When `start` falls in
-        // one, a node spanning the gap can instead contain the preceding token.
-        if next.is_some_and(|node| node.span().start <= start) {
+        if !in_gap {
             return found;
         }
 
-        let preceding = n
-            .checked_sub(1)
-            .and_then(|n| self.indexes.get(n))
-            .and_then(|i| self.get(i.id))
-            .and_then(|node| smallest_containing(node, start, end));
+        // A node spanning the gap can instead contain the closest preceding
+        // token with a non-empty span.
+        let mut index = n;
+
+        let preceding = loop {
+            let Some(i) = index.checked_sub(1) else {
+                break None;
+            };
+
+            index = i;
+
+            let Some(links) = self.tokens.get(i) else {
+                break None;
+            };
+
+            if links.is_gap() || links.end <= self.token_start(i) {
+                continue;
+            }
+
+            break F::Pointer::new(i)
+                .and_then(|id| self.element(Id::Token(id)))
+                .and_then(|e| smallest_containing(e, start, end));
+        };
 
         match (found, preceding) {
             (Some(a), Some(b))
@@ -578,42 +802,46 @@ where
     }
 }
 
-/// Climb from `node` to the first node which contains `start..end`, where
-/// `start` must lie strictly before the end of the node.
+/// Climb from `element` to the first element which contains `start..end`,
+/// where `start` must lie strictly before the end of the element.
 fn smallest_containing<'a, T, F>(
-    mut node: Node<'a, T, F>,
+    element: Element<'a, T, F>,
     start: F::Index,
     end: F::Index,
-) -> Option<Node<'a, T, F>>
+) -> Option<Element<'a, T, F>>
 where
     T: Copy,
     F: Flavor,
 {
+    let mut element = element;
+
     loop {
-        let span = node.span();
+        let span = element.span();
 
         if span.start <= start && start < span.end && end <= span.end {
-            return Some(node);
+            return Some(element);
         }
 
-        node = node.parent()?;
+        element = NodeOrToken::Node(element.parent()?);
     }
 }
 
 impl<T, F> Clone for Tree<T, F>
 where
     T: Copy,
-    F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
-    F::Storage<Links<T, F::Index, F::Pointer>>: Clone,
+    F: Flavor,
+    F::Storage<NodeLinks<T, F::Index, F::Pointer>>: Clone,
+    F::Storage<TokenLinks<T, F::Index, F::Pointer>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
         Self {
-            tree: self.tree.clone(),
+            nodes: self.nodes.clone(),
+            tokens: self.tokens.clone(),
             span: self.span,
-            indexes: self.indexes.clone(),
             first: self.first,
             last: self.last,
+            gaps: self.gaps,
         }
     }
 }
@@ -636,7 +864,7 @@ where
     B: Flavor<Index: PartialEq<A::Index>>,
 {
     fn eq(&self, other: &Tree<T, A>) -> bool {
-        struct Item<'a, T, F>((isize, Node<'a, T, F>))
+        struct Item<'a, T, F>((isize, Element<'a, T, F>))
         where
             T: Copy,
             F: Flavor;

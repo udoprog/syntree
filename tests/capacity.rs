@@ -1,12 +1,12 @@
 //! Pre-sizing a builder.
 
-use syntree::{Builder, Empty, EmptyVec, Error, FlavorDefault, TreeIndex};
+use syntree::{Builder, Empty, Error, FlavorDefault};
 
 #[test]
 fn presized_builder_does_not_grow() -> Result<(), Error> {
     const TOKENS: usize = 1000;
 
-    let mut tree = Builder::<_, FlavorDefault>::with_capacities(TOKENS + 1, TOKENS)?;
+    let mut tree = Builder::<_, FlavorDefault>::with_capacities(1, TOKENS)?;
 
     tree.open("root")?;
 
@@ -31,7 +31,7 @@ fn presized_builder_does_not_grow() -> Result<(), Error> {
 #[test]
 fn reserve_grows_once() -> Result<(), Error> {
     let mut tree = Builder::new();
-    tree.reserve(100, 100)?;
+    tree.reserve(0, 100)?;
 
     for _ in 0..100 {
         tree.token("token", 1)?;
@@ -52,15 +52,14 @@ fn oversized_hint_is_not_an_error() -> Result<(), Error> {
 }
 
 syntree::flavor! {
-    struct FlavorNoIndexes {
+    struct FlavorEmpty {
         type Index = Empty;
-        type Indexes = EmptyVec<TreeIndex<Self>>;
     }
 }
 
 #[test]
-fn disabled_indexes_ignore_hint() -> Result<(), Error> {
-    let mut tree = Builder::<_, FlavorNoIndexes>::with_capacities(1, usize::MAX)?;
+fn empty_index_oversized_hint() -> Result<(), Error> {
+    let mut tree = Builder::<_, FlavorEmpty>::with_capacities(1, usize::MAX)?;
     tree.token("token", Empty)?;
     assert_eq!(tree.build()?.len(), 1);
     Ok(())

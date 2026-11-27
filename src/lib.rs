@@ -186,18 +186,14 @@
 //! ```
 //!
 //! Using [`Empty`] as the index allows for building trees without spans, if
-//! that is something you want to do. A tree also keeps the indexes of its
-//! tokens in `type Indexes` for lookups such as [`Tree::node_with_span`].
-//! Without spans there is nothing to look up, so they can be discarded by
-//! storing them in [`EmptyVec`]:
+//! that is something you want to do:
 //!
 //! ```
-//! use syntree::{Builder, Empty, EmptyVec, TreeIndex, Tree};
+//! use syntree::{Builder, Empty, Tree};
 //!
 //! syntree::flavor! {
 //!     struct FlavorEmpty {
 //!         type Index = Empty;
-//!         type Indexes = EmptyVec<TreeIndex<Self>>;
 //!     }
 //! };
 //!
@@ -346,8 +342,8 @@
 //! everything pushed into it. A tree built with [`Builder::new`] or any flavor
 //! using default storage then holds nothing, and building it fails with an
 //! error such as [`Error::MissingNode`]. To build trees without `alloc`,
-//! declare a flavor through [`flavor!`] with its own `type Storage<T>` and
-//! `type Indexes`, such as a fixed-capacity array implementing [`Storage`].
+//! declare a flavor through [`flavor!`] with its own `type Storage<T>`, such
+//! as a fixed-capacity array implementing [`Storage`].
 //!
 //! Checkpoints are kept in the same storage, so no allocator is needed.
 //!
@@ -400,9 +396,11 @@ extern crate std;
 mod macros;
 mod builder;
 
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub mod edit;
+// `edit::ChangeSet` is rewritten for the flat token layout in phase 5 of
+// layout C. Not built until then.
+// #[cfg(feature = "std")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+// pub mod edit;
 
 mod empty;
 mod error;
@@ -425,9 +423,9 @@ pub use self::error::Error;
 #[doc(inline)]
 pub use self::flavor::{Flavor, FlavorDefault, Storage};
 #[doc(inline)]
-pub use self::index::{Index, Length, TreeIndex};
+pub use self::index::{Index, Length};
 #[doc(inline)]
-pub use self::node::node_impl::Node;
+pub use self::node::{Element, Node, NodeOrToken, Token};
 #[doc(inline)]
 pub use self::pointer::{Pointer, Width};
 #[doc(inline)]
@@ -437,13 +435,9 @@ pub use self::tree::Tree;
 
 #[doc(hidden)]
 pub mod macro_support {
-    use crate::index::TreeIndex;
-
     #[cfg(feature = "alloc")]
     pub type Vec<T> = alloc::vec::Vec<T>;
 
     #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = crate::empty::EmptyVec<T>;
-
-    pub type DefaultIndexes<F> = crate::macro_support::Vec<TreeIndex<F>>;
 }

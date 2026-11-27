@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 use core::slice;
 
-use syntree::{Builder, Error, Storage, TreeIndex};
+use syntree::{Builder, Error, Storage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Full;
@@ -82,7 +82,6 @@ syntree::flavor! {
         type Index = u32;
         type Error = Full;
         type Storage<T> = ArrayVec<T, 4>;
-        type Indexes = ArrayVec<TreeIndex<Self>, 4>;
     }
 }
 
@@ -97,7 +96,10 @@ fn custom_storage_builds_tree() -> Result<(), Error<Full>> {
 
     let tree = tree.build()?;
 
-    let root = tree.first().ok_or(Error::MissingNode(0))?;
+    let root = tree
+        .first()
+        .and_then(|n| n.into_node())
+        .ok_or(Error::MissingNode(0))?;
     assert_eq!(root.value(), "root");
     assert_eq!(root.span().range(), 0..5);
 
@@ -133,7 +135,9 @@ fn custom_storage_capacity_errors() -> Result<(), Error<Full>> {
 
     tree.token("a", 1)?;
     tree.reserve(3, 3)?;
-    assert_eq!(tree.reserve(4, 0), Err(Error::Flavor(Full)));
+    // The token went into token storage, so node storage still has room for 4.
+    tree.reserve(4, 0)?;
+    assert_eq!(tree.reserve(5, 0), Err(Error::Flavor(Full)));
     assert_eq!(tree.reserve(0, 4), Err(Error::Flavor(Full)));
     assert_eq!(tree.reserve(usize::MAX, 0), Err(Error::Flavor(Full)));
     Ok(())
@@ -169,7 +173,10 @@ fn custom_storage_checkpoints() -> Result<(), Error<Full>> {
     tree.close_at(c, "root")?;
 
     let tree = tree.build()?;
-    let root = tree.first().ok_or(Error::MissingNode(0))?;
+    let root = tree
+        .first()
+        .and_then(|n| n.into_node())
+        .ok_or(Error::MissingNode(0))?;
     assert_eq!(root.value(), "root");
     Ok(())
 }
