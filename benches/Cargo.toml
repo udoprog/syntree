@@ -20,3 +20,8 @@ harness = false
 name = "capacity"
 path = "capacity.rs"
 harness = false
+
+[[bench]]
+name = "checkpoints"
+path = "checkpoints.rs"
+harness = false

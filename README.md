@@ -349,8 +349,7 @@ error such as [`Error::MissingNode`]. To build trees without `alloc`,
 declare a flavor through [`flavor!`] with its own `type Storage<T>` and
 `type Indexes`, such as a fixed-capacity array implementing [`Storage`].
 
-The crate always needs an allocator, since checkpoints are reference
-counted.
+Checkpoints are kept in the same storage, so no allocator is needed.
 
 [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
 [`Builder::new`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new

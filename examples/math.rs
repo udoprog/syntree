@@ -77,7 +77,7 @@ where
         while self.peek()?.is_some_and(|t| tokens.contains(&t)) {
             self.bump()?;
             next(self)?;
-            self.builder.close_at(&c, Operation)?;
+            self.builder.close_at(c, Operation)?;
         }
 
         Ok(())

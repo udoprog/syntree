@@ -85,7 +85,7 @@ fn gap_between_explicit_spans() -> Result<()> {
     let mut b = Builder::new();
     let c = b.checkpoint()?;
     b.token_with("lit", Span::new(1, 3))?;
-    b.close_at_with(&c, "custom", Span::new(0, 6))?;
+    b.close_at_with(c, "custom", Span::new(0, 6))?;
     b.token_with("lit2", Span::new(6, 8))?;
     let tree = b.build()?;
 

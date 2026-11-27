@@ -28,7 +28,7 @@ fn balanced_checkpoint() -> Result<()> {
     tree.token(Lit, 2)?;
     tree.close()?;
 
-    tree.close_at(&c, Root)?;
+    tree.close_at(c, Root)?;
 
     let tree = tree.build()?;
 
@@ -56,8 +56,8 @@ fn test_checkpoint_mutation() -> Result<()> {
     let outer = tree.checkpoint()?;
     let inner = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(&inner, "operation")?;
-    tree.close_at(&outer, "operation")?;
+    tree.close_at(inner, "operation")?;
+    tree.close_at(outer, "operation")?;
 
     let tree = tree.build()?;
 
@@ -81,8 +81,8 @@ fn test_nested_checkpoints() -> Result<()> {
     tree.token("a", 3)?;
     let b = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(&b, "operation")?;
-    tree.close_at(&a, "operation")?;
+    tree.close_at(b, "operation")?;
+    tree.close_at(a, "operation")?;
 
     let tree = tree.build()?;
 
@@ -106,9 +106,9 @@ fn test_nested_checkpoints2() -> Result<()> {
     let a = tree.checkpoint()?;
     let b = tree.checkpoint()?;
     tree.token("b", 3)?;
-    tree.close_at(&b, "operation")?;
+    tree.close_at(b, "operation")?;
     tree.token("a", 3)?;
-    tree.close_at(&a, "operation")?;
+    tree.close_at(a, "operation")?;
 
     let tree = tree.build()?;
 
@@ -135,7 +135,7 @@ fn test_checkpoints_around_close() -> Result<()> {
     tree.close()?;
     let b = tree.checkpoint()?;
     tree.token("a", 3)?;
-    tree.close_at(&b, "operation")?;
+    tree.close_at(b, "operation")?;
 
     let tree = tree.build()?;
 
@@ -168,7 +168,7 @@ fn close_at_root_updates_last() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    let w = tree.close_at(&c, "w")?;
+    let w = tree.close_at(c, "w")?;
 
     let tree = tree.build()?;
 
@@ -193,7 +193,7 @@ fn close_at_root_after_sibling_updates_last() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    tree.close_at(&c, "w")?;
+    tree.close_at(c, "w")?;
 
     let tree = tree.build()?;
 
@@ -216,7 +216,7 @@ fn close_at_nested_updates_parent_last() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    tree.close_at(&c, "w")?;
+    tree.close_at(c, "w")?;
     tree.close()?;
 
     let tree = tree.build()?;
@@ -245,7 +245,7 @@ fn balanced_checkpoint_last() -> Result<()> {
     tree.open(Number)?;
     tree.token(Lit, 2)?;
     tree.close()?;
-    tree.close_at(&c, Root)?;
+    tree.close_at(c, Root)?;
 
     let tree = tree.build()?;
 
@@ -262,7 +262,7 @@ fn close_at_with_root_updates_last() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    let w = tree.close_at_with(&c, "w", Span::new(0, 5))?;
+    let w = tree.close_at_with(c, "w", Span::new(0, 5))?;
 
     let tree = tree.build()?;
 
@@ -285,7 +285,7 @@ fn close_at_with_nested_updates_parent_last() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    tree.close_at_with(&c, "w", Span::new(1, 3))?;
+    tree.close_at_with(c, "w", Span::new(1, 3))?;
     tree.close()?;
 
     let tree = tree.build()?;
@@ -310,12 +310,12 @@ fn close_at_followed_by_tokens() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.token("a", 1)?;
     tree.token("b", 1)?;
-    tree.close_at(&c, "w")?;
+    tree.close_at(c, "w")?;
     tree.token("c", 1)?;
     tree.close()?;
     let c = tree.checkpoint()?;
     tree.token("d", 1)?;
-    tree.close_at(&c, "v")?;
+    tree.close_at(c, "v")?;
     tree.token("e", 1)?;
 
     let tree = tree.build()?;
@@ -336,9 +336,9 @@ fn close_at_error() -> Result<()> {
     let c = tree.checkpoint()?;
     tree.open("child")?;
     tree.token("a", 1)?;
-    assert_eq!(tree.close_at(&c, "w"), Err(Error::CloseAtError));
+    assert_eq!(tree.close_at(c, "w"), Err(Error::CloseAtError));
     assert_eq!(
-        tree.close_at_with(&c, "w", Span::new(0, 1)),
+        tree.close_at_with(c, "w", Span::new(0, 1)),
         Err(Error::CloseAtError)
     );
     tree.close()?;
@@ -363,10 +363,10 @@ fn close_at_foreign_checkpoint_leaves_builder_unchanged() -> Result<()> {
     b.token("x", 1)?;
     let c = b.checkpoint()?;
 
-    assert_eq!(a.close_at(&c, "w"), Err(Error::MissingNode(1)));
+    assert_eq!(a.close_at(c, "w"), Err(Error::MissingCheckpoint(0)));
     assert_eq!(
-        a.close_at_with(&c, "w", Span::new(0, 1)),
-        Err(Error::MissingNode(1))
+        a.close_at_with(c, "w", Span::new(0, 1)),
+        Err(Error::MissingCheckpoint(0))
     );
 
     a.token("y", 2)?;
@@ -382,8 +382,8 @@ fn close_at_empty_checkpoint_reused() -> Result<()> {
 
     tree.token("x", 1)?;
     let c = tree.checkpoint()?;
-    let inner = tree.close_at(&c, "inner")?;
-    let outer = tree.close_at(&c, "outer")?;
+    let inner = tree.close_at(c, "inner")?;
+    let outer = tree.close_at(c, "outer")?;
     assert_ne!(inner, outer);
 
     let tree = tree.build()?;
@@ -423,11 +423,11 @@ fn close_at_pointer_width_limit() -> Result<()> {
         tree.token(d, 1)?;
     }
 
-    let w = tree.close_at(&c, 254)?;
+    let w = tree.close_at(c, 254)?;
     assert_eq!(w.get(), 254);
 
     assert_eq!(tree.checkpoint().err(), Some(Error::Overflow));
-    assert_eq!(tree.close_at(&c, 255), Err(Error::Overflow));
+    assert_eq!(tree.close_at(c, 255), Err(Error::Overflow));
     assert_eq!(tree.token(255, 1), Err(Error::Overflow));
 
     let tree = tree.build()?;
@@ -440,5 +440,50 @@ fn close_at_pointer_width_limit() -> Result<()> {
     assert_eq!(node.last().map(|n| n.value()), Some(253));
     assert_eq!(node.children().rev().count(), 254);
     assert_eq!(node.span(), &Span::new(0, 254));
+    Ok(())
+}
+
+#[test]
+fn checkpoint_is_reused_at_same_position() -> Result<()> {
+    let mut tree = syntree::Builder::new();
+
+    let a = tree.checkpoint()?;
+    let b = tree.checkpoint()?;
+    assert_eq!(a, b);
+
+    tree.token("a", 1)?;
+    assert_ne!(a, tree.checkpoint()?);
+    Ok(())
+}
+
+#[test]
+fn checkpoint_from_other_builder() -> Result<()> {
+    let mut a = syntree::Builder::new();
+    let mut b = syntree::Builder::new();
+
+    b.checkpoint()?;
+    b.token("a", 1)?;
+    let c = b.checkpoint()?;
+
+    a.token("a", 1)?;
+    assert_eq!(a.close_at(c, "root"), Err(Error::MissingCheckpoint(1)));
+    Ok(())
+}
+
+#[test]
+fn checkpoint_closed_twice_on_clone() -> Result<()> {
+    let mut a = syntree::Builder::new();
+    let c = a.checkpoint()?;
+    a.token("a", 1)?;
+    a.close_at(c, "inner")?;
+
+    let mut b = a.clone();
+    b.close_at(c, "outer")?;
+
+    assert_eq!(a.build()?, syntree::tree! { "inner" => { ("a", 1) } });
+    assert_eq!(
+        b.build()?,
+        syntree::tree! { "outer" => { "inner" => { ("a", 1) } } }
+    );
     Ok(())
 }

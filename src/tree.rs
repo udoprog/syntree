@@ -415,7 +415,7 @@ where
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
@@ -513,7 +513,7 @@ where
     /// tree.token("lit2", 2)?;
     /// tree.close()?;
     ///
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///

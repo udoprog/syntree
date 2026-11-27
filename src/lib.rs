@@ -349,8 +349,7 @@
 //! declare a flavor through [`flavor!`] with its own `type Storage<T>` and
 //! `type Indexes`, such as a fixed-capacity array implementing [`Storage`].
 //!
-//! The crate always needs an allocator, since checkpoints are reference
-//! counted.
+//! Checkpoints are kept in the same storage, so no allocator is needed.
 //!
 //! [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
 //! [`Builder::new`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new
@@ -391,6 +390,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![no_std]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[cfg(feature = "std")]

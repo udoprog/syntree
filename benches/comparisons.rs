@@ -49,7 +49,7 @@ where
         builder.token(STRING, s.len().into())?;
     }
 
-    builder.close_at(&c, ROOT)?;
+    builder.close_at(c, ROOT)?;
     builder.build()
 }
 
@@ -99,7 +99,7 @@ where
         builder.token(WHITESPACE, 1usize.into())?;
     }
 
-    builder.close_at(&c, ROOT)?;
+    builder.close_at(c, ROOT)?;
     builder.build()
 }
 

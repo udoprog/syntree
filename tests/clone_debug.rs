@@ -63,20 +63,19 @@ fn debug_flavor() {
     assert_eq!(format!("{FlavorU8:?}"), "FlavorU8");
 }
 
-/// A builder cloned for speculative parsing hands out its own checkpoints, so
-/// closing one on the clone leaves the original's checkpoint untouched.
+/// A builder cloned for speculative parsing clones its checkpoints, so closing
+/// one on the clone leaves the original's checkpoint untouched.
 #[test]
 fn checkpoint_on_clone_does_not_affect_original() -> Result<()> {
     let mut a = Builder::new();
     let c = a.checkpoint()?;
 
     let mut b = a.clone();
-    let bc = b.checkpoint()?;
     b.token("lit", 1)?;
-    b.close_at(&bc, "speculative")?;
+    b.close_at(c, "speculative")?;
 
     a.token("lit", 1)?;
-    a.close_at(&c, "root")?;
+    a.close_at(c, "root")?;
 
     assert_eq!(a.build()?, syntree::tree! { "root" => { ("lit", 1) } });
     assert_eq!(

@@ -59,7 +59,7 @@ pub enum Error<E = Infallible> {
     /// tree.open("child")?;
     /// tree.token("token", 3)?;
     ///
-    /// assert_eq!(tree.close_at(&c, "operation"), Err(Error::CloseAtError));
+    /// assert_eq!(tree.close_at(c, "operation"), Err(Error::CloseAtError));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     CloseAtError,
@@ -97,10 +97,13 @@ pub enum Error<E = Infallible> {
     Overflow,
     /// The node of the given id is missing.
     ///
-    /// # Examples
+    /// This happens when the flavor's storage does not keep what is pushed into
+    /// it, such as [`EmptyVec`][crate::EmptyVec].
+    MissingNode(usize),
+    /// Error raised by [Builder::close_at][crate::Builder::close_at] if the
+    /// checkpoint of the given index was not handed out by this builder.
     ///
-    /// The following showcases what could happen if you mix checkpoints from
-    /// two compatible trees:
+    /// # Examples
     ///
     /// ```
     /// use syntree::{Builder, Error};
@@ -108,15 +111,13 @@ pub enum Error<E = Infallible> {
     /// let mut a = Builder::new();
     /// let mut b = Builder::new();
     ///
-    /// b.open("child")?;
-    /// b.close()?;
-    ///
+    /// b.token("lit", 1)?;
     /// let c = b.checkpoint()?;
     ///
-    /// assert_eq!(a.close_at(&c, "operation"), Err(Error::MissingNode(1)));
+    /// assert_eq!(a.close_at(c, "operation"), Err(Error::MissingCheckpoint(0)));
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    MissingNode(usize),
+    MissingCheckpoint(usize),
     /// An error raised by the particular [Flavor] in use.
     ///
     /// [Flavor]: crate::Flavor
@@ -166,6 +167,9 @@ where
             }
             Error::MissingNode(p) => {
                 write!(f, "missing node with id `{p}`")
+            }
+            Error::MissingCheckpoint(index) => {
+                write!(f, "missing checkpoint with index `{index}`")
             }
             Error::Flavor(error) => error.fmt(f),
         }

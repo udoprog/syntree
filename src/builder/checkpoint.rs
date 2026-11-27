@@ -1,84 +1,87 @@
-use core::cell::Cell;
+use core::fmt;
+use core::marker::PhantomData;
 
-use alloc::rc::Rc;
-
-/// The identifier of a node as returned by functions such as
-/// [`Builder::checkpoint`].
+/// A checkpoint as returned by [`Builder::checkpoint`], used to wrap
+/// everything added since it was taken with [`Builder::close_at`].
 ///
-/// This can be used as a checkpoint in [`Builder::close_at`], and a checkpoint
-/// can be fetched up front from [`Builder::checkpoint`].
+/// A checkpoint is a `Copy` index into the builder that handed it out, and the
+/// builder holds its state. Closing it moves it onto the new wrapping node, so
+/// closing it again wraps the wrapper.
 ///
 /// # Checkpoints and cloned builders
 ///
-/// A checkpoint belongs to the builder that handed it out, and closing it
-/// updates it in place. A cloned [`Builder`] hands out its own checkpoints, so
-/// one taken from the clone can be used on it without affecting the original.
-/// A checkpoint taken *before* cloning still belongs to the original: closing
-/// it on the clone updates it for the original too, so get a fresh checkpoint
-/// from the clone instead.
+/// A cloned [`Builder`] clones the state of every checkpoint, so a checkpoint
+/// taken before cloning can be used on both and moves independently in each.
 ///
 /// ```
 /// let mut a = syntree::Builder::new();
 /// let c = a.checkpoint()?;
 ///
 /// let mut b = a.clone();
-/// let c2 = b.checkpoint()?;
 /// b.token("lit", 1)?;
-/// b.close_at(&c2, "speculative")?;
+/// b.close_at(c, "speculative")?;
 ///
 /// a.token("lit", 1)?;
-/// a.close_at(&c, "root")?;
+/// a.close_at(c, "root")?;
 ///
 /// assert_eq!(a.build()?, syntree::tree! { "root" => { ("lit", 1) } });
+/// assert_eq!(b.build()?, syntree::tree! { "speculative" => { ("lit", 1) } });
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
 /// [`Builder`]: crate::Builder
 /// [`Builder::close_at`]: crate::Builder::close_at
 /// [`Builder::checkpoint`]: crate::Builder::checkpoint
-#[derive(Debug, Clone)]
 #[repr(transparent)]
-pub struct Checkpoint<P>(Rc<Cell<Inner<P>>>)
-where
-    P: Copy;
+pub struct Checkpoint<P> {
+    index: usize,
+    _marker: PhantomData<fn() -> P>,
+}
 
-impl<P> Checkpoint<P>
-where
-    P: Copy,
-{
-    pub(crate) fn new(node: P, parent: Option<P>) -> Self {
-        Self(Rc::new(Cell::new(Inner { node, parent })))
+impl<P> Checkpoint<P> {
+    #[inline]
+    pub(crate) const fn new(index: usize) -> Self {
+        Self {
+            index,
+            _marker: PhantomData,
+        }
     }
 
-    /// A new checkpoint with the same state which does not share updates with
-    /// this one.
-    pub(crate) fn deep_clone(&self) -> Self {
-        Self(Rc::new(Cell::new(self.0.get())))
-    }
-
-    pub(crate) fn set(&self, node: P, parent: Option<P>) {
-        self.0.set(Inner { node, parent });
-    }
-
-    pub(crate) fn node(&self) -> P {
-        self.0.get().node
-    }
-
-    pub(crate) fn parent(&self) -> Option<P> {
-        self.0.get().parent
-    }
-
-    pub(crate) fn get(&self) -> (P, Option<P>) {
-        let Inner { node, parent } = self.0.get();
-        (node, parent)
+    #[inline]
+    pub(crate) const fn index(self) -> usize {
+        self.index
     }
 }
 
-/// The shared state of a checkpoint.
-#[derive(Debug, Clone, Copy)]
-struct Inner<P> {
-    // The node being wrapped by the checkpoint.
-    node: P,
-    // The parent node of the context being checkpointed.
-    parent: Option<P>,
+impl<P> Clone for Checkpoint<P> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<P> Copy for Checkpoint<P> {}
+
+impl<P> PartialEq for Checkpoint<P> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl<P> Eq for Checkpoint<P> {}
+
+impl<P> fmt::Debug for Checkpoint<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Checkpoint").field(&self.index).finish()
+    }
+}
+
+/// The state of a checkpoint, stored in the builder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Inner<P> {
+    /// The node being wrapped by the checkpoint.
+    pub(crate) node: P,
+    /// The parent node of the context being checkpointed.
+    pub(crate) parent: Option<P>,
 }

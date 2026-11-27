@@ -159,3 +159,30 @@ fn default_flavor_builds_tree() -> Result<(), Box<dyn core::error::Error>> {
     assert_eq!(tree, expected);
     Ok(())
 }
+
+#[test]
+fn custom_storage_checkpoints() -> Result<(), Error<Full>> {
+    let mut tree: Builder<_, FlavorArray> = Builder::new_with();
+
+    let c = tree.checkpoint()?;
+    tree.token("a", 1)?;
+    tree.close_at(c, "root")?;
+
+    let tree = tree.build()?;
+    let root = tree.first().ok_or(Error::MissingNode(0))?;
+    assert_eq!(root.value(), "root");
+    Ok(())
+}
+
+#[test]
+fn custom_storage_checkpoints_full() -> Result<(), Error<Full>> {
+    let mut tree: Builder<_, FlavorArray> = Builder::new_with();
+
+    for _ in 0..4 {
+        tree.checkpoint()?;
+        tree.token("a", 1)?;
+    }
+
+    assert_eq!(tree.checkpoint(), Err(Error::Flavor(Full)));
+    Ok(())
+}

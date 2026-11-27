@@ -148,7 +148,7 @@ fn close_at_with_joins_into_parent() -> Result<()> {
     b.open("root")?;
     let c = b.checkpoint()?;
     b.token("lit", 1)?;
-    b.close_at_with(&c, "w", Span::new(0, 5))?;
+    b.close_at_with(c, "w", Span::new(0, 5))?;
     b.close()?;
     let tree = b.build()?;
 
@@ -163,7 +163,7 @@ fn close_at_with_at_root_updates_tree_span() -> Result<()> {
     let mut b = Builder::new();
     let c = b.checkpoint()?;
     b.token_with("lit", Span::new(1, 3))?;
-    b.close_at_with(&c, "custom", Span::new(0, 6))?;
+    b.close_at_with(c, "custom", Span::new(0, 6))?;
     b.token_with("lit2", Span::new(6, 8))?;
     let tree = b.build()?;
 
@@ -183,7 +183,7 @@ fn close_at_with_empty_checkpoint() -> Result<()> {
     let mut b = Builder::new();
     b.open("root")?;
     let c = b.checkpoint()?;
-    b.close_at_with(&c, "w", Span::new(2, 5))?;
+    b.close_at_with(c, "w", Span::new(2, 5))?;
     b.close()?;
     let tree = b.build()?;
 

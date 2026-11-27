@@ -9,6 +9,7 @@ use crate::{
 };
 
 pub use self::checkpoint::Checkpoint;
+use self::checkpoint::Inner;
 
 /// A builder for a [Tree].
 ///
@@ -65,8 +66,8 @@ where
 {
     /// Data in the tree being built.
     tree: Tree<T, F>,
-    /// The last checkpoint that was handed out.
-    checkpoint: Option<Checkpoint<F::Pointer>>,
+    /// The state of every checkpoint handed out, indexed by [`Checkpoint`].
+    checkpoints: F::Storage<Inner<F::Pointer>>,
     /// Reference the current parent to the node being built. It itself has its
     /// parent set in the tree, so that is what is used to traverse ancestors of
     /// a node.
@@ -176,7 +177,7 @@ where
         Builder {
             tree: Tree::new_with(),
             parent: None,
-            checkpoint: None,
+            checkpoints: Storage::EMPTY,
             sibling: None,
             cursor: F::Index::EMPTY,
         }
@@ -249,7 +250,7 @@ where
         Ok(Builder {
             tree: Tree::with_capacity(nodes, indexes)?,
             parent: None,
-            checkpoint: None,
+            checkpoints: Storage::EMPTY,
             sibling: None,
             cursor: F::Index::EMPTY,
         })
@@ -654,47 +655,15 @@ where
 
     /// Get a checkpoint corresponding to the current position in the tree.
     ///
-    /// # Mixing checkpoints
-    ///
-    /// Note that using checkpoints from a different tree doesn't have a
-    /// well-specified behavior - it might seemingly work or it might raise an
-    /// error during closing such as [`Error::MissingNode`].
-    ///
-    /// The following *is not* well-defined, here we're using a checkpoint for a
-    /// different tree but it "just happens" to work because both trees have
-    /// identical internal topologies:
-    ///
-    /// ```
-    /// use syntree::{Builder, Error};
-    ///
-    /// let mut a = Builder::new();
-    /// let mut b = Builder::new();
-    ///
-    /// let c = b.checkpoint()?;
-    ///
-    /// a.open("child")?;
-    /// a.close()?;
-    ///
-    /// b.open("child")?;
-    /// b.close()?;
-    ///
-    /// // Checkpoint use from different tree.
-    /// a.close_at(&c, "root")?;
-    ///
-    /// let unexpected = syntree::tree! {
-    ///     "root" => {
-    ///         "child"
-    ///     }
-    /// };
-    ///
-    /// assert_eq!(a.build()?, unexpected);
-    /// # Ok::<_, Box<dyn core::error::Error>>(())
-    /// ```
+    /// Checkpoints are only meaningful to the builder that handed them out. A
+    /// checkpoint used on another builder refers to that builder's checkpoint
+    /// with the same index, or raises [`Error::MissingCheckpoint`] if it has
+    /// none.
     ///
     /// # Errors
     ///
     /// Errors with [`Error::Overflow`] in case we run out of node
-    /// identifiers.
+    /// identifiers, or [`Error::Flavor`] if the checkpoint can't be stored.
     ///
     /// # Examples
     ///
@@ -705,7 +674,7 @@ where
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -723,15 +692,22 @@ where
     pub fn checkpoint(&mut self) -> Result<Checkpoint<F::Pointer>, Error<F::Error>> {
         let node = F::Pointer::new(self.tree.len()).ok_or(Error::Overflow)?;
 
-        if let Some(c) = &self.checkpoint {
-            if c.node() == node && c.parent() == self.parent {
-                return Ok(c.clone());
+        let inner = Inner {
+            node,
+            parent: self.parent,
+        };
+
+        // Reuse the last checkpoint if it is at the same position.
+        let index = self.checkpoints.len();
+
+        if let Some(last) = index.checked_sub(1) {
+            if self.checkpoints.last() == Some(&inner) {
+                return Ok(Checkpoint::new(last));
             }
         }
 
-        let c = Checkpoint::new(node, self.parent);
-        self.checkpoint = Some(c.clone());
-        Ok(c)
+        self.checkpoints.push(inner)?;
+        Ok(Checkpoint::new(index))
     }
 
     /// Insert a node that wraps from the given checkpointed location.
@@ -741,8 +717,8 @@ where
     /// The checkpoint being closed *must* be a sibling. Otherwise a
     /// [`Error::CloseAtError`] will be raised.
     ///
-    /// This might also sporadically error with [`Error::MissingNode`], in case
-    /// a checkpoint is used that was constructed from another tree.
+    /// A checkpoint this builder did not hand out raises
+    /// [`Error::MissingCheckpoint`].
     ///
     /// # Examples
     ///
@@ -751,7 +727,7 @@ where
     ///
     /// let c = tree.checkpoint()?;
     /// tree.token("lit", 3)?;
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -782,7 +758,7 @@ where
     /// tree.token("lit", 2)?;
     /// tree.close()?;
     ///
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     ///
     /// let tree = tree.build()?;
     ///
@@ -811,7 +787,7 @@ where
     /// tree.open("child")?;
     /// tree.token("lit", 3)?;
     /// tree.close()?;
-    /// tree.close_at(&c, "root")?;
+    /// tree.close_at(c, "root")?;
     /// tree.token("sibling", 3)?;
     ///
     /// let tree = tree.build()?;
@@ -840,7 +816,7 @@ where
     /// ```
     pub fn close_at(
         &mut self,
-        c: &Checkpoint<F::Pointer>,
+        c: Checkpoint<F::Pointer>,
         data: T,
     ) -> Result<F::Pointer, Error<F::Error>> {
         self.close_at_inner(c, data, None)
@@ -853,8 +829,8 @@ where
     /// The checkpoint being closed *must* be a sibling. Otherwise a
     /// [`Error::CloseAtError`] will be raised.
     ///
-    /// This might also sporadically error with [`Error::MissingNode`], in case
-    /// a checkpoint is used that was constructed from another tree.
+    /// A checkpoint this builder did not hand out raises
+    /// [`Error::MissingCheckpoint`].
     ///
     /// # Examples
     ///
@@ -865,7 +841,7 @@ where
     ///
     /// let c = tree.checkpoint()?;
     /// tree.token_with("lit", Span::new(1, 3))?;
-    /// tree.close_at_with(&c, "custom", Span::new(0, 6))?;
+    /// tree.close_at_with(c, "custom", Span::new(0, 6))?;
     /// tree.token_with("lit2", Span::new(6, 8))?;
     ///
     /// let tree = tree.build()?;
@@ -878,7 +854,7 @@ where
     /// ```
     pub fn close_at_with(
         &mut self,
-        c: &Checkpoint<F::Pointer>,
+        c: Checkpoint<F::Pointer>,
         data: T,
         span: Span<F::Index>,
     ) -> Result<F::Pointer, Error<F::Error>> {
@@ -889,11 +865,13 @@ where
     /// span covered by the wrapped nodes when it is `None`.
     fn close_at_inner(
         &mut self,
-        c: &Checkpoint<F::Pointer>,
+        c: Checkpoint<F::Pointer>,
         data: T,
         span: Option<Span<F::Index>>,
     ) -> Result<F::Pointer, Error<F::Error>> {
-        let (id, parent) = c.get();
+        let Some(&Inner { node: id, parent }) = self.checkpoints.get(c.index()) else {
+            return Err(Error::MissingCheckpoint(c.index()));
+        };
 
         if parent != self.parent {
             return Err(Error::CloseAtError);
@@ -965,7 +943,14 @@ where
         })?;
 
         self.sibling = Some(new_id);
-        c.set(new_id, parent);
+
+        if let Some(inner) = self.checkpoints.get_mut(c.index()) {
+            *inner = Inner {
+                node: new_id,
+                parent,
+            };
+        }
+
         Ok(new_id)
     }
 
@@ -1083,15 +1068,14 @@ where
     T: Copy,
     F: Flavor<Indexes: Clone, Width: Width<Pointer: Clone>>,
     F::Storage<Links<T, F::Index, F::Pointer>>: Clone,
+    F::Storage<Inner<F::Pointer>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
         Self {
             tree: self.tree.clone(),
             parent: self.parent,
-            // Not shared, so that checkpoints handed out by the clone are
-            // independent of the original.
-            checkpoint: self.checkpoint.as_ref().map(Checkpoint::deep_clone),
+            checkpoints: self.checkpoints.clone(),
             sibling: self.sibling,
             cursor: self.cursor,
         }
@@ -1106,7 +1090,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Builder")
             .field("tree", &self.tree)
-            .field("checkpoint", &self.checkpoint)
+            .field("checkpoints", &&*self.checkpoints)
             .field("parent", &self.parent)
             .field("sibling", &self.sibling)
             .field("cursor", &self.cursor)
