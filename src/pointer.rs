@@ -14,6 +14,26 @@ pub trait Pointer: Sized + Copy + hash::Hash + Eq + fmt::Debug + self::sealed::S
     #[doc(hidden)]
     const GAP: Self;
 
+    /// Test if the pointer can be the id of an interior node.
+    ///
+    /// Interior node ids leave the top bit clear, since a token stores its
+    /// trivia flag there next to its parent pointer, and the largest flagged
+    /// value is [`Pointer::GAP`].
+    #[doc(hidden)]
+    fn is_node_id(self) -> bool;
+
+    /// Set the flag bit on an optional node id, `None` included.
+    #[doc(hidden)]
+    fn flagged(this: Option<Self>) -> Option<Self>;
+
+    /// Test if the flag bit is set on an optional node id.
+    #[doc(hidden)]
+    fn is_flagged(this: Option<Self>) -> bool;
+
+    /// Clear the flag bit on an optional node id.
+    #[doc(hidden)]
+    fn unflagged(this: Option<Self>) -> Option<Self>;
+
     /// Construct a pointer without checking that `value` is in bounds.
     ///
     /// # Safety
@@ -158,6 +178,30 @@ macro_rules! implement {
         /// ```
         impl crate::pointer::Pointer for $e {
             const GAP: Self = Self($non_zero::MAX);
+
+            #[inline]
+            fn is_node_id(self) -> bool {
+                // Flagging the id must neither wrap into the flag bit nor
+                // produce `GAP`.
+                self.0.get() < (<$ty>::MAX >> 1)
+            }
+
+            #[inline]
+            fn flagged(this: Option<Self>) -> Option<Self> {
+                let raw = this.map_or(0, |p| p.0.get());
+                $non_zero::new(raw | !(<$ty>::MAX >> 1)).map(Self)
+            }
+
+            #[inline]
+            fn is_flagged(this: Option<Self>) -> bool {
+                this.is_some_and(|p| p.0.get() & !(<$ty>::MAX >> 1) != 0)
+            }
+
+            #[inline]
+            fn unflagged(this: Option<Self>) -> Option<Self> {
+                let raw = this.map_or(0, |p| p.0.get());
+                $non_zero::new(raw & (<$ty>::MAX >> 1)).map(Self)
+            }
 
             #[inline]
             unsafe fn new_unchecked(value: usize) -> Self {

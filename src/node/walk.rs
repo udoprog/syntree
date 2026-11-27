@@ -212,6 +212,37 @@ where
         WithDepths { iter: self.iter }
     }
 
+    /// Include trivia tokens, which this iterator skips by default.
+    ///
+    /// See [`Builder::trivia`][crate::Builder::trivia].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// tree.open("root")?;
+    /// tree.token("a", 1)?;
+    /// tree.trivia("ws", 1)?;
+    /// tree.token("b", 1)?;
+    /// tree.close()?;
+    /// let tree = tree.build()?;
+    ///
+    /// let values = tree.walk().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["root", "a", "b"]);
+    ///
+    /// let values = tree.walk().with_trivia().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["root", "a", "ws", "b"]);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn with_trivia(self) -> Self {
+        Self {
+            iter: self.iter.with_trivia(),
+            bounded: self.bounded,
+        }
+    }
+
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
     /// This filters out tokens and yields only interior [`Node`][crate::Node]s.
     ///
@@ -425,8 +456,7 @@ where
     F: Flavor,
 {
     loop {
-        let depth = iter.depth();
-        let (event, node) = iter.next()?;
+        let (depth, event, node) = iter.next_with(false)?;
 
         if !matches!(event, Event::Up) {
             return Some((depth, node));
@@ -560,11 +590,7 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let (event, node) = self.iter.next()?;
-
-            if self.bounded && self.iter.depth() <= 0 {
-                self.iter = WalkEvents::default();
-            }
+            let (_, event, node) = self.iter.next_with(self.bounded)?;
 
             if !matches!(event, Event::Up) {
                 return Some(node);

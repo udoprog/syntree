@@ -89,6 +89,8 @@ where
     /// The last element yielded from the back.
     back_last: Option<Id<F::Pointer>>,
     done: bool,
+    /// Whether trivia tokens are yielded.
+    trivia: bool,
 }
 
 impl<'a, T, F> Children<'a, T, F>
@@ -111,7 +113,37 @@ where
             front_last: None,
             back_last: None,
             done: false,
+            trivia: false,
         }
+    }
+
+    /// Include trivia tokens, which this iterator skips by default.
+    ///
+    /// See [`Builder::trivia`][crate::Builder::trivia].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// tree.token("a", 1)?;
+    /// tree.trivia("ws", 1)?;
+    /// tree.token("b", 1)?;
+    /// let tree = tree.build()?;
+    ///
+    /// let values = tree.children().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["a", "b"]);
+    ///
+    /// let values = tree.children().with_trivia().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["a", "ws", "b"]);
+    ///
+    /// let values = tree.children().with_trivia().rev().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["b", "ws", "a"]);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub const fn with_trivia(mut self) -> Self {
+        self.trivia = true;
+        self
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
@@ -210,14 +242,19 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let tree = self.tree?;
 
-        let Some(id) = self.peek_front() else {
-            self.done = true;
-            return None;
-        };
+        loop {
+            let Some(id) = self.peek_front() else {
+                self.done = true;
+                return None;
+            };
 
-        self.front = tree.after(id, self.front.1)?;
-        self.front_last = Some(id);
-        tree.element(id)
+            self.front = tree.after(id, self.front.1)?;
+            self.front_last = Some(id);
+
+            if self.trivia || !tree.is_trivia(id) {
+                return tree.element(id);
+            }
+        }
     }
 
     #[inline]
@@ -239,14 +276,19 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         let tree = self.tree?;
 
-        let Some(id) = self.peek_back() else {
-            self.done = true;
-            return None;
-        };
+        loop {
+            let Some(id) = self.peek_back() else {
+                self.done = true;
+                return None;
+            };
 
-        self.back = tree.before(id, self.back.1)?;
-        self.back_last = Some(id);
-        tree.element(id)
+            self.back = tree.before(id, self.back.1)?;
+            self.back_last = Some(id);
+
+            if self.trivia || !tree.is_trivia(id) {
+                return tree.element(id);
+            }
+        }
     }
 }
 
@@ -272,6 +314,7 @@ where
             front_last: self.front_last,
             back_last: self.back_last,
             done: self.done,
+            trivia: self.trivia,
         }
     }
 }
@@ -291,6 +334,7 @@ where
             front_last: None,
             back_last: None,
             done: true,
+            trivia: false,
         }
     }
 }

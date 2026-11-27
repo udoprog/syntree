@@ -61,6 +61,33 @@ where
         self.id
     }
 
+    /// Test if this is a trivia token, inserted with [`Builder::trivia`] or
+    /// [`Builder::trivia_with`]. Iterators skip trivia unless asked to
+    /// include it with `with_trivia()`.
+    ///
+    /// [`Builder::trivia`]: crate::Builder::trivia
+    /// [`Builder::trivia_with`]: crate::Builder::trivia_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// tree.token("ident", 3)?;
+    /// tree.trivia("whitespace", 1)?;
+    /// let tree = tree.build()?;
+    ///
+    /// let ident = tree.first().and_then(|e| e.into_token()).ok_or("missing ident")?;
+    /// let ws = tree.last().and_then(|e| e.into_token()).ok_or("missing whitespace")?;
+    ///
+    /// assert!(!ident.is_trivia());
+    /// assert!(ws.is_trivia());
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub fn is_trivia(&self) -> bool {
+        self.links.is_trivia()
+    }
+
     /// Get the span of the token.
     #[must_use]
     pub fn span(&self) -> Span<F::Index> {
@@ -77,7 +104,7 @@ where
     /// Get the parent node, `None` at the root of the tree.
     #[must_use]
     pub fn parent(&self) -> Option<Node<'a, T, F>> {
-        Node::new(self.tree, self.links.parent?)
+        Node::new(self.tree, self.links.parent()?)
     }
 
     /// Get the previous sibling, a node or a token.
@@ -87,8 +114,8 @@ where
     #[must_use]
     pub fn prev(&self) -> Option<Element<'a, T, F>> {
         let index = self.id.get();
-        let (prev, _) = self.tree.nodes_around(self.links.parent, index);
-        let id = self.tree.prev_at(self.links.parent, index, prev)?;
+        let (prev, _) = self.tree.nodes_around(self.links.parent(), index);
+        let id = self.tree.prev_at(self.links.parent(), index, prev)?;
         self.tree.element(id)
     }
 
@@ -99,10 +126,10 @@ where
     #[must_use]
     pub fn next(&self) -> Option<Element<'a, T, F>> {
         let index = self.id.get();
-        let (_, next) = self.tree.nodes_around(self.links.parent, index);
+        let (_, next) = self.tree.nodes_around(self.links.parent(), index);
         let id = self
             .tree
-            .next_at(self.links.parent, index.checked_add(1)?, next)?;
+            .next_at(self.links.parent(), index.checked_add(1)?, next)?;
         self.tree.element(id)
     }
 
@@ -110,7 +137,7 @@ where
     ///
     /// This walks the chain of interior nodes at the level.
     fn next_node(&self) -> Option<F::Pointer> {
-        self.tree.nodes_around(self.links.parent, self.id.get()).1
+        self.tree.nodes_around(self.links.parent(), self.id.get()).1
     }
 
     /// Get an iterator over this token and its ancestors, starting with the
@@ -133,7 +160,7 @@ where
     pub fn siblings(&self) -> Siblings<'a, T, F> {
         Siblings::new(
             self.tree,
-            self.links.parent,
+            self.links.parent(),
             Id::Token(self.id),
             self.next_node(),
         )
@@ -201,10 +228,16 @@ where
     F: Flavor<Index: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Token")
-            .field("data", &self.links.data.get())
-            .field("span", &self.span())
-            .finish()
+        let mut s = f.debug_struct("Token");
+        s.field("data", &self.links.data.get());
+        s.field("span", &self.span());
+
+        // Only shown when set, to keep the common case short.
+        if self.is_trivia() {
+            s.field("trivia", &true);
+        }
+
+        s.finish()
     }
 }
 
@@ -233,7 +266,9 @@ where
     B: Flavor<Index: PartialEq<A::Index>>,
 {
     fn eq(&self, other: &Token<'_, T, A>) -> bool {
-        self.links.data.get() == other.links.data.get() && self.span() == other.span()
+        self.links.data.get() == other.links.data.get()
+            && self.is_trivia() == other.is_trivia()
+            && self.span() == other.span()
     }
 }
 

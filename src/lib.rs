@@ -175,6 +175,40 @@
 //!
 //! <br>
 //!
+//! ### Trivia
+//!
+//! Whitespace and comments can be added with [`trivia`] instead of [`token`].
+//! Trivia is stored in the token array like any other token, so node spans
+//! cover it and every source byte stays reachable, but `children()`, `walk()`
+//! and the other iterators skip it unless asked to include it with
+//! `with_trivia()`. Point accessors such as `first()` or `next()` are structural
+//! and do see trivia; `is_trivia()` tells it apart. The flag lives in the top
+//! bit of a token's parent pointer, so it costs no space, which halves the
+//! number of interior nodes a pointer width can address.
+//!
+//! ```
+//! let mut tree = syntree::Builder::new();
+//!
+//! tree.open("call")?;
+//! tree.token("ident", 3)?;
+//! tree.trivia("whitespace", 1)?;
+//! tree.token("args", 2)?;
+//! tree.close()?;
+//!
+//! let tree = tree.build()?;
+//! let call = tree.first().ok_or("missing call")?;
+//!
+//! let kinds = call.children().map(|e| e.value()).collect::<Vec<_>>();
+//! assert_eq!(kinds, ["ident", "args"]);
+//!
+//! let kinds = call.children().with_trivia().map(|e| e.value()).collect::<Vec<_>>();
+//! assert_eq!(kinds, ["ident", "whitespace", "args"]);
+//! assert_eq!(call.span(), syntree::Span::new(0, 6));
+//! # Ok::<_, Box<dyn core::error::Error>>(())
+//! ```
+//!
+//! <br>
+//!
 //! ## Compact or empty spans
 //!
 //! The [`Flavor`] of a tree decides the types used for its spans and pointers.
@@ -411,6 +445,7 @@
 //! [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
 //! [`Token`]: https://docs.rs/syntree/latest/syntree/struct.Token.html
 //! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
+//! [`trivia`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.trivia
 //! [`Tree::node_with_span`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html#method.node_with_span
 //! [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree

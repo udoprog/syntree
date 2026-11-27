@@ -321,6 +321,15 @@ where
         self.tokens.push(links)
     }
 
+    /// Test if `id` is a trivia token.
+    #[inline]
+    pub(crate) fn is_trivia(&self, id: Id<F::Pointer>) -> bool {
+        match id {
+            Id::Node(..) => false,
+            Id::Token(t) => self.tokens.get(t.get()).is_some_and(TokenLinks::is_trivia),
+        }
+    }
+
     /// The start of the token entry at `index`, which is the end of the entry
     /// before it.
     pub(crate) fn token_start(&self, index: usize) -> F::Index {
@@ -374,7 +383,7 @@ where
             links = self.tokens.get(index)?;
         }
 
-        if links.parent != parent {
+        if links.parent() != parent {
             return None;
         }
 
@@ -408,7 +417,7 @@ where
         let index = tok.checked_sub(1)?;
         let links = self.tokens.get(index)?;
 
-        if links.is_gap() || links.parent != parent {
+        if links.is_gap() || links.parent() != parent {
             return None;
         }
 
@@ -926,10 +935,11 @@ where
             }
         }
 
-        self.walk()
+        self.walk().with_trivia().with_depths().map(Item).eq(other
+            .walk()
+            .with_trivia()
             .with_depths()
-            .map(Item)
-            .eq(other.walk().with_depths().map(Item))
+            .map(Item))
     }
 }
 

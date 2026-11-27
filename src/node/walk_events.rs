@@ -152,6 +152,8 @@ where
     node: Option<State<F::Pointer>>,
     /// Current depth being walked.
     depth: isize,
+    /// Whether trivia tokens are yielded.
+    trivia: bool,
 }
 
 impl<'a, T, F> WalkEvents<'a, T, F>
@@ -175,6 +177,98 @@ where
             tree: Some(tree),
             node: start.map(|id| (id, event, next)),
             depth: 0,
+            trivia: false,
+        }
+    }
+
+    /// Include trivia tokens, which this iterator skips by default.
+    ///
+    /// Skipping trivia keeps the events balanced: a node whose only children
+    /// are trivia is walked like a node without children, so it gets neither
+    /// a [`Event::Down`] into it nor an [`Event::Up`] out of it.
+    ///
+    /// See [`Builder::trivia`][crate::Builder::trivia].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::node::Event::*;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    /// tree.open("a")?;
+    /// tree.trivia("ws", 1)?;
+    /// tree.close()?;
+    /// tree.open("b")?;
+    /// tree.trivia("ws", 1)?;
+    /// tree.token("lit", 1)?;
+    /// tree.close()?;
+    /// let tree = tree.build()?;
+    ///
+    /// let events = tree.walk_events().map(|(e, n)| (e, n.value())).collect::<Vec<_>>();
+    /// assert_eq!(events, [(Next, "a"), (Next, "b"), (Down, "lit"), (Up, "b")]);
+    ///
+    /// let events = tree
+    ///     .walk_events()
+    ///     .with_trivia()
+    ///     .map(|(e, n)| (e, n.value()))
+    ///     .collect::<Vec<_>>();
+    ///
+    /// assert_eq!(
+    ///     events,
+    ///     [
+    ///         (Next, "a"),
+    ///         (Down, "ws"),
+    ///         (Up, "a"),
+    ///         (Next, "b"),
+    ///         (Down, "ws"),
+    ///         (Next, "lit"),
+    ///         (Up, "b"),
+    ///     ]
+    /// );
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub const fn with_trivia(mut self) -> Self {
+        self.trivia = true;
+        self
+    }
+
+    /// The next event with the depth it is at, skipping trivia unless it is
+    /// included. With `inside` the walk ends once it is back at depth zero or
+    /// above, which is what [`Walk::inside`][crate::node::Walk::inside]
+    /// does.
+    pub(crate) fn next_with(&mut self, inside: bool) -> Option<(isize, Event, Element<'a, T, F>)> {
+        let tree = self.tree?;
+        // A `Down` into a skipped trivia token, which the next element at its
+        // level takes over.
+        let mut down = false;
+
+        loop {
+            let depth = self.depth;
+            let (id, mut event, next) = self.node.take()?;
+            self.node = self.step(tree, id, event, next);
+
+            if inside && self.depth <= 0 {
+                self.node = None;
+            }
+
+            if !self.trivia && tree.is_trivia(id) {
+                down |= matches!(event, Event::Down);
+                continue;
+            }
+
+            if down {
+                down = false;
+
+                match event {
+                    Event::Next => event = Event::Down,
+                    // Every child was trivia, so the node was never entered.
+                    Event::Up => continue,
+                    Event::Down => {}
+                }
+            }
+
+            return Some((depth, event, tree.element(id)?));
         }
     }
 
@@ -282,11 +376,11 @@ where
                 let index = t.get();
                 let links = tree.tokens().get(index)?;
 
-                if let Some(id) = tree.next_at(links.parent, index.checked_add(1)?, next) {
+                if let Some(id) = tree.next_at(links.parent(), index.checked_add(1)?, next) {
                     return Some((id, Event::Next, next));
                 }
 
-                links.parent
+                links.parent()
             }
         };
 
@@ -307,6 +401,7 @@ where
             tree: self.tree,
             node: self.node,
             depth: self.depth,
+            trivia: self.trivia,
         }
     }
 }
@@ -322,6 +417,7 @@ where
             tree: None,
             node: None,
             depth: 0,
+            trivia: false,
         }
     }
 }
@@ -334,10 +430,8 @@ where
     type Item = (Event, Element<'a, T, F>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let tree = self.tree?;
-        let (id, event, next) = self.node.take()?;
-        self.node = self.step(tree, id, event, next);
-        Some((event, tree.element(id)?))
+        let (_, event, element) = self.next_with(false)?;
+        Some((event, element))
     }
 
     #[inline]

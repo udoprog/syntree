@@ -152,7 +152,7 @@ where
     T: Copy + fmt::Debug,
     F: Flavor<Index: fmt::Display>,
 {
-    for (depth, node) in tree.walk().with_depths() {
+    for (depth, node) in tree.walk().with_trivia().with_depths() {
         let n = (depth * 2) as usize;
         let data = node.value();
         let span = node.span();

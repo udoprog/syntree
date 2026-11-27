@@ -498,8 +498,9 @@ fn close_at_pointer_width_limit() -> Result<()> {
 fn node_pointer_width_limit() -> Result<()> {
     let mut tree: syntree::Builder<u8, FlavorU8> = syntree::Builder::new_with();
 
-    // The largest pointer is reserved, so 254 interior nodes fit.
-    for d in 0..u8::MAX - 1 {
+    // Interior node ids leave the top bit clear for the trivia flag of
+    // tokens, and the largest flagged pointer marks gaps, so 126 fit.
+    for d in 0..126 {
         tree.open(d)?;
         tree.close()?;
     }
@@ -510,8 +511,8 @@ fn node_pointer_width_limit() -> Result<()> {
     assert_eq!(tree.close_at(c, 255), Err(Error::Overflow));
 
     let tree = tree.build()?;
-    assert_eq!(tree.len(), 254);
-    assert_eq!(tree.children().count(), 254);
+    assert_eq!(tree.len(), 126);
+    assert_eq!(tree.children().count(), 126);
     Ok(())
 }
 

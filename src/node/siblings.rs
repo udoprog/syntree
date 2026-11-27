@@ -74,6 +74,8 @@ where
     next: Option<Id<F::Pointer>>,
     /// The next interior node at the level, when `next` is a token.
     node: Option<F::Pointer>,
+    /// Whether trivia tokens are yielded.
+    trivia: bool,
 }
 
 impl<'a, T, F> Siblings<'a, T, F>
@@ -95,7 +97,36 @@ where
             parent,
             next: Some(start),
             node,
+            trivia: false,
         }
+    }
+
+    /// Include trivia tokens, which this iterator skips by default.
+    ///
+    /// See [`Builder::trivia`][crate::Builder::trivia].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// tree.token("a", 1)?;
+    /// tree.trivia("ws", 1)?;
+    /// tree.token("b", 1)?;
+    /// let tree = tree.build()?;
+    ///
+    /// let a = tree.first().ok_or("missing a")?;
+    ///
+    /// let values = a.siblings().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["a", "b"]);
+    ///
+    /// let values = a.siblings().with_trivia().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(values, ["a", "ws", "b"]);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    #[must_use]
+    pub const fn with_trivia(mut self) -> Self {
+        self.trivia = true;
+        self
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
@@ -164,11 +195,17 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let tree = self.tree?;
-        let id = self.next.take()?;
-        let (tok, node) = tree.after(id, self.node)?;
-        self.next = tree.next_at(self.parent, tok, node);
-        self.node = node;
-        tree.element(id)
+
+        loop {
+            let id = self.next.take()?;
+            let (tok, node) = tree.after(id, self.node)?;
+            self.next = tree.next_at(self.parent, tok, node);
+            self.node = node;
+
+            if self.trivia || !tree.is_trivia(id) {
+                return tree.element(id);
+            }
+        }
     }
 
     #[inline]
@@ -197,6 +234,7 @@ where
             parent: self.parent,
             next: self.next,
             node: self.node,
+            trivia: self.trivia,
         }
     }
 }
@@ -213,6 +251,7 @@ where
             parent: None,
             next: None,
             node: None,
+            trivia: false,
         }
     }
 }

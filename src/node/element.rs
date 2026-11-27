@@ -172,6 +172,16 @@ where
         }
     }
 
+    /// Test if the element is a trivia token, see [`Token::is_trivia`]. A
+    /// node is never trivia.
+    #[must_use]
+    pub fn is_trivia(&self) -> bool {
+        match self {
+            NodeOrToken::Node(..) => false,
+            NodeOrToken::Token(t) => t.is_trivia(),
+        }
+    }
+
     /// Check if the element has children, which a token never has.
     #[must_use]
     pub fn has_children(&self) -> bool {

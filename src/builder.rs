@@ -532,7 +532,7 @@ where
             start.checked_add_len(len).ok_or(Error::Overflow)?
         };
 
-        self.insert_token(value, Span::new(start, end))
+        self.insert_token(value, Span::new(start, end), false)
     }
 
     /// Insert a token with a custom span.
@@ -602,7 +602,7 @@ where
         value: T,
         span: Span<F::Index>,
     ) -> Result<F::Pointer, Error<F::Error>> {
-        self.insert_token(value, span)
+        self.insert_token(value, span, false)
     }
 
     /// Declare a token with the specified `value` and an empty length.
@@ -638,6 +638,98 @@ where
     /// ```
     pub fn token_empty(&mut self, value: T) -> Result<F::Pointer, Error<F::Error>> {
         self.token(value, F::Length::EMPTY)
+    }
+
+    /// Insert a trivia token with the given length, such as whitespace or a
+    /// comment.
+    ///
+    /// Trivia is stored like any other token, so the spans of the enclosing
+    /// nodes and of the tree cover it and the source round-trips losslessly.
+    /// It is only hidden from iteration: [`Node::children`], [`Node::walk`]
+    /// and the other iterators skip trivia unless asked to include it with
+    /// `with_trivia()`. Point accessors such as [`Node::first`] or
+    /// [`Token::next`] are structural and do see it. Use [`Token::is_trivia`]
+    /// to tell it apart.
+    ///
+    /// [`Node::children`]: crate::Node::children
+    /// [`Node::walk`]: crate::Node::walk
+    /// [`Node::first`]: crate::Node::first
+    /// [`Token::next`]: crate::Token::next
+    /// [`Token::is_trivia`]: crate::Token::is_trivia
+    ///
+    /// # Errors
+    ///
+    /// Errors like [`Builder::token`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("call")?;
+    /// tree.token("ident", 3)?;
+    /// tree.trivia("whitespace", 1)?;
+    /// tree.token("paren", 2)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let call = tree.first().and_then(|e| e.into_node()).ok_or("missing call")?;
+    /// assert_eq!(call.span(), &syntree::Span::new(0, 6));
+    ///
+    /// let kinds = call.children().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(kinds, ["ident", "paren"]);
+    ///
+    /// let kinds = call.children().with_trivia().map(|e| e.value()).collect::<Vec<_>>();
+    /// assert_eq!(kinds, ["ident", "whitespace", "paren"]);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn trivia(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error<F::Error>> {
+        let start = self.cursor;
+
+        let end = if len.is_empty() {
+            start
+        } else {
+            start.checked_add_len(len).ok_or(Error::Overflow)?
+        };
+
+        self.insert_token(value, Span::new(start, end), true)
+    }
+
+    /// Insert a trivia token with a custom span. This is [`Builder::trivia`]
+    /// with an explicit span, like [`Builder::token_with`] is to
+    /// [`Builder::token`].
+    ///
+    /// # Errors
+    ///
+    /// Errors like [`Builder::token_with`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::Span;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.token_with("ident", Span::new(0, 3))?;
+    /// tree.trivia_with("comment", Span::new(4, 9))?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// assert_eq!(tree.span(), &Span::new(0, 9));
+    /// assert_eq!(tree.children().count(), 1);
+    ///
+    /// let comment = tree.last().and_then(|e| e.into_token()).ok_or("missing comment")?;
+    /// assert!(comment.is_trivia());
+    /// assert_eq!(comment.span(), Span::new(4, 9));
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn trivia_with(
+        &mut self,
+        value: T,
+        span: Span<F::Index>,
+    ) -> Result<F::Pointer, Error<F::Error>> {
+        self.insert_token(value, span, true)
     }
 
     /// Get a checkpoint corresponding to the current position in the tree.
@@ -961,8 +1053,8 @@ where
         // Re-parent the wrapped tokens which belong to this level. Tokens
         // inside wrapped interior nodes keep their parents.
         for links in self.tree.tokens_mut().iter_mut().skip(tok) {
-            if links.parent == parent {
-                links.parent = Some(new_id);
+            if !links.is_gap() && links.parent() == parent {
+                links.set_parent(Some(new_id));
             }
         }
 
@@ -1123,11 +1215,11 @@ where
         Ok(new)
     }
 
-    /// The id of the next interior node. The largest pointer is reserved to
-    /// mark gap entries.
+    /// The id of the next interior node. Node ids leave the top bit of a
+    /// pointer clear, since tokens store their trivia flag there.
     fn next_node_id(&self) -> Result<F::Pointer, Error<F::Error>> {
         match F::Pointer::new(self.tree.nodes().len()) {
-            Some(id) if id != F::Pointer::GAP => Ok(id),
+            Some(id) if id.is_node_id() => Ok(id),
             _ => Err(Error::Overflow),
         }
     }
@@ -1138,6 +1230,7 @@ where
         &mut self,
         data: T,
         span: Span<F::Index>,
+        trivia: bool,
     ) -> Result<F::Pointer, Error<F::Error>> {
         let prev_end = self.tree.tokens_end();
 
@@ -1161,18 +1254,11 @@ where
         F::Pointer::new(end).ok_or(Error::Overflow)?;
 
         if gap {
-            self.tree.push_token(TokenLinks {
-                data: Cell::new(data),
-                end: span.start,
-                parent: Some(F::Pointer::GAP),
-            })?;
+            self.tree.push_token(TokenLinks::gap(data, span.start))?;
         }
 
-        self.tree.push_token(TokenLinks {
-            data: Cell::new(data),
-            end: span.end,
-            parent: self.parent,
-        })?;
+        self.tree
+            .push_token(TokenLinks::token(data, span.end, self.parent, trivia))?;
 
         if let Some(node) = self.parent.and_then(|id| self.tree.node_links_mut(id)) {
             node.span = node.span.join(&span);
