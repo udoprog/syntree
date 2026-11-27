@@ -1034,8 +1034,12 @@ where
             (None, None) => Span::point(self.cursor),
         };
 
-        // Re-parent the wrapped interior nodes.
+        // Re-parent the wrapped interior nodes, and the wrapped tokens in the
+        // gaps between them. Tokens inside wrapped interior nodes keep their
+        // parents, so each node's token range is skipped in one step to keep
+        // this linear in the number of direct children.
         let mut cur = first;
+        let mut pos = tok;
 
         while let Some(id) = cur {
             let links = self
@@ -1044,18 +1048,16 @@ where
                 .ok_or_else(|| Error::MissingNode(id.get()))?;
             links.parent = Some(new_id);
             cur = links.next;
+            let (start, end) = (links.tok_start.get(), links.tok_end.get());
+
+            self.reparent_tokens(pos, start, parent, new_id);
+            pos = pos.max(end);
         }
+
+        self.reparent_tokens(pos, tokens, parent, new_id);
 
         if let Some(links) = first.and_then(|id| self.tree.node_links_mut(id)) {
             links.prev = None;
-        }
-
-        // Re-parent the wrapped tokens which belong to this level. Tokens
-        // inside wrapped interior nodes keep their parents.
-        for links in self.tree.tokens_mut().iter_mut().skip(tok) {
-            if !links.is_gap() && links.parent() == parent {
-                links.set_parent(Some(new_id));
-            }
         }
 
         // The wrapper takes everything from the checkpoint onwards, so it is
@@ -1213,6 +1215,26 @@ where
 
         self.join_tree_span(&span);
         Ok(new)
+    }
+
+    /// Move the tokens in `start..end` which belong to `from` to `to`. An
+    /// empty or out of bounds range moves nothing.
+    fn reparent_tokens(
+        &mut self,
+        start: usize,
+        end: usize,
+        from: Option<F::Pointer>,
+        to: F::Pointer,
+    ) {
+        let Some(tokens) = self.tree.tokens_mut().get_mut(start..end) else {
+            return;
+        };
+
+        for links in tokens {
+            if !links.is_gap() && links.parent() == from {
+                links.set_parent(Some(to));
+            }
+        }
     }
 
     /// The id of the next interior node. Node ids leave the top bit of a
