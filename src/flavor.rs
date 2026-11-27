@@ -17,10 +17,22 @@ where
     const EMPTY: Self;
 
     /// Construct storage with the given capacity.
+    ///
+    /// Fixed-capacity storage should error if `capacity` doesn't fit.
     fn with_capacity(capacity: usize) -> Result<Self, Self::Error>;
 
     /// Get the capacity of the underlying storage.
     fn capacity(&self) -> usize;
+
+    /// Reserve capacity for at least `additional` more items.
+    ///
+    /// This is a hint. The default does nothing, fixed-capacity storage may
+    /// error if `additional` more items don't fit.
+    #[inline]
+    fn reserve(&mut self, additional: usize) -> Result<(), Self::Error> {
+        _ = additional;
+        Ok(())
+    }
 
     /// Push an item into storage.
     fn push(&mut self, item: T) -> Result<(), Self::Error>;
@@ -32,14 +44,24 @@ impl<T> Storage<T> for alloc::vec::Vec<T> {
 
     const EMPTY: Self = alloc::vec::Vec::new();
 
+    /// Capacity is a hint, and is ignored if it can't be allocated.
     #[inline]
     fn with_capacity(capacity: usize) -> Result<Self, Self::Error> {
-        Ok(alloc::vec::Vec::with_capacity(capacity))
+        let mut vec = alloc::vec::Vec::new();
+        _ = vec.try_reserve_exact(capacity);
+        Ok(vec)
     }
 
     #[inline]
     fn capacity(&self) -> usize {
         alloc::vec::Vec::capacity(self)
+    }
+
+    /// Capacity is a hint, and is ignored if it can't be allocated.
+    #[inline]
+    fn reserve(&mut self, additional: usize) -> Result<(), Self::Error> {
+        _ = self.try_reserve(additional);
+        Ok(())
     }
 
     #[inline]
@@ -203,6 +225,14 @@ flavor! {
     /// The default flavor of a tree.
     ///
     /// This corresponds to a `u32` index with a `usize` width.
+    ///
+    /// The token index ([`Flavor::Indexes`]) is only used by range queries
+    /// such as [`Tree::node_with_range`]. If you don't need them, turn it off
+    /// with `type Indexes = EmptyVec<TreeIndex<Self>>;` as in the [`flavor!`]
+    /// examples. Setting `type Width = u32;` also shrinks each node, from 56
+    /// to 32 bytes on 64-bit targets with a 2-byte `T`.
+    ///
+    /// [`Tree::node_with_range`]: crate::Tree::node_with_range
     pub struct FlavorDefault {
         type Index = u32;
         type Width = usize;

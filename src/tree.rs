@@ -3,9 +3,7 @@ use core::ops::Range;
 
 use crate::links::Links;
 use crate::node::{Children, Event, Node, Walk, WalkEvents};
-#[cfg(feature = "std")]
-use crate::Error;
-use crate::{Flavor, Index, Pointer, Span, Storage, Width};
+use crate::{Error, Flavor, Index, Pointer, Span, Storage, Width};
 
 /// A syntax tree.
 ///
@@ -60,16 +58,24 @@ where
         }
     }
 
-    /// Construct a new tree with the given capacity.
-    #[cfg(feature = "std")]
-    pub(crate) fn with_capacity(capacity: usize) -> Result<Self, Error<F::Error>> {
+    /// Construct a new tree with capacity for `nodes` nodes and `indexes`
+    /// token indexes.
+    pub(crate) fn with_capacity(nodes: usize, indexes: usize) -> Result<Self, Error<F::Error>> {
         Ok(Self {
-            tree: F::Storage::with_capacity(capacity)?,
+            tree: F::Storage::with_capacity(nodes)?,
             span: Span::point(F::Index::EMPTY),
-            indexes: F::Indexes::EMPTY,
+            indexes: F::Indexes::with_capacity(indexes)?,
             first: None,
             last: None,
         })
+    }
+
+    /// Reserve capacity for `nodes` more nodes and `indexes` more token
+    /// indexes.
+    pub(crate) fn reserve(&mut self, nodes: usize, indexes: usize) -> Result<(), Error<F::Error>> {
+        self.tree.reserve(nodes)?;
+        self.indexes.reserve(indexes)?;
+        Ok(())
     }
 
     /// Get the span of the current node. The span of a node is the complete

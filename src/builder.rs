@@ -182,15 +182,105 @@ where
         }
     }
 
-    #[cfg(feature = "std")]
-    pub(crate) fn with_capacity(capacity: usize) -> Result<Self, Error<F::Error>> {
+    /// Construct a new builder with capacity for `nodes` nodes.
+    ///
+    /// Every call to [`Builder::open`] or [`Builder::token`] (and their
+    /// variants) adds one node. The token index used by range queries is
+    /// sized separately through [`Builder::with_capacities`].
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Flavor`] if the flavor's storage can't hold
+    /// `nodes` nodes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{Builder, FlavorDefault};
+    ///
+    /// let mut tree = Builder::<_, FlavorDefault>::with_capacity(2)?;
+    ///
+    /// tree.open("root")?;
+    /// tree.token("token", 5)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    /// assert_eq!(tree.len(), 2);
+    /// assert!(tree.capacity() >= 2);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn with_capacity(nodes: usize) -> Result<Self, Error<F::Error>> {
+        Self::with_capacities(nodes, 0)
+    }
+
+    /// Construct a new builder with capacity for `nodes` nodes and `indexes`
+    /// token indexes.
+    ///
+    /// The token index has one entry per token with a non-empty span, so
+    /// `indexes` is at most the number of tokens. It's only used by range
+    /// queries such as [`Tree::node_with_range`], and a flavor which turns it
+    /// off with [`EmptyVec`][crate::EmptyVec] ignores `indexes`.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Flavor`] if the flavor's storage can't hold
+    /// `nodes` nodes or `indexes` indexes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::{Builder, FlavorDefault};
+    ///
+    /// let source = "a b";
+    /// // At most one token per byte, and one node per token plus the root.
+    /// let mut tree = Builder::<_, FlavorDefault>::with_capacities(source.len() + 1, source.len())?;
+    ///
+    /// tree.open("root")?;
+    /// tree.token("word", 1)?;
+    /// tree.token("ws", 1)?;
+    /// tree.token("word", 1)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    /// assert_eq!(tree.len(), 4);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn with_capacities(nodes: usize, indexes: usize) -> Result<Self, Error<F::Error>> {
         Ok(Builder {
-            tree: Tree::with_capacity(capacity)?,
+            tree: Tree::with_capacity(nodes, indexes)?,
             parent: None,
             checkpoint: None,
             sibling: None,
             cursor: F::Index::EMPTY,
         })
+    }
+
+    /// Reserve capacity for at least `nodes` more nodes and `indexes` more
+    /// token indexes.
+    ///
+    /// See [`Builder::with_capacities`] for what the counts mean.
+    ///
+    /// # Errors
+    ///
+    /// Errors with [`Error::Flavor`] if the flavor's storage can't hold that
+    /// many more nodes or indexes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut tree = syntree::Builder::new();
+    /// tree.reserve(2, 1)?;
+    ///
+    /// tree.open("root")?;
+    /// tree.token("token", 5)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    /// assert_eq!(tree.len(), 2);
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn reserve(&mut self, nodes: usize, indexes: usize) -> Result<(), Error<F::Error>> {
+        self.tree.reserve(nodes, indexes)
     }
 
     /// Get a reference to the current cursor position of the syntax tree.

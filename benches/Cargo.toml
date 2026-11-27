@@ -15,3 +15,8 @@ rowan = "0.17.0"
 name = "comparisons"
 path = "comparisons.rs"
 harness = false
+
+[[bench]]
+name = "capacity"
+path = "capacity.rs"
+harness = false

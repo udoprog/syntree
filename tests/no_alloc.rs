@@ -58,6 +58,14 @@ impl<T, const N: usize> Storage<T> for ArrayVec<T, N> {
         N
     }
 
+    fn reserve(&mut self, additional: usize) -> Result<(), Full> {
+        if additional > N - self.len {
+            return Err(Full);
+        }
+
+        Ok(())
+    }
+
     fn push(&mut self, item: T) -> Result<(), Full> {
         let Some(slot) = self.data.get_mut(self.len) else {
             return Err(Full);
@@ -107,6 +115,27 @@ fn custom_storage_reports_full() -> Result<(), Error<Full>> {
     }
 
     assert_eq!(tree.token("a", 1), Err(Error::Flavor(Full)));
+    Ok(())
+}
+
+#[test]
+fn custom_storage_capacity_errors() -> Result<(), Error<Full>> {
+    let mut tree: Builder<_, FlavorArray> = Builder::with_capacities(4, 4)?;
+
+    assert_eq!(
+        Builder::<&str, FlavorArray>::with_capacity(5).err(),
+        Some(Error::Flavor(Full))
+    );
+    assert_eq!(
+        Builder::<&str, FlavorArray>::with_capacities(4, 5).err(),
+        Some(Error::Flavor(Full))
+    );
+
+    tree.token("a", 1)?;
+    tree.reserve(3, 3)?;
+    assert_eq!(tree.reserve(4, 0), Err(Error::Flavor(Full)));
+    assert_eq!(tree.reserve(0, 4), Err(Error::Flavor(Full)));
+    assert_eq!(tree.reserve(usize::MAX, 0), Err(Error::Flavor(Full)));
     Ok(())
 }
 
