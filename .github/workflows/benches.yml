@@ -16,11 +16,11 @@ jobs:
   benches:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install nightly --profile minimal
       - run: rustup default nightly
       - run: cargo bench -p benches -- --output-format bencher | tee output.txt
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
