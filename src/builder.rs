@@ -343,7 +343,7 @@ where
     /// let child = tree.first().ok_or("missing child")?;
     /// assert_eq!(child.span(), &Span::new(0, 8));
     ///
-    /// let spans = child.children().map(|n| *n.span()).collect::<Vec<_>>();
+    /// let spans = child.children().map(|n| n.span()).collect::<Vec<_>>();
     /// assert_eq!(spans, [Span::new(0, 4), Span::new(6, 8)]);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
@@ -564,7 +564,7 @@ where
     /// let child = tree.first().ok_or("missing child")?;
     /// assert_eq!(child.span(), &Span::new(0, 10));
     ///
-    /// let spans = child.children().map(|n| (n.value(), *n.span())).collect::<Vec<_>>();
+    /// let spans = child.children().map(|n| (n.value(), n.span())).collect::<Vec<_>>();
     /// assert_eq!(spans, [("lit", Span::new(2, 4)), ("lit2", Span::new(4, 6))]);
     ///
     /// assert_eq!(tree.span(), &Span::new(0, 10));

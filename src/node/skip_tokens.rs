@@ -2,9 +2,13 @@ use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
-use crate::node::Node;
+use crate::node::{Element, Node};
 
-/// Wrapped around an iterator that excludes nodes without children.
+/// Wrapped around an iterator that excludes tokens, yielding only interior
+/// [`Node`]s.
+///
+/// Interior nodes are kept even when they are empty, since they were opened
+/// as nodes.
 ///
 /// See [`Children::skip_tokens`], [`Siblings::skip_tokens`],
 /// [`Ancestors::skip_tokens`] or [`Walk::skip_tokens`].
@@ -16,7 +20,7 @@ use crate::node::Node;
 ///
 /// # Examples
 ///
-/// Filtering childless nodes from a [`Children`] iterator:
+/// Filtering tokens from a [`Children`] iterator:
 ///
 /// ```
 /// let tree = syntree::tree! {
@@ -88,13 +92,13 @@ impl<'a, U, T: 'a, F: 'a> Iterator for SkipTokens<U>
 where
     T: Copy,
     F: Flavor,
-    U: Iterator<Item = Node<'a, T, F>>,
+    U: Iterator<Item = Element<'a, T, F>>,
 {
-    type Item = U::Item;
+    type Item = Node<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.find(|n| n.has_children())
+        self.iter.find_map(Element::into_node)
     }
 
     #[inline]
@@ -109,7 +113,8 @@ where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        self.iter.find(move |n| n.has_children() && predicate(n))
+        self.iter
+            .find_map(move |e| e.into_node().filter(|n| predicate(n)))
     }
 }
 
@@ -117,11 +122,11 @@ impl<'a, U, T: 'a, F: 'a> DoubleEndedIterator for SkipTokens<U>
 where
     T: Copy,
     F: Flavor,
-    U: DoubleEndedIterator<Item = Node<'a, T, F>>,
+    U: DoubleEndedIterator<Item = Element<'a, T, F>>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.rfind(|n| n.has_children())
+        self.iter.by_ref().rev().find_map(Element::into_node)
     }
 
     #[inline]
@@ -130,7 +135,10 @@ where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        self.iter.rfind(move |n| n.has_children() && predicate(n))
+        self.iter
+            .by_ref()
+            .rev()
+            .find_map(move |e| e.into_node().filter(|n| predicate(n)))
     }
 }
 
@@ -138,7 +146,7 @@ impl<'a, U, T: 'a, F: 'a> FusedIterator for SkipTokens<U>
 where
     T: Copy,
     F: Flavor,
-    U: FusedIterator<Item = Node<'a, T, F>>,
+    U: FusedIterator<Item = Element<'a, T, F>>,
 {
 }
 

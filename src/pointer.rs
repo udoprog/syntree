@@ -68,12 +68,15 @@ pub trait Width: self::sealed::Sealed {
     /// use syntree::pointer::Width;
     ///
     /// let tree = syntree::tree! {
-    ///     "root1",
-    ///     "root2",
+    ///     "root1" => {},
+    ///     "root2" => {},
     /// };
     ///
-    /// let root1: <u32 as Width>::Pointer = tree.first().ok_or("missing root")?.id();
-    /// let root2: <u32 as Width>::Pointer = tree.last().ok_or("missing root")?.id();
+    /// let root1 = tree.first().and_then(|n| n.into_node()).ok_or("missing root")?;
+    /// let root2 = tree.last().and_then(|n| n.into_node()).ok_or("missing root")?;
+    ///
+    /// let root1: <u32 as Width>::Pointer = root1.id();
+    /// let root2: <u32 as Width>::Pointer = root2.id();
     ///
     /// assert_ne!(root1, root2);
     ///

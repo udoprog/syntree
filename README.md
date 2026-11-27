@@ -137,6 +137,45 @@ example][calculator] for a complete use case.
 
 <br>
 
+### Nodes, tokens and elements
+
+A tree hands out three kinds of handles. A [`Node`] is an interior node, one
+which was [`open`]ed, and a [`Token`] is a leaf added with [`token`]. Anything
+which can be either, such as a child or a step of a walk, is an [`Element`],
+which has the navigation methods of a node and acts as an empty leaf when it
+is a token. Use `into_node` or `into_token` to get at what only one of them
+has, such as their ids.
+
+Nodes and tokens are stored in separate arrays, so node ids and token ids
+are separate index spaces. Ids are not dense either: an explicit span which
+leaves a gap after the previous token takes an internal token id for the
+gap.
+
+```rust
+let tree = syntree::tree! {
+    "root" => {
+        ("lit", 3),
+        "child" => {
+            ("ws", 1)
+        }
+    }
+};
+
+let root = tree.first().ok_or("missing root")?;
+
+let kinds = root
+    .children()
+    .map(|e| (e.value(), e.is_node()))
+    .collect::<Vec<_>>();
+
+assert_eq!(kinds, [("lit", false), ("child", true)]);
+
+let child = root.last().and_then(|e| e.into_node()).ok_or("missing child")?;
+assert_eq!(tree.get(child.id()), Some(child));
+```
+
+<br>
+
 ## Compact or empty spans
 
 The [`Flavor`] of a tree decides the types used for its spans and pointers.
@@ -354,12 +393,14 @@ Checkpoints are kept in the same storage, so no allocator is needed.
 [`edit`]: https://docs.rs/syntree/latest/syntree/edit/index.html
 [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
 [`EmptyVec`]: https://docs.rs/syntree/latest/syntree/struct.EmptyVec.html
+[`Element`]: https://docs.rs/syntree/latest/syntree/type.Element.html
 [`Error::Overflow`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.Overflow
 [`Error::MissingNode`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.MissingNode
 [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
 [`Flavor`]: https://docs.rs/syntree/latest/syntree/trait.Flavor.html
 [`FlavorDefault`]: https://docs.rs/syntree/latest/syntree/struct.FlavorDefault.html
 [`flavor!`]: https://docs.rs/syntree/latest/syntree/macro.flavor.html
+[`Node`]: https://docs.rs/syntree/latest/syntree/struct.Node.html
 [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 [`print`]: https://docs.rs/syntree/latest/syntree/print/index.html
@@ -367,6 +408,7 @@ Checkpoints are kept in the same storage, so no allocator is needed.
 [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 [`Storage`]: https://docs.rs/syntree/latest/syntree/trait.Storage.html
 [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
+[`Token`]: https://docs.rs/syntree/latest/syntree/struct.Token.html
 [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 [`Tree::node_with_span`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html#method.node_with_span
 [`Tree`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html

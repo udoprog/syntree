@@ -2,12 +2,11 @@ use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
-use crate::links::Links;
-use crate::node::{Node, SkipTokens};
-use crate::pointer::Pointer;
+use crate::node::{Element, Id, Node, NodeOrToken, SkipTokens};
+use crate::tree::Tree;
 
-/// An iterator that iterates over a node and its [`Node::next`] siblings.
-/// Previous siblings are not included.
+/// An iterator over an element and its following siblings, nodes and tokens
+/// in order. Previous siblings are not included.
 ///
 /// Note that this iterator also implements [Default], allowing it to
 /// effectively create an empty iterator in case a particular sibling is not
@@ -32,7 +31,7 @@ use crate::pointer::Pointer;
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
-/// See [`Node::siblings`].
+/// See [`Node::siblings`] or [`Token::siblings`][crate::Token::siblings].
 ///
 /// # Examples
 ///
@@ -68,8 +67,13 @@ where
     T: Copy,
     F: Flavor,
 {
-    tree: &'a [Links<T, F::Index, F::Pointer>],
-    links: Option<&'a Links<T, F::Index, F::Pointer>>,
+    tree: Option<&'a Tree<T, F>>,
+    /// The node whose children are iterated, `None` at the root.
+    parent: Option<F::Pointer>,
+    /// The next element.
+    next: Option<Id<F::Pointer>>,
+    /// The next interior node at the level, when `next` is a token.
+    node: Option<F::Pointer>,
 }
 
 impl<'a, T, F> Siblings<'a, T, F>
@@ -77,20 +81,25 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// Construct a new sibling iterator starting at the given node.
+    /// Construct a new sibling iterator starting at `start`, where `node` is
+    /// the next interior node at its level if it is a token.
     #[inline]
     pub(crate) const fn new(
-        tree: &'a [Links<T, F::Index, F::Pointer>],
-        links: &'a Links<T, F::Index, F::Pointer>,
+        tree: &'a Tree<T, F>,
+        parent: Option<F::Pointer>,
+        start: Id<F::Pointer>,
+        node: Option<F::Pointer>,
     ) -> Self {
         Self {
-            tree,
-            links: Some(links),
+            tree: Some(tree),
+            parent,
+            next: Some(start),
+            node,
         }
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
-    /// This filters out childless nodes, also known as tokens.
+    /// This filters out tokens and yields only interior [`Node`]s.
     ///
     /// See [`SkipTokens`] for documentation.
     #[must_use]
@@ -98,8 +107,7 @@ where
         SkipTokens::new(self)
     }
 
-    /// Get the next node from the iterator. This advances past all non-node
-    /// data.
+    /// Get the next interior node from the iterator, advancing past tokens.
     ///
     /// # Examples
     ///
@@ -142,7 +150,7 @@ where
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, F>> {
-        self.find(|n| n.has_children())
+        self.find_map(NodeOrToken::into_node)
     }
 }
 
@@ -151,18 +159,22 @@ where
     T: Copy,
     F: Flavor,
 {
-    type Item = Node<'a, T, F>;
+    type Item = Element<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let links = self.links.take()?;
-        self.links = links.next.and_then(|id| self.tree.get(id.get()));
-        Some(Node::new(links, self.tree))
+        let tree = self.tree?;
+        let id = self.next.take()?;
+        let (tok, node) = tree.after(id, self.node)?;
+        self.next = tree.next_at(self.parent, tok, node);
+        self.node = node;
+        tree.element(id)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::from(self.links.is_some()), Some(self.tree.len()))
+        let len = self.tree.map_or(0, Tree::len);
+        (usize::from(self.next.is_some()), Some(len))
     }
 }
 
@@ -182,7 +194,9 @@ where
     fn clone(&self) -> Self {
         Self {
             tree: self.tree,
-            links: self.links,
+            parent: self.parent,
+            next: self.next,
+            node: self.node,
         }
     }
 }
@@ -195,8 +209,10 @@ where
     #[inline]
     fn default() -> Self {
         Self {
-            tree: &[],
-            links: None,
+            tree: None,
+            parent: None,
+            next: None,
+            node: None,
         }
     }
 }
@@ -207,7 +223,7 @@ where
     F: Flavor<Index: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let next = self.links.map(|links| Node::<T, F>::new(links, self.tree));
+        let next = self.tree.zip(self.next).and_then(|(t, id)| t.element(id));
         f.debug_struct("Siblings").field("next", &next).finish()
     }
 }

@@ -2,7 +2,7 @@ use core::fmt;
 use core::ops::Range;
 
 use crate::links::{NodeLinks, TokenLinks};
-use crate::node::{Children, Element, Id, Node, NodeOrToken, Token, Walk, WalkEvents};
+use crate::node::{Children, Element, Event, Id, Node, NodeOrToken, Token, Walk, WalkEvents};
 use crate::{Error, Flavor, Index, Pointer, Span, Storage};
 
 /// A syntax tree.
@@ -205,7 +205,7 @@ where
     ///
     /// See [`Walk`] for documentation.
     pub fn walk(&self) -> Walk<'_, T, F> {
-        Walk::new(self, self.first_id(), self.first)
+        Walk::tree(self, self.first_id(), self.first)
     }
 
     /// Walk the tree forwards in a depth-first fashion emitting events
@@ -213,7 +213,7 @@ where
     ///
     /// See [`WalkEvents`] for documentation.
     pub fn walk_events(&self) -> WalkEvents<'_, T, F> {
-        WalkEvents::new(self, self.first_id(), self.first)
+        WalkEvents::new(self, self.first_id(), self.first, Event::Next)
     }
 
     /// Get the first child node in the tree.
@@ -406,6 +406,40 @@ where
         Some(Id::Token(F::Pointer::new(index)?))
     }
 
+    /// The position at a level after `id`, where `node` is the next interior
+    /// node at the level if `id` is a token. This is what [`Tree::next_at`]
+    /// takes to find the element which follows `id`.
+    pub(crate) fn after(
+        &self,
+        id: Id<F::Pointer>,
+        node: Option<F::Pointer>,
+    ) -> Option<(usize, Option<F::Pointer>)> {
+        match id {
+            Id::Node(n) => {
+                let links = self.node_links(n)?;
+                Some((links.tok_end.get(), links.next))
+            }
+            Id::Token(t) => Some((t.get().checked_add(1)?, node)),
+        }
+    }
+
+    /// The position at a level before `id`, where `node` is the previous
+    /// interior node at the level if `id` is a token. This is what
+    /// [`Tree::prev_at`] takes to find the element which precedes `id`.
+    pub(crate) fn before(
+        &self,
+        id: Id<F::Pointer>,
+        node: Option<F::Pointer>,
+    ) -> Option<(usize, Option<F::Pointer>)> {
+        match id {
+            Id::Node(n) => {
+                let links = self.node_links(n)?;
+                Some((links.tok_start.get(), links.prev))
+            }
+            Id::Token(t) => Some((t.get(), node)),
+        }
+    }
+
     /// The first interior node at a level.
     pub(crate) fn level_first(&self, parent: Option<F::Pointer>) -> Option<F::Pointer> {
         match parent {
@@ -476,7 +510,7 @@ where
     /// let node = tree.first().and_then(|n| n.last()).ok_or("missing ident")?;
     /// assert_eq!(node.value(), "ident");
     ///
-    /// let id = node.id();
+    /// let id = node.into_node().ok_or("ident is a node")?.id();
     /// let node = tree.get(id).ok_or("missing ident")?;
     /// assert_eq!(node.value(), "ident");
     /// # Ok::<_, Box<dyn core::error::Error>>(())

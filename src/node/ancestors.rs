@@ -2,10 +2,13 @@ use core::fmt;
 use core::iter::FusedIterator;
 
 use crate::flavor::Flavor;
-use crate::node::{Node, SkipTokens};
+use crate::node::{Element, Node, NodeOrToken, SkipTokens};
 
-/// An iterator that iterates over the [`Node::parent`] elements of a node. This
-/// is used for iterating over the ancestors of a node.
+/// An iterator over an element and its ancestors, starting with the element
+/// itself and following [`Node::parent`] up to the root.
+///
+/// It yields [`Element`]s, since the first one may be a token. Every element
+/// after the first is a node.
 ///
 /// Note that this iterator also implements [Default], allowing it to
 /// effectively create an empty iterator in case a particular ancestor is not
@@ -24,7 +27,7 @@ use crate::node::{Node, SkipTokens};
 /// # Ok::<_, Box<dyn core::error::Error>>(())
 /// ```
 ///
-/// See [`Node::ancestors`].
+/// See [`Node::ancestors`] or [`Token::ancestors`][crate::Token::ancestors].
 ///
 /// # Examples
 ///
@@ -52,7 +55,7 @@ where
     T: Copy,
     F: Flavor,
 {
-    node: Option<Node<'a, T, F>>,
+    node: Option<Element<'a, T, F>>,
 }
 
 impl<'a, T, F> Ancestors<'a, T, F>
@@ -62,12 +65,12 @@ where
 {
     /// Construct a new ancestor iterator.
     #[inline]
-    pub(crate) const fn new(node: Option<Node<'a, T, F>>) -> Self {
+    pub(crate) const fn new(node: Option<Element<'a, T, F>>) -> Self {
         Self { node }
     }
 
     /// Construct a [`SkipTokens`] iterator from the remainder of this iterator.
-    /// This filters out childless nodes, also known as tokens.
+    /// This filters out tokens and yields only interior [`Node`]s.
     ///
     /// See [`SkipTokens`] for documentation.
     #[inline]
@@ -76,8 +79,7 @@ where
         SkipTokens::new(self)
     }
 
-    /// Get the next node from the iterator. This advances past all non-node
-    /// data.
+    /// Get the next interior node from the iterator, advancing past tokens.
     ///
     /// # Examples
     ///
@@ -112,7 +114,7 @@ where
     /// ```
     #[inline]
     pub fn next_node(&mut self) -> Option<Node<'a, T, F>> {
-        self.find(|n| n.has_children())
+        self.find_map(NodeOrToken::into_node)
     }
 }
 
@@ -121,12 +123,12 @@ where
     T: Copy,
     F: Flavor,
 {
-    type Item = Node<'a, T, F>;
+    type Item = Element<'a, T, F>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.node.take()?;
-        self.node = node.parent();
+        self.node = node.parent().map(NodeOrToken::Node);
         Some(node)
     }
 

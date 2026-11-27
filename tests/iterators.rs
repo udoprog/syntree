@@ -86,7 +86,8 @@ fn size_hints() -> Result<(), Box<dyn core::error::Error>> {
     assert_eq!(root.ancestors().size_hint(), (1, None));
     assert_eq!(c2.ancestors().size_hint(), (1, None));
     assert_eq!(root.children().size_hint(), (1, Some(3)));
-    assert_eq!(c2.children().size_hint(), (0, Some(3)));
+    // `c2` is a token, which has no children.
+    assert_eq!(c2.children().size_hint(), (0, Some(0)));
     assert_eq!(c2.siblings().size_hint(), (1, Some(3)));
     assert_eq!(root.walk_events().size_hint(), (1, None));
 
@@ -128,12 +129,32 @@ fn size_hints() -> Result<(), Box<dyn core::error::Error>> {
 
 type Res = Result<(), Box<dyn core::error::Error>>;
 
-fn values<'a>(it: impl IntoIterator<Item = syntree::Node<'a, S, FlavorDefault>>) -> Vec<S> {
-    it.into_iter().map(|n| n.value()).collect()
+/// Anything with a value: a node, a token or an element.
+trait Value {
+    fn get(&self) -> S;
 }
 
-fn val(n: Option<syntree::Node<'_, S, FlavorDefault>>) -> Option<S> {
-    n.map(|n| n.value())
+impl Value for syntree::Node<'_, S, FlavorDefault> {
+    fn get(&self) -> S {
+        self.value()
+    }
+}
+
+impl Value for syntree::Element<'_, S, FlavorDefault> {
+    fn get(&self) -> S {
+        self.value()
+    }
+}
+
+fn values<I>(it: I) -> Vec<S>
+where
+    I: IntoIterator<Item: Value>,
+{
+    it.into_iter().map(|n| n.get()).collect()
+}
+
+fn val(n: Option<impl Value>) -> Option<S> {
+    n.map(|n| n.get())
 }
 
 #[test]
@@ -426,12 +447,17 @@ fn skip_tokens_double_ended() -> Res {
     };
     let root = tree.first().ok_or("missing root")?;
 
-    assert_eq!(values(root.children().skip_tokens()), ["a", "b"]);
-    assert_eq!(values(root.children().skip_tokens().rev()), ["b", "a"]);
+    // Empty interior nodes are nodes, so they are kept.
+    assert_eq!(values(root.children().skip_tokens()), ["a", "empty", "b"]);
+    assert_eq!(
+        values(root.children().skip_tokens().rev()),
+        ["b", "empty", "a"]
+    );
 
     let mut it = root.children().skip_tokens();
     assert_eq!(val(it.next_back()), Some("b"));
     assert_eq!(val(it.next()), Some("a"));
+    assert_eq!(val(it.next_back()), Some("empty"));
     assert_eq!(val(it.next_back()), None);
     assert_eq!(val(it.next()), None);
 

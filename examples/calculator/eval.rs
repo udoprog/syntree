@@ -61,6 +61,7 @@ where
             Group => {
                 node = node
                     .first()
+                    .and_then(|n| n.into_node())
                     .ok_or(EvalError::new(*node.span(), Missing(Number)))?;
                 continue;
             }
