@@ -9,12 +9,12 @@ use std::collections::HashMap;
 use crate::builder::Builder;
 use crate::error::Error;
 use crate::flavor::Flavor;
-use crate::node::Node;
+use crate::node::{Children, Element, NodeOrToken};
 use crate::tree::Tree;
 
 #[derive(Debug)]
 pub(crate) enum Change {
-    /// Delete the given node.
+    /// Delete the given node or token.
     Delete,
 }
 
@@ -22,6 +22,10 @@ pub(crate) enum Change {
 ///
 /// You can use [`ChangeSet::modify`] to construct a new modified tree from an
 /// existing one.
+///
+/// Node ids and token ids are separate index spaces, so changes are recorded
+/// against an [`Element`] with [`ChangeSet::remove`], or against an id with
+/// [`ChangeSet::remove_node`] or [`ChangeSet::remove_token`].
 ///
 /// # Examples
 ///
@@ -41,7 +45,7 @@ pub(crate) enum Change {
 /// let child = tree.first().and_then(|n| n.first()).ok_or("missing child")?;
 ///
 /// let mut change_set = ChangeSet::new();
-/// change_set.remove(child.id());
+/// change_set.remove(child);
 ///
 /// assert_eq!(
 ///     change_set.modify(&tree)?,
@@ -55,7 +59,7 @@ pub(crate) enum Change {
 /// let lit = child.first().ok_or("missing lit")?;
 ///
 /// let mut change_set = ChangeSet::new();
-/// change_set.remove(lit.id());
+/// change_set.remove(lit);
 ///
 /// assert_eq!(
 ///     change_set.modify(&tree)?,
@@ -75,7 +79,8 @@ where
     T: Copy,
     F: Flavor,
 {
-    changes: HashMap<F::Pointer, Change>,
+    nodes: HashMap<F::Pointer, Change>,
+    tokens: HashMap<F::Pointer, Change>,
     _marker: PhantomData<T>,
 }
 
@@ -96,8 +101,9 @@ where
     T: Copy,
     F: Flavor,
 {
-    /// Register a node removal in the changeset. Only one kind of modification
-    /// for a given node will be preserved.
+    /// Register the removal of a node or token in the changeset. Removing a
+    /// node removes everything inside of it. Only one kind of modification
+    /// for a given element will be preserved.
     ///
     /// # Examples
     ///
@@ -117,7 +123,7 @@ where
     /// let child = tree.first().and_then(|n| n.first()).ok_or("missing child")?;
     ///
     /// let mut change_set = ChangeSet::new();
-    /// change_set.remove(child.id());
+    /// change_set.remove(child);
     ///
     /// assert_eq!(
     ///     change_set.modify(&tree)?,
@@ -129,12 +135,99 @@ where
     /// );
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn remove(&mut self, id: F::Pointer) {
-        self.changes.insert(id, Change::Delete);
+    pub fn remove(&mut self, element: Element<'_, T, F>) {
+        match element {
+            NodeOrToken::Node(node) => self.remove_node(node.id()),
+            NodeOrToken::Token(token) => self.remove_token(token.id()),
+        }
+    }
+
+    /// Register the removal of the interior node with the given
+    /// [id][crate::Node::id], and everything inside of it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::edit::ChangeSet;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("root")?;
+    /// let child = tree.open("child")?;
+    /// tree.token("lit", 1)?;
+    /// tree.close()?;
+    /// tree.token("whitespace", 3)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let mut change_set = ChangeSet::new();
+    /// change_set.remove_node(child);
+    ///
+    /// assert_eq!(
+    ///     change_set.modify(&tree)?,
+    ///     syntree::tree! {
+    ///         "root" => {
+    ///             ("whitespace", 3)
+    ///         }
+    ///     }
+    /// );
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn remove_node(&mut self, id: F::Pointer) {
+        self.nodes.insert(id, Change::Delete);
+    }
+
+    /// Register the removal of the token with the given
+    /// [id][crate::node::Token::id].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use syntree::edit::ChangeSet;
+    ///
+    /// let mut tree = syntree::Builder::new();
+    ///
+    /// tree.open("root")?;
+    /// tree.token("lit", 1)?;
+    /// let ws = tree.token("whitespace", 3)?;
+    /// tree.close()?;
+    ///
+    /// let tree = tree.build()?;
+    ///
+    /// let mut change_set = ChangeSet::new();
+    /// change_set.remove_token(ws);
+    ///
+    /// assert_eq!(
+    ///     change_set.modify(&tree)?,
+    ///     syntree::tree! {
+    ///         "root" => {
+    ///             ("lit", 1)
+    ///         }
+    ///     }
+    /// );
+    /// # Ok::<_, Box<dyn core::error::Error>>(())
+    /// ```
+    pub fn remove_token(&mut self, id: F::Pointer) {
+        self.tokens.insert(id, Change::Delete);
+    }
+
+    fn is_deleted(&self, element: &Element<'_, T, F>) -> bool {
+        let change = match element {
+            NodeOrToken::Node(node) => self.nodes.get(&node.id()),
+            NodeOrToken::Token(token) => self.tokens.get(&token.id()),
+        };
+
+        matches!(change, Some(Change::Delete))
     }
 
     /// Construct a modified tree where the recorded modifications have been
     /// applied.
+    ///
+    /// Spans are compacted: the tokens which remain are laid out
+    /// back-to-back from offset zero, so removed tokens and gaps left by
+    /// explicit spans do not leave holes. Interior nodes which are left
+    /// without children are kept as empty nodes.
     ///
     /// # Errors
     ///
@@ -158,7 +251,7 @@ where
     ///
     /// let child = tree.first().and_then(|n| n.first()).ok_or("missing child")?;
     /// let mut change_set = ChangeSet::new();
-    /// change_set.remove(child.id());
+    /// change_set.remove(child);
     ///
     /// assert_eq!(
     ///     change_set.modify(&tree)?,
@@ -171,35 +264,38 @@ where
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
     pub fn modify(&mut self, tree: &Tree<T, F>) -> Result<Tree<T, F>, Error<F::Error>> {
-        let mut output = Builder::<T, F>::with_capacity(tree.capacity())?;
-        let mut parents = Vec::<Node<'_, T, F>>::new();
-        let mut current = tree.first();
+        let (nodes, tokens) = tree.counts();
+        let mut output = Builder::<T, F>::with_capacities(nodes, tokens)?;
 
-        loop {
-            let Some(node) = current else {
-                let Some(parent) = parents.pop() else {
-                    break;
-                };
+        // Stepping a `Children` iterator is constant time, unlike stepping
+        // from a token with `Token::next`.
+        let mut stack = Vec::<Children<'_, T, F>>::new();
+        stack.push(tree.children());
 
-                output.close()?;
-                current = parent.next();
+        while let Some(children) = stack.last_mut() {
+            let Some(element) = children.next() else {
+                stack.pop();
+
+                // The root level has no node to close.
+                if !stack.is_empty() {
+                    output.close()?;
+                }
+
                 continue;
             };
 
-            if let Some(Change::Delete) = self.changes.get(&node.id()) {
-                current = node.next();
+            if self.is_deleted(&element) {
                 continue;
             }
 
-            if let Some(first) = node.first() {
-                output.open(node.value())?;
-                parents.push(node);
-                current = Some(first);
-            } else {
-                // Leaves are laid out back-to-back, so removed spans are
-                // compacted away.
-                output.token(node.value(), node.span().len())?;
-                current = node.next();
+            match element {
+                NodeOrToken::Node(node) => {
+                    output.open(node.value())?;
+                    stack.push(node.children());
+                }
+                NodeOrToken::Token(token) => {
+                    output.token(token.value(), token.span().len())?;
+                }
             }
         }
 
@@ -215,7 +311,8 @@ where
     #[inline]
     fn default() -> Self {
         Self {
-            changes: HashMap::new(),
+            nodes: HashMap::new(),
+            tokens: HashMap::new(),
             _marker: PhantomData,
         }
     }

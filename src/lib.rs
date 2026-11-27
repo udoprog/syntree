@@ -439,11 +439,9 @@ extern crate std;
 mod macros;
 mod builder;
 
-// `edit::ChangeSet` is rewritten for the flat token layout in phase 5 of
-// layout C. Not built until then.
-// #[cfg(feature = "std")]
-// #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-// pub mod edit;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub mod edit;
 
 mod empty;
 mod error;

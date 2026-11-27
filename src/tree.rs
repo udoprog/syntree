@@ -151,6 +151,15 @@ where
             .saturating_add(self.tokens.len().saturating_sub(self.gaps))
     }
 
+    /// The number of interior nodes and of tokens (excluding gap entries).
+    #[cfg(feature = "std")]
+    pub(crate) fn counts(&self) -> (usize, usize) {
+        (
+            self.nodes.len(),
+            self.tokens.len().saturating_sub(self.gaps),
+        )
+    }
+
     /// Check if the current tree is empty. In that it doesn't have any
     /// children at the root of the tree.
     ///

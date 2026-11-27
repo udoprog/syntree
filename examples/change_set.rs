@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .and_then(|n| n.first())
         .context("missing child")?;
 
-    change_set.remove(child.id());
+    change_set.remove(child);
 
     let tree = change_set.modify(&tree)?;
 
