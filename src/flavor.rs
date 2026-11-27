@@ -224,18 +224,24 @@ macro_rules! flavor {
 flavor! {
     /// The default flavor of a tree.
     ///
-    /// This corresponds to a `u32` index with a `usize` width.
+    /// This corresponds to a `u32` index with a `u32` width.
+    ///
+    /// A `u32` width keeps each node small, 32 rather than 56 bytes on 64-bit
+    /// targets with a 2-byte `T`, but bounds a tree to about 4 billion
+    /// elements. Adding more fails with [`Error::Overflow`]. A tree which
+    /// needs more can declare a flavor with `type Width = usize;` through
+    /// [`flavor!`].
     ///
     /// The token index ([`Flavor::Indexes`]) is only used by range queries
     /// such as [`Tree::node_with_range`]. If you don't need them, turn it off
     /// with `type Indexes = EmptyVec<TreeIndex<Self>>;` as in the [`flavor!`]
-    /// examples. Setting `type Width = u32;` also shrinks each node, from 56
-    /// to 32 bytes on 64-bit targets with a 2-byte `T`.
+    /// examples.
     ///
+    /// [`Error::Overflow`]: crate::Error::Overflow
     /// [`Tree::node_with_range`]: crate::Tree::node_with_range
     pub struct FlavorDefault {
         type Index = u32;
-        type Width = usize;
+        type Width = u32;
     }
 }
 

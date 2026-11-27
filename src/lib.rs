@@ -139,9 +139,9 @@
 //!
 //! The [`Flavor`] of a tree decides the types used for its spans and pointers.
 //! The default flavor, [`FlavorDefault`], uses `u32` indexes for spans and
-//! `usize`-based pointers to address nodes. A custom flavor declared with
-//! [`flavor!`] can change both, and is used through constructors such as
-//! [`Builder::new_with`]:
+//! `u32`-based pointers to address nodes, which bounds a tree to about 4
+//! billion elements. A custom flavor declared with [`flavor!`] can change
+//! both, and is used through constructors such as [`Builder::new_with`]:
 //!
 //! * `type Index` is the type of span positions: `u32`, `usize`, or [`Empty`]
 //!   for no spans at all (see below).

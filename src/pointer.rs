@@ -67,8 +67,8 @@ pub trait Width: self::sealed::Sealed {
     ///     "root2",
     /// };
     ///
-    /// let root1: <usize as Width>::Pointer = tree.first().ok_or("missing root")?.id();
-    /// let root2: <usize as Width>::Pointer = tree.last().ok_or("missing root")?.id();
+    /// let root1: <u32 as Width>::Pointer = tree.first().ok_or("missing root")?.id();
+    /// let root2: <u32 as Width>::Pointer = tree.last().ok_or("missing root")?.id();
     ///
     /// assert_ne!(root1, root2);
     ///
