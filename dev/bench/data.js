@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795801655574,
+  "lastUpdate": 1795898210134,
   "repoUrl": "https://github.com/udoprog/syntree",
   "entries": {
     "Benchmark": [
@@ -30053,6 +30053,402 @@ window.BENCHMARK_DATA = {
             "name": "children_nodes_only/rowan/16384",
             "value": 287288,
             "range": "± 11946",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "udoprog@tedro.se",
+            "name": "John-John Tedro",
+            "username": "udoprog"
+          },
+          "committer": {
+            "email": "udoprog@tedro.se",
+            "name": "John-John Tedro",
+            "username": "udoprog"
+          },
+          "distinct": true,
+          "id": "50c92464795b8e8832804f42ddf79dca843bcec3",
+          "message": "Release 0.20.2",
+          "timestamp": "2026-11-28T21:24:26+01:00",
+          "tree_id": "55e0b9a9ffce09dcaa9fcfcc9f2ec0ea6d4c2fd7",
+          "url": "https://github.com/udoprog/syntree/commit/50c92464795b8e8832804f42ddf79dca843bcec3"
+        },
+        "date": 1795898209682,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capacity/new/1000",
+            "value": 4374,
+            "range": "± 153",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capacity/with_capacities/1000",
+            "value": 4095,
+            "range": "± 132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capacity/new/100000",
+            "value": 410902,
+            "range": "± 6983",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capacity/with_capacities/100000",
+            "value": 396560,
+            "range": "± 5011",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "checkpoints/expressions/16",
+            "value": 4659,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "checkpoints/expressions/256",
+            "value": 63031,
+            "range": "± 694",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "checkpoints/expressions/4096",
+            "value": 958097,
+            "range": "± 11206",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-u32/1024",
+            "value": 6294,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-usize/1024",
+            "value": 5623,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-empty/1024",
+            "value": 2763,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/1024",
+            "value": 29746,
+            "range": "± 455",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-u32/2048",
+            "value": 12120,
+            "range": "± 91",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-usize/2048",
+            "value": 10735,
+            "range": "± 107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-empty/2048",
+            "value": 5102,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/2048",
+            "value": 54009,
+            "range": "± 504",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-u32/4096",
+            "value": 23913,
+            "range": "± 151",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-usize/4096",
+            "value": 20974,
+            "range": "± 210",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-empty/4096",
+            "value": 9866,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/4096",
+            "value": 99371,
+            "range": "± 1790",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-u32/8192",
+            "value": 47478,
+            "range": "± 568",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-usize/8192",
+            "value": 41802,
+            "range": "± 471",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-empty/8192",
+            "value": 19464,
+            "range": "± 277",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/8192",
+            "value": 200059,
+            "range": "± 2374",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-u32/16384",
+            "value": 96484,
+            "range": "± 3052",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-usize/16384",
+            "value": 83011,
+            "range": "± 959",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/syntree-empty/16384",
+            "value": 38596,
+            "range": "± 462",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "building/rowan/16384",
+            "value": 399888,
+            "range": "± 3495",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-usize/1024",
+            "value": 8109,
+            "range": "± 92",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-u16/1024",
+            "value": 17235,
+            "range": "± 178",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-usize/1024",
+            "value": 8745,
+            "range": "± 319",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/1024",
+            "value": 30331,
+            "range": "± 601",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-usize/2048",
+            "value": 16155,
+            "range": "± 300",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-u16/2048",
+            "value": 34256,
+            "range": "± 407",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-usize/2048",
+            "value": 17185,
+            "range": "± 432",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/2048",
+            "value": 59959,
+            "range": "± 1196",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-usize/4096",
+            "value": 32173,
+            "range": "± 996",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-u16/4096",
+            "value": 68350,
+            "range": "± 408",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-usize/4096",
+            "value": 34201,
+            "range": "± 968",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/4096",
+            "value": 118157,
+            "range": "± 1569",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-usize/8192",
+            "value": 63983,
+            "range": "± 1326",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-u16/8192",
+            "value": 136907,
+            "range": "± 1071",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-usize/8192",
+            "value": 69772,
+            "range": "± 2038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/8192",
+            "value": 234942,
+            "range": "± 3028",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-usize/16384",
+            "value": 128092,
+            "range": "± 2497",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-u32-u16/16384",
+            "value": 274107,
+            "range": "± 2300",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/syntree-usize/16384",
+            "value": 134178,
+            "range": "± 3660",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_full/rowan/16384",
+            "value": 467639,
+            "range": "± 5515",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-u32/1024",
+            "value": 8822,
+            "range": "± 138",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-usize/1024",
+            "value": 9560,
+            "range": "± 544",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/1024",
+            "value": 15014,
+            "range": "± 452",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-u32/2048",
+            "value": 17738,
+            "range": "± 241",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-usize/2048",
+            "value": 18976,
+            "range": "± 221",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/2048",
+            "value": 30009,
+            "range": "± 823",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-u32/4096",
+            "value": 35165,
+            "range": "± 483",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-usize/4096",
+            "value": 38029,
+            "range": "± 403",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/4096",
+            "value": 60740,
+            "range": "± 2062",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-u32/8192",
+            "value": 70824,
+            "range": "± 961",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-usize/8192",
+            "value": 76918,
+            "range": "± 1039",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/8192",
+            "value": 119749,
+            "range": "± 4820",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-u32/16384",
+            "value": 143503,
+            "range": "± 7492",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/syntree-usize/16384",
+            "value": 157616,
+            "range": "± 1898",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "children_nodes_only/rowan/16384",
+            "value": 240616,
+            "range": "± 6300",
             "unit": "ns/iter"
           }
         ]
