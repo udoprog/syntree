@@ -81,7 +81,7 @@
 //!
 //! Note that [`syntree::tree!`] is only a helper which simplifies building
 //! trees for examples. It corresponds exactly to performing [`open`],
-//! [`close`], and [`token`] calls on [`Builder`] as specified.
+//! [`close`], and [`token`][`Builder::token`] calls on [`Builder`] as specified.
 //!
 //! ```
 //! use syntree::{Builder, Span};
@@ -138,7 +138,7 @@
 //! ### Nodes, tokens and elements
 //!
 //! A tree hands out three kinds of handles. A [`Node`] is an interior node, one
-//! which was [`open`]ed, and a [`Token`] is a leaf added with [`token`]. Anything
+//! which was [`open`]ed, and a [`Token`] is a leaf added with [`token`][`Builder::token`]. Anything
 //! which can be either, such as a child or a step of a walk, is an [`Element`],
 //! which has the navigation methods of a node and acts as an empty leaf when it
 //! is a token. Use `into_node` or `into_token` to get at what only one of them
@@ -177,7 +177,7 @@
 //!
 //! ### Trivia
 //!
-//! Whitespace and comments can be added with [`trivia`] instead of [`token`].
+//! Whitespace and comments can be added with [`trivia`] instead of [`token`][`Builder::token`].
 //! Trivia is stored in the token array like any other token, so node spans
 //! cover it and every source byte stays reachable, but `children()`, `walk()`
 //! and the other iterators skip it unless asked to include it with
@@ -421,31 +421,31 @@
 //!
 //! Checkpoints are kept in the same storage, so no allocator is needed.
 //!
-//! [`Builder::new_with`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new_with
-//! [`Builder::new`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.new
-//! [`Builder`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html
-//! [`close`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.close
+//! [`Builder::new_with`]: crate::Builder::new_with
+//! [`Builder::new`]: crate::Builder::new
+//! [`Builder`]: crate::Builder
+//! [`close`]: crate::Builder::close
 //! [`edit`]: crate::edit
-//! [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
-//! [`EmptyVec`]: https://docs.rs/syntree/latest/syntree/struct.EmptyVec.html
-//! [`Element`]: https://docs.rs/syntree/latest/syntree/type.Element.html
+//! [`Empty`]: crate::Empty
+//! [`EmptyVec`]: crate::EmptyVec
+//! [`Element`]: crate::Element
 //! [`Error::Overflow`]: crate::Error::Overflow
 //! [`Error::MissingNode`]: crate::Error::MissingNode
 //! [`Error`]: crate::Error
-//! [`Flavor`]: https://docs.rs/syntree/latest/syntree/trait.Flavor.html
+//! [`Flavor`]: crate::Flavor
 //! [`FlavorDefault`]: https://docs.rs/syntree/latest/syntree/struct.FlavorDefault.html
 //! [`flavor!`]: crate::flavor!
-//! [`Node`]: https://docs.rs/syntree/latest/syntree/struct.Node.html
-//! [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
+//! [`Node`]: crate::Node
+//! [`open`]: crate::Builder::open
 //! [`print_with_source`]: crate::print::print_with_source
 //! [`print`]: crate::print
 //! [`rowan`]: https://docs.rs/rowan/latest/rowan/
 //! [`Span`]: crate::Span
-//! [`Storage`]: https://docs.rs/syntree/latest/syntree/trait.Storage.html
+//! [`Storage`]: crate::Storage
 //! [`syntree::tree!`]: crate::tree!
-//! [`Token`]: https://docs.rs/syntree/latest/syntree/struct.Token.html
-//! [`token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
-//! [`trivia`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.trivia
+//! [`Token`]: crate::Token
+//! [`Builder::token`]: crate::Builder::token
+//! [`trivia`]: crate::Builder::trivia
 //! [`Tree::node_with_span`]: crate::Tree::node_with_span
 //! [`Tree`]: crate::Tree
 //! [abstract syntax trees]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
