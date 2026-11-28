@@ -433,7 +433,7 @@
 //! [`Error::MissingNode`]: crate::Error::MissingNode
 //! [`Error`]: crate::Error
 //! [`Flavor`]: crate::Flavor
-//! [`FlavorDefault`]: https://docs.rs/syntree/latest/syntree/struct.FlavorDefault.html
+//! [`FlavorDefault`]: crate::FlavorDefault
 //! [`flavor!`]: crate::flavor!
 //! [`Node`]: crate::Node
 //! [`open`]: crate::Builder::open
