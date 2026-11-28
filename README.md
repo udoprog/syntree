@@ -20,7 +20,7 @@ Anything can be stored in the tree as long as it implements `Copy`.
 Add `syntree` to your crate:
 
 ```toml
-syntree = "0.20.1"
+syntree = "0.20.2"
 ```
 
 If you want a complete sample for how `syntree` can be used for parsing, see
@@ -426,14 +426,14 @@ Checkpoints are kept in the same storage, so no allocator is needed.
 [`edit`]: https://docs.rs/syntree/latest/syntree/edit/index.html
 [`Empty`]: https://docs.rs/syntree/latest/syntree/struct.Empty.html
 [`EmptyVec`]: https://docs.rs/syntree/latest/syntree/struct.EmptyVec.html
-[`Element`]: https://docs.rs/syntree/latest/syntree/node/type.Element.html
+[`Element`]: https://docs.rs/syntree/latest/syntree/type.Element.html
 [`Error::Overflow`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.Overflow
 [`Error::MissingNode`]: https://docs.rs/syntree/latest/syntree/enum.Error.html#variant.MissingNode
 [`Error`]: https://docs.rs/syntree/latest/syntree/enum.Error.html
 [`Flavor`]: https://docs.rs/syntree/latest/syntree/trait.Flavor.html
 [`FlavorDefault`]: https://docs.rs/syntree/latest/syntree/struct.FlavorDefault.html
 [`flavor!`]: https://docs.rs/syntree/latest/syntree/macro.flavor.html
-[`Node`]: https://docs.rs/syntree/latest/syntree/node/struct.Node.html
+[`Node`]: https://docs.rs/syntree/latest/syntree/struct.Node.html
 [`open`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.open
 [`print_with_source`]: https://docs.rs/syntree/latest/syntree/print/fn.print_with_source.html
 [`print`]: https://docs.rs/syntree/latest/syntree/print/index.html
@@ -441,7 +441,7 @@ Checkpoints are kept in the same storage, so no allocator is needed.
 [`Span`]: https://docs.rs/syntree/latest/syntree/struct.Span.html
 [`Storage`]: https://docs.rs/syntree/latest/syntree/trait.Storage.html
 [`syntree::tree!`]: https://docs.rs/syntree/latest/syntree/macro.tree.html
-[`Token`]: https://docs.rs/syntree/latest/syntree/node/struct.Token.html
+[`Token`]: https://docs.rs/syntree/latest/syntree/struct.Token.html
 [`Builder::token`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.token
 [`trivia`]: https://docs.rs/syntree/latest/syntree/struct.Builder.html#method.trivia
 [`Tree::node_with_span`]: https://docs.rs/syntree/latest/syntree/struct.Tree.html#method.node_with_span
